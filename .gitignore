@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+Icon?
+.Rhistory
+.RData
+.Ruserdata
+
+# R outputs — large model objects (models/nophy_models.rds is ~829MB)
+models/
+
+# Generated plots and tables (reproduced by running the pipeline)
+plots/
+tables/
+
+# Derived data files (outputs of 00_data_cleaning.R)
+data/tre_add.tre
+data/tre_pruned.tre
+data/data_species.csv
+data/data_cleaned.csv
+data/dat_site.csv
+
+# Binary duplicate of the CSV input
+data/RoyerLeafShapeClimateDataFixedNames_June2012.xlsx
+
+# Old/archive directory (large, legacy files)
+old/
