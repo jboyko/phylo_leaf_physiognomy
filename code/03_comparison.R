@@ -131,6 +131,26 @@ rmse_pip_site_map <- sqrt(mean((dat_site_aln$log_map - map_pip_site)^2))
 cat("Site-aggregated PIP RMSE — MAT:", round(rmse_pip_site_mat, 3),
     " log(MAP):", round(rmse_pip_site_map, 3), "\n")
 
+# Save per-site predictions for all models with site-level output
+# RF: extract CV predictions, align to dat_site row order
+rf_site_mat <- site_results$mat$RF$pred[
+  order(site_results$mat$RF$pred$rowIndex), ]
+rf_site_map <- site_results$log_map$RF$pred[
+  order(site_results$log_map$RF$pred$rowIndex), ]
+
+site_preds <- data.frame(
+  site        = dat_site$Site,
+  obs_mat     = dat_site$mat,
+  obs_log_map = dat_site$log_map,
+  obs_map     = dat_site$map,
+  rf_mat      = rf_site_mat$pred,
+  rf_log_map  = rf_site_map$pred,
+  pip_mat     = mat_pip_site[dat_site$Site],
+  pip_log_map = map_pip_site[dat_site$Site]
+)
+write.csv(site_preds, "tables/site_predictions.csv", row.names = FALSE)
+cat("Saved tables/site_predictions.csv\n")
+
 # ==============================================================================
 # 4. RMSE COMPARISON TABLE
 # ==============================================================================

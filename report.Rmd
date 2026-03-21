@@ -17,12 +17,15 @@ library(knitr)
 library(kableExtra)
 library(caret)
 library(ggplot2)
+library(gridExtra)
 
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
 pip          <- readRDS("models/pip_components.rds")
 all_results  <- readRDS("models/nophy_models.rds")
 site_results <- readRDS("models/site_models.rds")
+comp_mat     <- read.csv("tables/comparison_mat_rmse.csv")
+comp_map     <- read.csv("tables/comparison_map_rmse.csv")
 ```
 
 ---
@@ -284,9 +287,6 @@ RMSE for all eight models: three model types at species level, three at site lev
 The site-aggregated PIP averages species-level LOOCV predictions across all training species present at each site. This is the approach a paleobotanist would use for a fossil assemblage: apply PIP to each taxon in the assemblage, then average across taxa.
 
 ```{r rmse-comparison}
-comp_mat <- read.csv("tables/comparison_mat_rmse.csv")
-comp_map <- read.csv("tables/comparison_map_rmse.csv")
-
 comp_mat$RMSE <- round(comp_mat$RMSE, 3)
 comp_map$RMSE <- round(comp_map$RMSE, 3)
 
@@ -316,6 +316,74 @@ Observed vs. predicted scatter plots (RF via 10-fold CV; PIP via LOOCV):
 ```{r scatter, out.width="90%"}
 include_graphics("plots/model_comparison.png")
 ```
+
+---
+
+# Site-Level Analysis
+
+## Motivation
+
+Traditional leaf physiognomy methods (CLAMP, DiLP) work at the site scale: all leaf specimens from a fossil locality are averaged to produce a single set of trait values, from which one climate estimate is made. This averaging reduces noise from specimen-to-specimen variation but discards the within-site taxonomic signal. It is also the natural unit for fossil assemblages, where the locality is what the paleobotanist wants to reconstruct, not any individual taxon.
+
+The site-aggregated PIP approach tested here applies PIP to each species in the assemblage individually, then averages the predictions. It uses the same field data a paleobotanist would collect, but draws on the phylogenetic signal of each taxon rather than only on site-mean trait values.
+
+## Observed vs. predicted at the site scale
+
+The four panels below compare observed site-mean MAT and MAP against predictions from the best non-phylogenetic site model (Random Forest) and from site-aggregated PIP. Each point is one of the `r nrow(read.csv("tables/site_predictions.csv"))` training sites.
+
+```{r site-scatter, fig.height=8, fig.width=10, message=FALSE}
+sp <- read.csv("tables/site_predictions.csv")
+sp <- sp[complete.cases(sp), ]   # sites with both RF and PIP predictions
+sp$rf_map  <- exp(sp$rf_log_map)
+sp$pip_map <- exp(sp$pip_log_map)
+
+rmse_rf_mat  <- sqrt(mean((sp$obs_mat - sp$rf_mat)^2))
+rmse_pip_mat <- sqrt(mean((sp$obs_mat - sp$pip_mat)^2))
+rmse_rf_map  <- sqrt(mean((sp$obs_map - sp$rf_map)^2))
+rmse_pip_map <- sqrt(mean((sp$obs_map - sp$pip_map)^2))
+
+lim_mat <- range(c(sp$obs_mat, sp$rf_mat, sp$pip_mat))
+lim_map <- range(c(sp$obs_map, sp$rf_map, sp$pip_map))
+
+make_scatter <- function(obs, pred, xlab, ylab, title, rmse_val, col) {
+  ggplot(data.frame(obs = obs, pred = pred), aes(x = obs, y = pred)) +
+    geom_point(colour = col, alpha = 0.5, size = 2) +
+    geom_abline(slope = 1, intercept = 0, linewidth = 0.8) +
+    coord_cartesian(xlim = range(c(obs, pred)), ylim = range(c(obs, pred))) +
+    annotate("text", x = -Inf, y = Inf, hjust = -0.15, vjust = 1.4,
+             label = paste("RMSE =", round(rmse_val, 2)),
+             size = 3.5) +
+    theme_minimal(base_size = 12) +
+    labs(title = title, x = xlab, y = ylab)
+}
+
+p1 <- make_scatter(sp$obs_mat, sp$rf_mat,
+                   "Observed MAT (°C)", "Predicted MAT (°C)",
+                   "Random Forest (site) — MAT",
+                   rmse_rf_mat, "#cc4444")
+p2 <- make_scatter(sp$obs_mat, sp$pip_mat,
+                   "Observed MAT (°C)", "Predicted MAT (°C)",
+                   "PIP site-aggregated — MAT",
+                   rmse_pip_mat, "#4444cc")
+p3 <- make_scatter(sp$obs_map, sp$rf_map,
+                   "Observed MAP (mm)", "Predicted MAP (mm)",
+                   "Random Forest (site) — MAP",
+                   rmse_rf_map, "#cc4444")
+p4 <- make_scatter(sp$obs_map, sp$pip_map,
+                   "Observed MAP (mm)", "Predicted MAP (mm)",
+                   "PIP site-aggregated — MAP",
+                   rmse_pip_map, "#4444cc")
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+## What the comparison shows
+
+**MAT**: Site-aggregated PIP (RMSE `r round(rmse_pip_mat, 2)`°C) reduces error compared to species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C) but does not reach the accuracy of the naive site-level Random Forest (`r round(rmse_rf_mat, 2)`°C). The RF benefits from fitting directly on site-mean traits, which have lower variance than species-mean traits. PIP, trained at the species level, does not fully correct for this.
+
+**MAP**: Patterns differ from MAT. Species-level PIP retains the best log(MAP) RMSE of any model (`r round(comp_map$RMSE[comp_map$Model == "PIP (species)"], 3)`). Site-aggregating the PIP predictions slightly worsens accuracy compared to species-level PIP, though it remains competitive with the non-phylogenetic site models (`r round(rmse_pip_map, 3)` vs `r round(rmse_rf_map, 3)`). MAP has a stronger species-level phylogenetic signal than MAT, and averaging within sites smooths out some of that signal.
+
+**Practical implication**: For a real fossil assemblage, site-aggregated PIP is the recommended approach. Each taxon gets a phylogenetically informed estimate, and averaging across taxa gives the locality estimate. The method outperforms treating each fossil taxon in isolation (species-level PIP) and does not require the site-mean trait averaging that is impractical for small fossil assemblages.
 
 ---
 
