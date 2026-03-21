@@ -28,13 +28,13 @@ rmarkdown::render("report.Rmd")
 
 ### What each script does
 
-**`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating to species-level means. Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. Outputs `data/data_species.csv`, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
+**`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating to species-level means and site-level means. Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. Outputs `data/data_species.csv`, `data/dat_site.csv`, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
 
-**`01_nophy_regression.R`** — Fits LM, ElasticNet, and Random Forest for MAT and log(MAP) using 10-fold CV via `caret`. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Pre-imputes once via `bagImpute` before CV for speed. Saves `models/nophy_models.rds`.
+**`01_nophy_regression.R`** — Fits LM, ElasticNet, and Random Forest for MAT and log(MAP) using 10-fold CV via `caret`. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Pre-imputes once via `bagImpute` before CV for speed. Fits models at both species level and site level. Saves `models/nophy_models.rds` and `models/site_models.rds`.
 
 **`02_phy_regression.R`** — Selects active traits from non-zero ElasticNet coefficients, fits PGLS for MAT and log(MAP) via `pglmEstLambda()`, saves all components for fossil prediction to `models/pip_components.rds`.
 
-**`03_comparison.R`** — All reporting: nophy CV summaries, RF variable importance, PDP plots, vectorised PIP LOOCV (`ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ`), four-model RMSE comparison, scatter plots.
+**`03_comparison.R`** — All reporting: nophy CV summaries, RF variable importance, PDP plots, vectorised PIP LOOCV (`ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ`), RMSE comparison across all models (species-level, site-level, phylogenetic), scatter plots.
 
 **`04_fossil_predictions.R`** — Grafts fossils onto `tre_scaffold.tre`, prunes to training + fossil tips, and applies the PIP formula: `ŷ = Xβ + V[training,fossil] · V[training,training]⁻¹ · ε`. Writes `tables/fossil_predictions.csv`. The `PLACEMENT_FALLBACK` flag at the top of the script controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default — walks up to split the correct branch at the fossil's age) or `"node"` (attaches at the MRCA with a minimal edge).
 

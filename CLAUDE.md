@@ -67,19 +67,20 @@ Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
 
 ## Pipeline Architecture
 
-**`00_data_cleaning.R`** — Fills tooth trait NAs before aggregation (see section 2 above). Builds a family-level angiosperm backbone (2 crown tips per family, ~943 tips across 515 families) from the full WCVP tree, then grafts training species onto that small scaffold. All getMRCA/bind.tip calls operate on the small backbone (~1000–3000 tips) rather than the full 123k-tip tree. `h = max(nodeHeights())` is computed once before the loop — constant because all tips reach the crown age. Outputs:
+**`00_data_cleaning.R`** — Fills tooth trait NAs before aggregation (see section 2 above). Aggregates to both species-level means and site-level means. Builds a family-level angiosperm backbone (2 crown tips per family, ~943 tips across 515 families) from the full WCVP tree, then grafts training species onto that small scaffold. All getMRCA/bind.tip calls operate on the small backbone (~1000–3000 tips) rather than the full 123k-tip tree. `h = max(nodeHeights())` is computed once before the loop — constant because all tips reach the crown age. Outputs:
 - `data/data_species.csv` — species-level means
+- `data/dat_site.csv` — site-level means (92 sites; traditional paleobotany aggregation)
 - `data/tre_pruned.tre` — training species only; used for VCV in PGLS/PIP
 - `data/tre_scaffold.tre` — family backbone + training species; used for fossil grafting in `04_`
 - `data/name_table_full.csv` — genus/family/order for all 123k WCVP tips (read by `02_`, avoids reloading the full tree)
 
-**`01_nophy_regression.R`** — Explicitly defines the 12 fossil-measurable predictors (`fossil_traits` vector at top of script). Pre-imputes once via `bagImpute` before CV. Uses `"impurity"` importance for RF (fast; `"permutation"` is slow and unnecessary for ranking). Saves `models/nophy_models.rds`. No exports or plots — those live in `03_`.
+**`01_nophy_regression.R`** — Explicitly defines the 12 fossil-measurable predictors (`fossil_traits` vector at top of script). Pre-imputes once via `bagImpute` before CV. Uses `"impurity"` importance for RF (fast; `"permutation"` is slow and unnecessary for ranking). Fits models at both species level (saved to `models/nophy_models.rds`) and site level (saved to `models/site_models.rds`). No exports or plots — those live in `03_`.
 
 **`02_phy_regression.R`** — Reads `name_table_full.csv` (no need to reload the 123k tree). Extracts non-zero ElasticNet coefficients → active traits → PGLS formula. Fits PGLS for MAT and MAP via `pglmEstLambda()`. Saves `models/pip_components.rds` containing: beta, lambda, V_lam, residuals, design matrices, imputation models (full and traits-only), taxonomy, name_table_full, and pruned tree.
 
 **Lambda transformation convention**: `V_lam` is computed to match the `lamTrans()` function used internally by `pglmEstLambda()` — off-diagonals are multiplied by λ, diagonal is left unchanged (`diag(V_lam) <- diag(phylomat)`). Do NOT use `diag(V_lam) <- diag(V_lam) + (1 - lambda)`, which adds a dimensionless nugget incompatible with the VCV scale and inconsistent with fitting.
 
-**`03_comparison.R`** — All reporting in one place. Vectorised PIP LOOCV via Schur complement: `ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ` where `K = V⁻¹`. One matrix solve replaces N solves — O(N³) vs naive O(N⁴). Exports: nophy CV summaries, RF variable importance, PDP plots (top 4 per target), four-model RMSE tables, scatter plots.
+**`03_comparison.R`** — All reporting in one place. Vectorised PIP LOOCV via Schur complement: `ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ` where `K = V⁻¹`. One matrix solve replaces N solves — O(N³) vs naive O(N⁴). Exports: nophy CV summaries, RF variable importance, PDP plots (top 4 per target), RMSE tables (species-level, site-level, and phylogenetic), scatter plots.
 
 **`04_fossil_predictions.R`** — The primary scientific output script. Loads `pip_components.rds` and `fossil_traits.csv`. Grafts fossils onto `tre_scaffold.tre` (family backbone ensures any angiosperm family can be placed). Prunes to training + fossils, computes cross-covariance V[training, fossil] via `vcv()`, applies PIP formula. Reuses `pip$V_lam_mat` and `pip$V_lam_map` — valid because covariance between two training species is independent of what other taxa are in the tree. Writes `tables/fossil_predictions.csv`.
 
@@ -100,7 +101,9 @@ Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
 | `data/tre_pruned.tre` | Training species only; used for VCV computation |
 | `data/tre_scaffold.tre` | Family backbone + training species; used for fossil grafting |
 | `data/fossil_traits.csv` | User-provided fossil specimen traits |
-| `models/nophy_models.rds` | Caret model objects from `01_` |
+| `data/dat_site.csv` | Site-level averaged traits (92 sites); output of `00_` |
+| `models/nophy_models.rds` | Species-level caret model objects from `01_` |
+| `models/site_models.rds` | Site-level caret model objects from `01_` |
 | `models/pip_components.rds` | All PIP components for fossil prediction; from `02_` |
 
 ## R Package Dependencies

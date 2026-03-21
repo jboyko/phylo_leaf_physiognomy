@@ -14,8 +14,9 @@ library(ggplot2)
 library(gridExtra)
 library(pdp)
 
-pip         <- readRDS("models/pip_components.rds")
-all_results <- readRDS("models/nophy_models.rds")
+pip          <- readRDS("models/pip_components.rds")
+all_results  <- readRDS("models/nophy_models.rds")
+site_results <- readRDS("models/site_models.rds")
 
 # ==============================================================================
 # 1. NOPHY MODEL SUMMARIES AND VARIABLE IMPORTANCE
@@ -106,26 +107,36 @@ get_best_rmse <- function(model) min(model$results$RMSE)
 rmse          <- function(obs, pred) sqrt(mean((obs - pred)^2))
 
 comparison_mat <- data.frame(
-  Model = c("Linear Model (OLS)", "Elastic Net", "Random Forest", "PIP (Phylogenetic)"),
+  Model = c("LM (species)", "Elastic Net (species)", "Random Forest (species)",
+            "PIP (phylogenetic)",
+            "LM (site)", "Elastic Net (site)", "Random Forest (site)"),
   RMSE  = c(
     get_best_rmse(all_results$mat$LM),
     get_best_rmse(all_results$mat$ENet),
     get_best_rmse(all_results$mat$RF),
-    rmse(pip$dat_imputed_mat$mat, mat_loo)
+    rmse(pip$dat_imputed_mat$mat, mat_loo),
+    get_best_rmse(site_results$mat$LM),
+    get_best_rmse(site_results$mat$ENet),
+    get_best_rmse(site_results$mat$RF)
   ),
-  Type  = c("Linear", "Regularized", "Non-linear/ML", "Phylogenetic")
+  Level = c(rep("Species", 3), "Phylogenetic", rep("Site", 3))
 )
 comparison_mat <- comparison_mat[order(comparison_mat$RMSE), ]
 
 comparison_map <- data.frame(
-  Model = c("Linear Model (OLS)", "Elastic Net", "Random Forest", "PIP (Phylogenetic)"),
+  Model = c("LM (species)", "Elastic Net (species)", "Random Forest (species)",
+            "PIP (phylogenetic)",
+            "LM (site)", "Elastic Net (site)", "Random Forest (site)"),
   RMSE  = c(
     get_best_rmse(all_results$log_map$LM),
     get_best_rmse(all_results$log_map$ENet),
     get_best_rmse(all_results$log_map$RF),
-    rmse(pip$dat_imputed_map$log_map, map_loo)
+    rmse(pip$dat_imputed_map$log_map, map_loo),
+    get_best_rmse(site_results$log_map$LM),
+    get_best_rmse(site_results$log_map$ENet),
+    get_best_rmse(site_results$log_map$RF)
   ),
-  Type  = c("Linear", "Regularized", "Non-linear/ML", "Phylogenetic")
+  Level = c(rep("Species", 3), "Phylogenetic", rep("Site", 3))
 )
 comparison_map <- comparison_map[order(comparison_map$RMSE), ]
 

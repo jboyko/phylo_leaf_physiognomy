@@ -20,22 +20,23 @@ library(ggplot2)
 
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
-pip         <- readRDS("models/pip_components.rds")
-all_results <- readRDS("models/nophy_models.rds")
+pip          <- readRDS("models/pip_components.rds")
+all_results  <- readRDS("models/nophy_models.rds")
+site_results <- readRDS("models/site_models.rds")
 ```
 
 ---
 
 # Introduction
 
-This document describes the methodology and current results of a project predicting paleoclimate from leaf morphology using phylogenetically-informed prediction (PIP). The primary deliverable is **fossil specimen prediction** — estimating mean annual temperature (MAT) and mean annual precipitation (MAP) from the morphological traits of fossil leaves. The extant-species modelling pipeline serves as a calibration and validation benchmark for that end goal.
+This document describes the methodology and current results of a project predicting paleoclimate from leaf morphology using phylogenetically-informed prediction (PIP). The primary goal is predicting mean annual temperature (MAT) and mean annual precipitation (MAP) from the morphological traits of fossil leaves. The extant-species modelling pipeline serves as a calibration and validation benchmark.
 
-The dataset is the Royer et al. (2012) leaf morphology and climate database, matched to a dated angiosperm phylogeny derived from the World Checklist of Vascular Plants (WCVP). All analysis is conducted at the species level, using species-mean trait values.
+The dataset is the Royer et al. (2012) leaf morphology and climate database, matched to a dated angiosperm phylogeny derived from the World Checklist of Vascular Plants (WCVP). All analysis is conducted at the species level using species-mean trait values.
 
 Two climate targets are modelled:
 
-- **MAT** — mean annual temperature (°C)
-- **log(MAP)** — natural log of mean annual precipitation (mm/yr); back-transformed for reporting
+- **MAT**: mean annual temperature (°C)
+- **log(MAP)**: natural log of mean annual precipitation (mm/yr), back-transformed for reporting
 
 ---
 
@@ -43,7 +44,7 @@ Two climate targets are modelled:
 
 ## Trait selection
 
-All models are restricted to traits that can be measured from fossil leaf specimens. This constraint ensures the training and prediction pipelines use exactly the same feature set — training on all available extant traits and then imputing unmeasurable ones for fossils would silently undermine the fossil application.
+All models are restricted to traits that can be measured from fossil leaf specimens. This ensures the training and prediction pipelines use the same feature set. Training on traits that cannot be measured from fossils would make the model inapplicable to the fossil case.
 
 The 12 fossil-measurable predictors are:
 
@@ -76,52 +77,52 @@ kable(traits, col.names = c("Trait", "Notes")) |>
   pack_rows("Toothed leaves (filled for untoothed)", 5, 12)
 ```
 
-Notable exclusions despite predictive power in unconstrained models include `evergreen` (phenological status — not determinable from a fossil), raw tooth counts, and several size/shape measurements that require intact leaf material not reliably preserved in fossils.
+Excluded traits include `evergreen` (phenological status, not determinable from a fossil), raw tooth counts, and several size and shape measurements that require intact leaf material not always preserved in fossils.
 
 ## Tooth trait filling
 
-Untoothed leaves (those with blank tooth trait values **and** `margin.score == 1`) have biologically real zero values for all tooth traits — the absence of teeth is meaningful, not missing. These NAs are filled before species-level aggregation:
+Untoothed leaves have blank tooth trait values in the dataset. For leaves confirmed as untoothed (`margin.score == 1`), these blank values are biologically meaningful zeros, not missing data. They are filled before species-level aggregation:
 
-- Tooth traits → **0** (no teeth, no tooth area)
-- `perim.ratio` → **1** (smooth perimeter, ratio = 1)
+- Tooth traits: set to **0**
+- `perim.ratio`: set to **1** (smooth perimeter)
 
-Without this step, tooth traits exhibit ~67% missingness at the specimen level and are excluded from all models despite being informative. Filling is conditioned on both criteria simultaneously as a data integrity check.
+Both conditions must be met: the cell is blank and `margin.score == 1`. Without this step, tooth traits have roughly 67% missing values at the specimen level and are dropped from all models.
 
-## Species-level aggregation
+## Species-level and site-level aggregation
 
-All modelling is conducted at the species level, using the mean value of each trait across all specimens of a species. This is required for phylogenetic analysis, which operates at the species level. Site-level predictions can be derived subsequently by aggregating species-level estimates within a site.
+The phylogenetic model operates at the species level, so the primary dataset uses species-mean trait values. After aggregation, it contains **`r nrow(pip$dat_imputed_mat)` species** with at least partial trait information.
 
-After aggregation, the dataset comprises **`r nrow(pip$dat_imputed_mat)` species** with at least partial trait information.
+A second dataset aggregates all specimens within each site to site-mean trait values, giving **`r nrow(read.csv("data/dat_site.csv"))` sites**. This is the aggregation scale used by traditional leaf physiognomy methods (CLAMP, DiLP), where a fossil assemblage from a single locality is treated as one observation. The site-level non-phylogenetic models are fit on this dataset and included in the model comparison as a reference.
 
 ---
 
 # Non-Phylogenetic Baseline Models
 
-Three non-phylogenetic regression approaches are fit as baselines: ordinary least squares linear regression (LM), regularised linear regression (Elastic Net), and a non-linear ensemble method (Random Forest). These serve as the benchmark against which the phylogenetic model is compared.
+Three non-phylogenetic model types are fit: ordinary least squares linear regression (LM), regularised linear regression (Elastic Net), and Random Forest. Each is fit twice: once on the species-level dataset and once on the site-level dataset. These six models provide a reference for evaluating the phylogenetic model and for comparison with the traditional site-based approach used by CLAMP and DiLP.
 
 ## Model setup
 
-All three models are fit using 10-fold cross-validation via the `caret` framework, predicting MAT and log(MAP) separately. Predictors are centred and scaled within each method's preprocessing pipeline. Missing values are imputed once before cross-validation using bootstrap-aggregated regression trees (`bagImpute`), rather than within each CV fold, which would repeat imputation 60 times (10 folds × 3 methods × 2 targets) at negligible gain.
+All models are fit using 10-fold cross-validation via the `caret` framework, predicting MAT and log(MAP) separately. Predictors are centred and scaled. Missing values are imputed once before cross-validation using bootstrap-aggregated regression trees (`bagImpute`). Imputing within each fold would repeat the procedure 60 times (10 folds × 3 methods × 2 targets) with little benefit.
 
-For Elastic Net, the mixing parameter α and regularisation penalty λ are selected over a grid of 10 candidate values. For Random Forest (via `ranger`), variable importance is computed using the impurity criterion (Gini/variance reduction), computed during tree construction.
+For Elastic Net, the mixing parameter α and regularisation penalty λ are selected over a grid of 10 candidate values. For Random Forest (via `ranger`), variable importance uses the impurity criterion, computed during tree construction.
 
 ## Cross-validation results
 
-Ten-fold CV RMSE distributions across folds for each model and target:
+Ten-fold CV RMSE across folds for each model and target:
 
 ```{r cv-rmse-mat}
 mat_rmse <- read.csv("tables/mat_RMSE_summary.csv", row.names = 1)
-kable(round(mat_rmse, 3), caption = "MAT CV RMSE (°C) — distribution across 10 folds") |>
+kable(round(mat_rmse, 3), caption = "MAT CV RMSE (°C), distribution across 10 folds") |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
 ```{r cv-rmse-map}
 map_rmse <- read.csv("tables/log_map_RMSE_summary.csv", row.names = 1)
-kable(round(map_rmse, 3), caption = "log(MAP) CV RMSE — distribution across 10 folds") |>
+kable(round(map_rmse, 3), caption = "log(MAP) CV RMSE, distribution across 10 folds") |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
-Random Forest achieves the lowest mean CV RMSE among non-phylogenetic methods for both targets, suggesting non-linear predictor relationships.
+Random Forest has the lowest mean CV RMSE among the non-phylogenetic methods for both targets.
 
 ## Variable importance
 
@@ -150,15 +151,15 @@ ggplot(imp_all, aes(x = Trait, y = Overall, fill = Target)) +
 
 ## Partial dependence plots
 
-Marginal effect of each of the top four predictors on the model response, averaged over the joint distribution of all other predictors (partial dependence):
+Each plot shows the marginal effect of a predictor on the model response, averaged over the distribution of all other predictors.
 
-**MAT — top 4 predictors**
+**MAT: top 4 predictors**
 
 ```{r pdp-mat, out.width="85%"}
 include_graphics("plots/mat_top4_PDP_grid.png")
 ```
 
-**log(MAP) — top 4 predictors**
+**log(MAP): top 4 predictors**
 
 ```{r pdp-map, out.width="85%"}
 include_graphics("plots/log_map_top4_PDP_grid.png")
@@ -170,38 +171,34 @@ include_graphics("plots/log_map_top4_PDP_grid.png")
 
 ## PGLS and Pagel's lambda
 
-Leaf traits among species are not statistically independent — closely related species tend to share similar traits due to common ancestry. Ignoring this structure inflates the effective sample size and can bias coefficient estimates. Phylogenetic generalised least squares (PGLS) corrects for this by modelling the residual covariance structure using the phylogenetic variance-covariance (VCV) matrix.
+Species share traits through common ancestry. Closely related species tend to have similar trait values, making them non-independent observations. Phylogenetic generalised least squares (PGLS) accounts for this by modelling the residual covariance using the phylogenetic variance-covariance (VCV) matrix.
 
-The VCV matrix **V** is derived from the dated angiosperm phylogeny: entry V[i,j] equals the height of the most recent common ancestor (MRCA) of species i and j — equivalently, the total shared evolutionary time. The diagonal V[i,i] is the full root-to-tip distance.
+The VCV matrix **V** is derived from the dated angiosperm phylogeny. Entry V[i,j] equals the height of the most recent common ancestor (MRCA) of species i and j, which is the total shared evolutionary time between them. The diagonal V[i,i] is the full root-to-tip distance for species i.
 
-**Pagel's lambda (λ)** is a scaling parameter estimated by maximum likelihood that controls how much of the residual covariance follows the phylogenetic expectation. The off-diagonal elements of **V** are multiplied by λ before fitting, while the diagonal is left unchanged:
+**Pagel's lambda (λ)** is estimated by maximum likelihood. It scales the off-diagonal elements of **V** before fitting, while leaving the diagonal unchanged:
 
 $$\mathbf{V}_\lambda[i,j] = \lambda \cdot \mathbf{V}[i,j] \quad (i \neq j), \qquad \mathbf{V}_\lambda[i,i] = \mathbf{V}[i,i]$$
 
-- λ = 1: residuals are fully phylogenetically structured (Brownian motion)
-- λ = 0: residuals are independent of phylogeny (equivalent to OLS)
-- 0 < λ < 1: intermediate phylogenetic signal
+- λ = 1: residuals follow the phylogenetic expectation (Brownian motion)
+- λ = 0: residuals are independent of phylogeny, equivalent to OLS
+- 0 < λ < 1: intermediate case
 
-ML-estimated lambda values in this dataset:
+ML-estimated lambda values:
 
 ```{r lambda-table}
 lam_df <- data.frame(
   Target  = c("MAT", "log(MAP)"),
-  Lambda  = round(c(pip$lambda_mat, pip$lambda_map), 3),
-  Interpretation = c(
-    "Moderate phylogenetic signal in MAT residuals",
-    "Weaker phylogenetic signal in MAP residuals"
-  )
+  Lambda  = round(c(pip$lambda_mat, pip$lambda_map), 3)
 )
-kable(lam_df, col.names = c("Target", "λ", "Interpretation")) |>
+kable(lam_df, col.names = c("Target", "λ")) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
-Both values are significantly greater than zero, indicating that phylogenetic structure meaningfully improves residual modelling for both climate variables. The lower λ for MAP is consistent with precipitation being a more locally variable climate signal than temperature.
+Both values are greater than zero, indicating some phylogenetic structure in the residuals for both targets.
 
 ## Active predictors selected by Elastic Net
 
-Rather than including all 12 fossil-measurable traits in the PGLS model (which risks overfitting and multicollinearity), we use the non-zero Elastic Net coefficients to identify the active predictor subset. PGLS is then fit on that reduced set.
+All 12 fossil-measurable traits are used to fit the non-phylogenetic models. For PGLS, the active predictor set is reduced to the traits with non-zero Elastic Net coefficients. This reduces the risk of overfitting and multicollinearity in the PGLS model.
 
 ```{r active-traits}
 # Recover active traits from stored formulas
@@ -219,20 +216,20 @@ kable(act_df, col.names = c("Target", "Active trait")) |>
 
 ## The PIP prediction formula
 
-PIP extends PGLS to prediction for new observations (fossils) by exploiting the phylogenetic covariance between the new species and the training set. Let:
+PIP extends PGLS to predict climate values for new species (fossils) using the phylogenetic covariance between the fossil and the training set. Define:
 
-- **y** — observed climate values for *n* extant training species
-- **X** — design matrix of trait predictors for training species
-- **β** — PGLS coefficient vector
-- **ε** = **y** − **Xβ** — PGLS residuals (full-data fit)
-- **V**[train,train] — λ-transformed phylogenetic VCV among training species
-- **V**[fossil,train] — λ-scaled cross-covariance between each fossil and all training species (off-diagonal only, so scaled by λ with no diagonal correction)
+- **y**: observed climate values for *n* extant training species
+- **X**: design matrix of trait predictors for training species
+- **β**: PGLS coefficient vector
+- **ε** = **y** − **Xβ**: PGLS residuals from the full-data fit
+- **V**[train,train]: λ-transformed VCV among training species
+- **V**[fossil,train]: cross-covariance between each fossil and all training species, scaled by λ
 
-The prediction for a new fossil specimen is:
+The prediction for a fossil specimen is:
 
 $$\hat{y}_\text{fossil} = \mathbf{X}_\text{fossil} \boldsymbol{\beta} \;+\; \mathbf{V}[\text{fossil},\text{train}] \cdot \mathbf{V}[\text{train},\text{train}]^{-1} \cdot \boldsymbol{\varepsilon}$$
 
-The first term is the standard regression prediction from the fossil's leaf traits. The second term is a **phylogenetic adjustment**: it takes the weighted average of training-species residuals, where the weights are determined by phylogenetic proximity. Fossils with close extant relatives inherit the residual pattern of those relatives; fossils with no close relatives receive a near-zero adjustment (equivalent to a non-phylogenetic prediction).
+The first term is the regression prediction from the fossil's leaf traits. The second term is the phylogenetic adjustment. It is a weighted sum of the training-species residuals. The weights are proportional to shared evolutionary history between the fossil and each training species. A fossil with no close relatives in the training set receives a near-zero adjustment, and its prediction depends almost entirely on the first term.
 
 The implementation follows the source code of Gardner, Baker, Venditti & Organ (2024; *Nature Communications*), originally from Freckleton (2015), via the `weights.p()` and `pglmPredictMissing()` functions.
 
@@ -252,37 +249,37 @@ where $\hat{\sigma}^2 = \boldsymbol{\varepsilon}^\top \mathbf{V}_\lambda^{-1} \b
 
 ### Cross-covariance block
 
-The cross-covariance **V**[fossil,train] is extracted from the phylogenetic VCV of the combined (training + fossil) tree, restricted to the off-diagonal block:
+The cross-covariance **V**[fossil,train] is extracted from the VCV of the combined tree (training species plus fossils), restricted to the off-diagonal block:
 
 $$\mathbf{V}[\text{fossil},\text{train}]_{ij} = \lambda \cdot h(\text{MRCA}(\text{fossil}_i, \text{train}_j))$$
 
-where *h*(MRCA) is the height of the most recent common ancestor of the fossil and training species in the time-calibrated tree. This block is multiplied by λ only (no diagonal correction applies to cross-species covariances).
+where $h(\text{MRCA})$ is the height of the most recent common ancestor in the time-calibrated tree. This block uses λ only, with no diagonal correction, because all entries are cross-species (off-diagonal) covariances.
 
 ### Prediction standard error
 
-The reported standard error propagates only coefficient uncertainty through the fossil design matrix:
+The reported standard error propagates coefficient uncertainty through the fossil design matrix:
 
 $$\text{SE}(\hat{y}_\text{fossil}) = \sqrt{\mathbf{x}_\text{fossil}^\top \,\boldsymbol{\Sigma}_\beta\, \mathbf{x}_\text{fossil}}$$
 
-This is a lower bound on the true prediction uncertainty, which would additionally include the conditional phylogenetic variance:
+This does not include the conditional phylogenetic variance:
 
 $$\text{Var}_\text{phylo} = \text{diag}\!\left(\mathbf{V}[\text{fossil},\text{fossil}] - \mathbf{V}[\text{fossil},\text{train}] \cdot \mathbf{V}[\text{train},\text{train}]^{-1} \cdot \mathbf{V}[\text{train},\text{fossil}]\right) \cdot \hat{\sigma}^2$$
 
-and imputation uncertainty for any traits that were filled in. The reported 95% CIs should therefore be interpreted as conservative bounds.
+or imputation uncertainty for missing traits. The reported 95% CIs are therefore narrower than full prediction intervals.
 
 ## Leave-one-out cross-validation
 
-For model evaluation, PIP LOOCV is performed via the Schur complement identity, which reduces the computation from O(N⁴) (naively re-solving an (N−1)×(N−1) system N times) to O(N³) (one matrix solve). Let **K** = **V**_λ⁻¹:
+PIP LOOCV uses the Schur complement identity to avoid refitting the model N times. Let **K** = **V**_λ⁻¹. The leave-one-out prediction for species i is:
 
 $$\hat{y}_{-i} = y_i - \frac{(\mathbf{K}\boldsymbol{\varepsilon})_i}{K_{ii}}$$
 
-This is derived from the PIP formula applied leave-one-out, using the block-matrix identity **V**[i,−i]·**V**[−i,−i]⁻¹ = −**K**[i,−i]/K[ii]. The result is algebraically identical to explicitly refitting on N−1 species each time.
+This follows from the PIP formula applied leave-one-out, using the block-matrix identity **V**[i,−i] · **V**[−i,−i]⁻¹ = −**K**[i,−i] / K[ii]. The result is identical to explicitly refitting on N−1 species each time, at a fraction of the computational cost.
 
 ---
 
 # Model Comparison
 
-LOOCV RMSE comparison across all four models for each climate target:
+RMSE for all seven models: three model types fit at species level and at site level, plus PIP. All non-phylogenetic RMSEs are from 10-fold CV; PIP uses LOOCV. In all cases each prediction excludes the observation being predicted, so the comparisons are methodologically consistent.
 
 ```{r rmse-comparison}
 comp_mat <- read.csv("tables/comparison_mat_rmse.csv")
@@ -291,30 +288,30 @@ comp_map <- read.csv("tables/comparison_map_rmse.csv")
 comp_mat$RMSE <- round(comp_mat$RMSE, 3)
 comp_map$RMSE <- round(comp_map$RMSE, 3)
 
-kable(comp_mat[, c("Model", "RMSE", "Type")],
-      caption = "MAT RMSE (°C) — LOOCV for PIP, 10-fold CV for non-phylogenetic models",
+kable(comp_mat[, c("Model", "RMSE", "Level")],
+      caption = "MAT RMSE (°C). LOOCV for PIP; 10-fold CV for all other models.",
       row.names = FALSE) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
-  row_spec(which(comp_mat$Model == "PIP (Phylogenetic)"), bold = TRUE)
+  row_spec(which(comp_mat$Model == "PIP (phylogenetic)"), bold = TRUE)
 ```
 
 ```{r rmse-comparison-map}
-kable(comp_map[, c("Model", "RMSE", "Type")],
-      caption = "log(MAP) RMSE — LOOCV for PIP, 10-fold CV for non-phylogenetic models",
+kable(comp_map[, c("Model", "RMSE", "Level")],
+      caption = "log(MAP) RMSE. LOOCV for PIP; 10-fold CV for all other models.",
       row.names = FALSE) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
-  row_spec(which(comp_map$Model == "PIP (Phylogenetic)"), bold = TRUE)
+  row_spec(which(comp_map$Model == "PIP (phylogenetic)"), bold = TRUE)
 ```
 
-PIP achieves the lowest RMSE on both targets. For MAT, PIP reduces RMSE by approximately 13% relative to Random Forest (the best non-phylogenetic method); for log(MAP) the reduction is approximately 4%.
+For MAT, the site-level models have lower RMSE than the species-level models. This is expected: averaging multiple specimens within a site reduces measurement noise. PIP sits between the two, with RMSE lower than the species-level baselines but higher than the site-level models. For log(MAP), PIP has the lowest RMSE overall.
 
-Observed vs. predicted scatter plots (RF via 10-fold CV predictions; PIP via LOOCV):
+The site-level models are not directly applicable to fossil prediction because a fossil locality rarely contains enough specimens to form a reliable site mean. Species-level and PIP models are better suited to that use case, where predictions are made from individual specimens.
+
+Observed vs. predicted scatter plots (RF via 10-fold CV; PIP via LOOCV):
 
 ```{r scatter, out.width="90%"}
 include_graphics("plots/model_comparison.png")
 ```
-
-Note that the non-phylogenetic models are evaluated on 10-fold CV predictions while PIP uses LOOCV — both are out-of-sample in the sense that each prediction excludes the species being predicted, making the comparison methodologically appropriate.
 
 ---
 
@@ -322,30 +319,30 @@ Note that the non-phylogenetic models are evaluated on 10-fold CV predictions wh
 
 ## Phylogenetic placement
 
-Fossils are grafted onto the scaffold phylogeny (`tre_scaffold.tre`), which comprises the family-level angiosperm backbone (two crown tips per family across all 515 WCVP angiosperm families, ~943 tips) with all 1,847 training species grafted in. This scaffold ensures that any angiosperm family — including those absent from the training set — can be placed at the correct phylogenetic neighbourhood.
+Fossils are grafted onto a scaffold phylogeny (`tre_scaffold.tre`). The scaffold contains a family-level angiosperm backbone (two crown tips per family across all 515 WCVP angiosperm families, approximately 943 tips) with all 1,847 training species added. This ensures that any angiosperm family can be placed in the tree, including families not represented in the training data.
 
-For each fossil, placement is attempted via a three-level fallback:
+For each fossil, placement proceeds through a fallback sequence:
 
-1. **Genus** — if tips from the fossil's genus are present, attach at their MRCA
-2. **Family** — if genus is absent, find all genera in the family (via the full WCVP taxonomy) and attach at their MRCA
-3. **Order** — as above at the order level
-4. **Root** — if the order is not found in the WCVP backbone, attach at the root (phylogenetic adjustment → 0; most conservative)
+1. **Genus**: if tips from the fossil's genus are present, attach at their MRCA
+2. **Family**: if the genus is absent, find all genera in the family via the full WCVP taxonomy and attach at their MRCA
+3. **Order**: as above at the order level
+4. **Root**: if the order is not in the WCVP backbone, attach at the root; the phylogenetic adjustment will be near zero in this case
 
 The edge length $\ell$ is set so the fossil tip terminates at its stated stratigraphic age:
 
 $$\ell = (h - t_\text{fossil}) - \text{height}(\text{node})$$
 
-where $h$ is the crown age of the tree and $t_\text{fossil}$ is the fossil's age in Ma. If a fossil's stated age predates its placement node (the clade crown is younger than the fossil), the code walks up the tree to find the branch that was alive at the fossil's age and splits it there, placing the tip at the exact time depth.
+where $h$ is the crown age of the tree and $t_\text{fossil}$ is the fossil's age in Ma. If a fossil's stated age is older than its placement node, the code walks up the tree to find the branch that spans the fossil's age and splits it there, placing the tip at the correct time depth.
 
 ## Trait imputation
 
-Fossils typically have incomplete trait data. Missing trait values are imputed using a `bagImpute` model fit on the extant training species, using **traits only** (not the climate response) as predictors — the response is by definition unknown for fossils. Any trait column missing from the fossil input is padded with `NA` before imputation.
+Fossils often have incomplete trait data. Missing trait values are imputed using a `bagImpute` model trained on extant species using traits only, not the climate response. The climate response is unknown for fossils and cannot be used as a predictor in imputation. Any trait column absent from the fossil input is padded with `NA` before imputation.
 
-The traits used for imputation are those in the active predictor set for each climate target (MAT or MAP), as determined by the Elastic Net variable selection step.
+The traits used for imputation are those in the active predictor set for each target, as selected by Elastic Net.
 
 ## Applying PIP to fossils
 
-After placement, the pruned cross-covariance **V**[train,fossil] is extracted from the combined tree and the PIP formula is applied as described in Section 4.2. The training VCV **V**[train,train]⁻¹ is reused unchanged from the extant-species fitting — this is valid because the covariance between any two training species equals the height of their MRCA in the tree, which is independent of any other taxa added to the tree.
+After placement, the cross-covariance **V**[train,fossil] is extracted from the pruned combined tree and the PIP formula is applied as described in Section 4.3. The training VCV **V**[train,train] is reused from the extant-species fitting. This is valid because the covariance between any two training species equals the height of their MRCA, which does not change when additional taxa are added to the tree.
 
 ## Results
 
@@ -362,11 +359,11 @@ out <- data.frame(
 )
 
 kable(out, row.names = FALSE,
-      caption = "Fossil climate predictions (test specimens). CIs reflect coefficient uncertainty only — see Section 4.2 for limitations.") |>
+      caption = "Fossil climate predictions (test specimens). CIs reflect coefficient uncertainty only. See Section 4.4 for a description of excluded uncertainty components.") |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
 ```
 
-These are test specimens with synthetic trait data and should not be interpreted as palaeoclimate estimates. The table format illustrates the output structure for real fossil inputs.
+These are test specimens with synthetic trait data and should not be interpreted as palaeoclimate estimates. The table shows the output format for real fossil inputs.
 
 ## Input format
 
@@ -374,14 +371,14 @@ Fossil specimens are supplied via `data/fossil_traits.csv`. Required columns:
 
 | Column | Description |
 |--------|-------------|
-| `fossil_name` | Unique specimen identifier (used as tip label in the tree) |
-| `genus` | Genus name (for placement) |
-| `family` | Family name (fallback placement) |
-| `order` | Order name (fallback placement) |
+| `fossil_name` | Unique specimen identifier, used as the tip label in the tree |
+| `genus` | Genus name, for placement |
+| `family` | Family name, fallback placement |
+| `order` | Order name, fallback placement |
 | `age_ma` | Fossil age in millions of years before present |
 | *(trait columns)* | Any subset of the 12 fossil-measurable traits; missing values are imputed |
 
-Additional columns (e.g., locality, formation) are ignored.
+Additional columns are ignored.
 
 ---
 
@@ -394,8 +391,8 @@ Key packages: `ape`, `phytools`, `caret`, `glmnet`, `ranger`, `pdp`, `ggplot2`.
 Scripts run in order:
 
 ```
-00_data_cleaning.R      # trait filling, species aggregation, scaffold tree
-01_nophy_regression.R   # LM, Elastic Net, Random Forest (10-fold CV)
+00_data_cleaning.R      # trait filling, species + site aggregation, scaffold tree
+01_nophy_regression.R   # LM, Elastic Net, Random Forest — species and site level
 02_phy_regression.R     # PGLS (MAT + MAP), save PIP components
 03_comparison.R         # LOOCV, RMSE tables, importance, plots
 04_fossil_predictions.R # fossil climate prediction via PIP

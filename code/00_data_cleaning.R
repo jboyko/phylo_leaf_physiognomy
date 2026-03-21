@@ -41,6 +41,21 @@ dat_sp <- aggregate(dat[, 9:ncol(dat)],
 dat_sp <- dat_sp[dat_sp$Group.4 != "unknown", ]
 
 # ==============================================================================
+# 3b. AGGREGATE TO SITE LEVEL
+# ==============================================================================
+
+# Traditional paleobotany approach: average all specimens within a site, then
+# predict climate from site-mean traits. This mirrors how CLAMP and DiLP are
+# typically applied.
+
+dat_site           <- aggregate(dat[, 9:ncol(dat)],
+                                by  = list(dat$Site),
+                                FUN = mean, na.rm = TRUE)
+colnames(dat_site)[1] <- "Site"
+write.csv(dat_site, file = "data/dat_site.csv", row.names = FALSE)
+cat("Wrote data/dat_site.csv (", nrow(dat_site), "sites)\n")
+
+# ==============================================================================
 # 4. LOAD FULL WCVP TREE AND BUILD NAME TABLE
 # ==============================================================================
 

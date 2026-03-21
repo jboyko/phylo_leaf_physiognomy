@@ -85,3 +85,41 @@ for (target in target_vars) {
 
 saveRDS(all_results, file = "models/nophy_models.rds")
 cat("\nSaved models/nophy_models.rds\n")
+
+# ==============================================================================
+# 5. SITE-LEVEL MODELS
+# ==============================================================================
+
+# Traditional approach: one observation per site (site-mean traits).
+# Same 12 fossil-measurable traits, same 10-fold CV, same model types.
+
+dat_site         <- read.csv("data/dat_site.csv")
+dat_site$log_map <- log(dat_site$map)
+
+na_pct_site      <- colSums(is.na(dat_site)) / nrow(dat_site)
+pred_names_site  <- fossil_traits[fossil_traits %in% names(dat_site) &
+                                    na_pct_site[fossil_traits] < NA_THRESHOLD]
+cat("Site-level predictors (", length(pred_names_site), "):",
+    paste(pred_names_site, collapse = ", "), "\n")
+
+preds_site     <- dat_site[, pred_names_site]
+impute_site    <- preProcess(preds_site, method = "bagImpute")
+preds_site_imp <- predict(impute_site, preds_site)
+
+site_results <- list()
+for (target in target_vars) {
+  cat("\n--- Site target:", target, "---\n")
+  site_results[[target]] <- list()
+  for (m_label in names(methods)) {
+    cat("  Training", m_label, "...\n")
+    tune_len <- if (methods[m_label] == "glmnet") 10 else 1
+    args     <- list(x = preds_site_imp, y = dat_site[[target]],
+                     method = methods[m_label], trControl = ctrl,
+                     tuneLength = tune_len, preProcess = c("center", "scale"))
+    if (methods[m_label] == "ranger") args$importance <- "impurity"
+    site_results[[target]][[m_label]] <- do.call(train, args)
+  }
+}
+
+saveRDS(site_results, file = "models/site_models.rds")
+cat("\nSaved models/site_models.rds\n")
