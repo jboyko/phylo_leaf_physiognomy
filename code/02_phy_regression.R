@@ -1,141 +1,165 @@
-# ==============================================================================
-# 1. SETUP & DATA PREPARATION
-# ==============================================================================
+setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
-setwd("/Users/jboyko/University\ of\ Michigan\ Dropbox/James\ Boyko/James\ Boyko’s\ files/Home/phylo_leaf_physiognomy")
-
-# imports
 library(ape)
 library(caret)
-
 source("code/Phylogenetically-Informed_Predictions_Source.R")
-phy <- read.tree("data/tre_pruned.tre")
-dat <- read.csv("data/data_species.csv")
+
+# ==============================================================================
+# 1. LOAD DATA AND PHYLOGENY
+# ==============================================================================
+
+phy         <- read.tree("data/tre_pruned.tre")
+dat         <- read.csv("data/data_species.csv")
 all_results <- readRDS("models/nophy_models.rds")
+
+if (!"log_map" %in% names(dat)) dat$log_map <- log(dat$map)
+
 phylomat <- vcv(phy)
+diag(phylomat) <- diag(phylomat) + 1e-6
 
-# extract non-zero coefficients 
-mat_coefs <- coef(all_results$mat$ENet$finalModel, all_results$mat$ENet$bestTune$lambda)
-map_coefs <- coef(all_results$log_map$ENet$finalModel, all_results$log_map$ENet$bestTune$lambda)
+# ==============================================================================
+# 2. BUILD FULL-TREE TAXONOMY TABLE
+# ==============================================================================
 
-# filter for traits with a non-zero impact
-active_traits_mat <- rownames(mat_coefs)[mat_coefs[,1] != 0]
+# Covers all families/orders in the WCVP backbone for fossil placement in 03_.
+# Written by 00_data_cleaning.R — no need to reload the full 123k-tip tree.
+name_table_full <- read.csv("data/name_table_full.csv", stringsAsFactors = FALSE)
+cat("name_table_full:", nrow(name_table_full), "rows\n")
+
+# ==============================================================================
+# 3. SELECT ACTIVE TRAITS (FROM ELASTICNET)
+# ==============================================================================
+
+mat_coefs <- coef(all_results$mat$ENet$finalModel,
+                  all_results$mat$ENet$bestTune$lambda)
+map_coefs <- coef(all_results$log_map$ENet$finalModel,
+                  all_results$log_map$ENet$bestTune$lambda)
+
+active_traits_mat <- rownames(mat_coefs)[mat_coefs[, 1] != 0]
 active_traits_mat <- active_traits_mat[active_traits_mat != "(Intercept)"]
-active_traits_map <- rownames(map_coefs)[map_coefs[,1] != 0]
+active_traits_map <- rownames(map_coefs)[map_coefs[, 1] != 0]
 active_traits_map <- active_traits_map[active_traits_map != "(Intercept)"]
 
-mat_formula <- as.formula(paste("mat ~", paste(active_traits_mat, collapse = " + ")))
+cat("Active MAT traits (", length(active_traits_mat), "):",
+    paste(active_traits_mat, collapse = ", "), "\n")
+cat("Active MAP traits (", length(active_traits_map), "):",
+    paste(active_traits_map, collapse = ", "), "\n")
+
+mat_formula <- as.formula(paste("mat ~",     paste(active_traits_mat, collapse = " + ")))
 map_formula <- as.formula(paste("log_map ~", paste(active_traits_map, collapse = " + ")))
 
-# impute data
-vars_to_impute <- active_traits_mat
-impute_model <- preProcess(as.data.frame(dat[, c("mat", vars_to_impute)]), 
-  method = "bagImpute")
-dat_imputed <- predict(impute_model, newdata = dat[, c("mat", vars_to_impute)])
-rownames(dat_imputed) <- dat$Group.1
-# get lambda
-diag(phylomat) <- diag(phylomat) + 1e-6
-mat_pgls_fit <- pglmEstLambda(formula = mat_formula, 
-  data = dat_imputed, 
-  phylomat = phylomat)
-print(mat_pgls_fit$lambda)
-
 # ==============================================================================
-# 2. RUN PIP LOOCV 
+# 4. IMPUTE MISSING TRAITS
 # ==============================================================================
 
-# 1. Prepare Design Matrix
-m <- model.frame(mat_formula, dat_imputed, na.action = na.pass)
-X_all <- model.matrix(mat_formula, m)
+# Full model (response + predictors): used for PGLS fitting and LOOCV in 04_
+impute_model_mat <- preProcess(as.data.frame(dat[, c("mat",     active_traits_mat)]),
+                               method = "bagImpute")
+dat_imputed_mat  <- predict(impute_model_mat,
+                            newdata = dat[, c("mat", active_traits_mat)])
+rownames(dat_imputed_mat) <- dat$Group.1
 
-# 2. Extract and Transpose Coefficients (Fixing the dimension error)
-# coef() returns a 1-row data frame; we transpose to get a k-row column vector
-beta_raw <- coef(mat_pgls_fit)
-beta <- t(as.matrix(beta_raw))
+impute_model_map <- preProcess(as.data.frame(dat[, c("log_map", active_traits_map)]),
+                               method = "bagImpute")
+dat_imputed_map  <- predict(impute_model_map,
+                            newdata = dat[, c("log_map", active_traits_map)])
+rownames(dat_imputed_map) <- dat$Group.1
 
-# 3. Align Matrix and Coefficients
-# Ensure variables are in the exact same order
-common_vars <- intersect(colnames(X_all), rownames(beta))
-X_all <- X_all[, common_vars, drop = FALSE]
-beta <- beta[common_vars, , drop = FALSE]
-
-# 4. Prepare Phylogenetic Parameters
-lambda <- mat_pgls_fit$lambda
-V_lam <- phylomat * lambda
-diag(V_lam) <- diag(V_lam) + (1 - lambda)
-
-# 5. Initialize Prediction Vector
-dat_imputed$mat_pip_pred <- NA
-
-# 6. Run the LOOCV Loop
-cat("Starting PIP Loop for", nrow(dat_imputed), "species...\n")
-for (i in 1:nrow(dat_imputed)) {
-  # Indices
-  idx_miss <- i
-  idx_incl <- setdiff(1:nrow(dat_imputed), i)
-  # Partition VCV
-  V_inv <- solve(V_lam[idx_incl, idx_incl])
-  V_cov <- V_lam[idx_incl, idx_miss, drop = FALSE]
-  # Residuals of Training Data
-  y_obs <- dat_imputed$mat[idx_incl]
-  y_hat <- X_all[idx_incl, , drop = FALSE] %*% beta
-  resid_incl <- y_obs - y_hat
-  # Calculate Phylogenetic Adjustment
-  phylo_adj <- t(V_cov) %*% V_inv %*% resid_incl
-  # PIP Prediction
-  # As.numeric ensures we assign a scalar, stripping any stray matrix dimensions
-  dat_imputed$mat_pip_pred[i] <- as.numeric((X_all[idx_miss, , drop = FALSE] %*% beta) + phylo_adj)
-  if(i %% 100 == 0) cat("Species", i, "completed\n")
-}
+# Traits-only model: used to impute fossil specimens (no observed response)
+impute_model_mat_traits <- preProcess(as.data.frame(dat[, active_traits_mat]),
+                                      method = "bagImpute")
+impute_model_map_traits <- preProcess(as.data.frame(dat[, active_traits_map]),
+                                      method = "bagImpute")
 
 # ==============================================================================
-# 3. GENERATE COMPARISON TABLE
+# 5. FIT PGLS (MAT AND MAP)
 # ==============================================================================
 
-# Function to extract the best RMSE from caret objects
-get_best_rmse <- function(model) {
-  return(min(model$results$RMSE))
-}
+mat_pgls_fit <- pglmEstLambda(formula = mat_formula,
+                               data    = dat_imputed_mat,
+                               phylomat = phylomat)
+cat("MAT lambda:", mat_pgls_fit$lambda, "\n")
 
-# 1. Extract Baseline RMSEs
-rmse_lm   <- get_best_rmse(all_results$mat$LM)
-rmse_enet <- get_best_rmse(all_results$mat$ENet)
-rmse_rf   <- get_best_rmse(all_results$mat$RF)
+map_pgls_fit <- pglmEstLambda(formula = map_formula,
+                               data    = dat_imputed_map,
+                               phylomat = phylomat)
+cat("MAP lambda:", map_pgls_fit$lambda, "\n")
 
-# 2. Calculate PIP RMSE
-rmse_pip <- sqrt(mean((dat_imputed$mat - dat_imputed$mat_pip_pred)^2))
+# ==============================================================================
+# 6. BUILD DESIGN MATRICES AND VCV
+# ==============================================================================
 
-# 3. Create Summary Table
-comparison_table <- data.frame(
-  Model = c("Linear Model (OLS)", "Elastic Net (ENet)", "Random Forest (RF)", "Phylo-Informed (PIP)"),
-  RMSE = c(rmse_lm, rmse_enet, rmse_rf, rmse_pip),
-  Type = c("Linear Equation", "Regularized Equation", "Non-Linear/ML", "Evolutionary Model")
+# ── MAT ───────────────────────────────────────────────────────────────────────
+m_mat     <- model.frame(mat_formula, dat_imputed_mat, na.action = na.pass)
+X_all_mat <- model.matrix(mat_formula, m_mat)
+
+beta_mat_raw    <- coef(mat_pgls_fit)
+beta_mat        <- t(as.matrix(beta_mat_raw))
+common_vars_mat <- intersect(colnames(X_all_mat), rownames(beta_mat))
+X_all_mat       <- X_all_mat[, common_vars_mat, drop = FALSE]
+beta_mat        <- beta_mat[common_vars_mat, , drop = FALSE]
+
+lambda_mat <- mat_pgls_fit$lambda
+# lamTrans() convention used by pglmEstLambda: scale off-diagonals by lambda,
+# leave diagonal unchanged. Our phylomat diagonal = root-to-tip distance (h),
+# not 1, so adding (1-lambda) to the diagonal would be incorrect.
+V_lam_mat <- phylomat * lambda_mat
+diag(V_lam_mat) <- diag(phylomat)
+
+# ── MAP ───────────────────────────────────────────────────────────────────────
+m_map     <- model.frame(map_formula, dat_imputed_map, na.action = na.pass)
+X_all_map <- model.matrix(map_formula, m_map)
+
+beta_map_raw    <- coef(map_pgls_fit)
+beta_map        <- t(as.matrix(beta_map_raw))
+common_vars_map <- intersect(colnames(X_all_map), rownames(beta_map))
+X_all_map       <- X_all_map[, common_vars_map, drop = FALSE]
+beta_map        <- beta_map[common_vars_map, , drop = FALSE]
+
+lambda_map <- map_pgls_fit$lambda
+V_lam_map <- phylomat * lambda_map
+diag(V_lam_map) <- diag(phylomat)
+
+# ==============================================================================
+# 7. SAVE PIP COMPONENTS
+# ==============================================================================
+
+resid_mat_full <- dat_imputed_mat$mat - as.numeric(X_all_mat %*% beta_mat)
+names(resid_mat_full) <- rownames(dat_imputed_mat)
+
+resid_map_full <- dat_imputed_map$log_map - as.numeric(X_all_map %*% beta_map)
+names(resid_map_full) <- rownames(dat_imputed_map)
+
+taxonomy <- dat[, c("Group.1", "Group.2", "Group.3", "Group.4")]
+colnames(taxonomy) <- c("species", "genus", "family", "order")
+
+pip_components <- list(
+  # MAT model
+  beta_mat              = beta_mat,
+  lambda_mat            = lambda_mat,
+  V_lam_mat             = V_lam_mat,
+  resid_mat             = resid_mat_full,
+  X_mat                 = X_all_mat,
+  formula_mat           = mat_formula,
+  vcv_mat               = mat_pgls_fit$vcv,
+
+  # MAP model
+  beta_map              = beta_map,
+  lambda_map            = lambda_map,
+  V_lam_map             = V_lam_map,
+  resid_map             = resid_map_full,
+  X_map                 = X_all_map,
+  formula_map           = map_formula,
+  vcv_map               = map_pgls_fit$vcv,
+
+  # Shared
+  dat_imputed_mat        = dat_imputed_mat,
+  dat_imputed_map        = dat_imputed_map,
+  impute_model_mat_traits = impute_model_mat_traits,
+  impute_model_map_traits = impute_model_map_traits,
+  taxonomy               = taxonomy,
+  name_table_full        = name_table_full,
+  tree_pruned            = phy
 )
-
-# Order by Performance (Lower RMSE is better)
-comparison_table <- comparison_table[order(comparison_table$RMSE), ]
-print(comparison_table)
-
-# ==============================================================================
-# 4. VISUALIZATION
-# ==============================================================================
-
-# Scatterplot comparing the best non-phylo model (RF) vs PIP
-par(mfrow = c(1, 2))
-
-# Random Forest Plot (Extract predictions from caret)
-rf_preds <- predict(all_results$mat$RF, dat_imputed)
-plot(dat_imputed$mat, rf_preds, 
-  main = "Random Forest (No Phylogeny)",
-  xlab = "Observed MAT", ylab = "Predicted MAT",
-  pch = 16, col = rgb(1, 0, 0, 0.2), xlim=c(0,30), ylim=c(0,30))
-abline(0, 1, lwd = 2)
-text(5, 25, paste("RMSE:", round(rmse_rf, 2)), col="red", adj=0)
-
-# PIP Plot
-plot(dat_imputed$mat, dat_imputed$mat_pip_pred, 
-  main = "PIP (With Phylogeny)",
-  xlab = "Observed MAT", ylab = "Predicted MAT",
-  pch = 16, col = rgb(0, 0, 1, 0.2), xlim=c(0,30), ylim=c(0,30))
-abline(0, 1, lwd = 2)
-text(5, 25, paste("RMSE:", round(rmse_pip, 2)), col="blue", adj=0)
+saveRDS(pip_components, file = "models/pip_components.rds")
+cat("Saved models/pip_components.rds\n")

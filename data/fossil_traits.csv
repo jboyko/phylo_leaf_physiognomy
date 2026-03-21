@@ -1,0 +1,4 @@
+fossil_name,genus,family,order,age_ma,margin.score,ln.leaf.area.mm2,perim.area.cm2,teeth.number,tooth.area.blade.area.ratio
+Quercus_miocene_1,Quercus,Fagaceae,Fagales,10,0.35,8.2,,,
+Acer_oligocene_1,Acer,Sapindaceae,Sapindales,28,0.60,7.5,0.8,,
+Ficus_eocene_1,Ficus,Moraceae,Rosales,45,0.10,9.1,,0,

@@ -1,0 +1,220 @@
+Hi Dana,
+
+Wanted to follow up now that Eric and I had a chance to chat. In my opinion the best option is to test multiple different methods (of which there are many possibilities). My last postdoc was focused on applying AI in science so I've become more familiar with the methodology of statistical machine learning and I think some of the frameworks they have could be useful for this problem. I'd like to explain the basic setup and then get your feedback on this setup and ask you some questions about the data and ideal model.
+
+So we want to test various models to predict different climatic variables. Since we're interested in prediction, what I proposed to Eric was that we separate out a subset of our data (typically 15 to 30%) to be excluded from all model fitting. This would give us two datasets: training (70%) and test (30%). We would then fit various models to the training dataset and apply them to the test dataset to determine how well our fitted models generalize to unseen data. This is meant to mimic the real world application. This setup would also give us grounds to directly compare phylogenetic and non-phylogenetic and determine whether/ by how much phylogeny improves our prediction. Perhaps most importantly this setup allows us to compare several methods (including those you've previously discussed) without a priori assuming that one of these is superior on purely theoretical grounds. I.e., we'd compare them on how well they perform the desired task of predicting climate from leaf traits. 
+
+There are a few important considerations when choosing our model set. The most important of which is how interpretable does the model need to be? We recently used one of your (and I suppose Karl Niklas') proxies for estimating LMA from petiole width and leaf area. This was based on a linear regression and thus was very interpretable: log(LMA) = 3.07 + 0.382 log(PetioleWidth2/Leaf Area). We know the exact combination of coefficients necessary to produce the predicted LMA. However, for predictive tasks, we don't necessarily NEED an interpretable model. One could imagine a "blackbox" approach where we have little to no idea how petiole width and leaf area combine to produce LMA. But, if that LMA was 10% more accurate would the loss of interpretability be mourned? This is of course the extreme, and there are many models in-between where we have some interpretability, but not down to the exact coefficients (e.g., we could say that petiole width is more influential on LMA than leaf area without knowing the exact effect). So my question is how uninterpretable of a model are you comfortable with? I could exclude a large set of models if we need to very exactly interpret coefficients, but for most predictive tasks where we simply want to transform input into output, interpretation is a lower priority. Another way to ask this is whether you're looking to gain biological insights from the model. 
+
+I have a couple more logistic questions:
+Are we aiming to predict all the climatic variables in the spreadsheet or only temperature?
+Are we okay using nonlinear models at the cost of some interpretability?
+Will real data always have a continuous representation on the phylogeny (a branch length and place) or will it sometimes just be membership in an order/ family?
+Should we design a model that is robust to missing some leaf trait data? I imagine not every fossil specimen is going to have complete trait data, but that might be my ignorance of these characters. 
+
+Apologies for the long email. I'm very excited to get started on this, I just want to make sure we're all on the same page.
+
+Best,
+James
+
+Dear James and Eric,
+
+ 
+
+Thank you again for your engagement with the project. I’m excited to see it progress!!
+
+ 
+
+To answer your questions:
+
+ 
+
+Interpretation is a lower priority. It is nice to have—especially for applications in deep time—but not required. So let’s start there and see where it takes us.
+Mean annual temperature and mean annual precipitation are the key climate variables. The other climate variables (e.g., coldest month mean temperature) are related to leaf shape mostly because of their covariation with MAT and MAP. At least that’s what our analysis shows. You are certainly welcome to explore these other climate variables if you are interested!
+Nonlinear models are perfectly fine.
+I’m not sure if I understand your question, so please follow-up if I’m off track. It is common for fossil species to be known only at the family or order level (or, alternatively, is in an extinct genus). And fossil species (older than Pleistocene) are never placed into a living species; genus is the best one can hope for. Honestly, no taxonomic information is common too, in which case the species gets placed into the basal node. My understanding is that the current code handles all of this. I remember having conversations with Brian about the case where the best placement is between two nodes; I’m not sure if the current code accommodates this.
+There shouldn’t be any missing data except—by definition—leaves without teeth do not have any tooth information (columns I-P in the RoyerDataPruned excel file). You could enter zeros for these cells, but only if doing so doesn’t violate the model’s assumptions (for example, normality). On a related note, there is a column for presence vs. absence of teeth (column Q, where 0=toothed, 1=untoothed, and 0.5=species contains both toothed and untoothed leaves). This is a key variable for current leaf-climate models (the OG being the univariate “leaf-margin analysis”), but it strikes me as redundant for a species-level model (vs. existing leaf-climate models, which are all based on site means). I think Brian left the variable in because he found it added power to his models…
+ 
+
+Best,
+
+
+Perfect, thanks for getting back to me. This is all good information - I'll hopefully find some time soon to begin coding any models as well as integrating what you and Brian have already done. 
+
+
+Thanks! And I’m realizing that I didn’t answer my #4 exactly right. The current code is all about manipulating the extant data set to create a model structure. I don’t think we ever got to the point of applying the model to fossil data. With fossil data, I think the idea is that expert judgment will assign each fossil species to the most appropriate node in the calibration tree. Hope this helps!
+
+
+Ah ya, that makes sense. That's definitely going to be one of the biggest challenges to overcome (using phylogenetic information in a way that we can easily use new leaf data for prediction). 
+
+Actually, I'd like to share a few things I did just now. (Should I have been doing lecture prep instead? Perhaps. But I couldn't help it, this is more fun.)
+
+First thing is a couple of data visualizations. PCA is being heavily influenced by outliers so I'll have to try some data transformations to make the data more normal.
+
+Dimension Reduction (tSNE is a non-linear dimension reduction technique)
+
+Wow, this is amazing!
+
+ 
+
+A couple of quick thoughts:
+
+ 
+
+-Existing leaf-climate models for temperature are usually more precise than ones for precipitation. In our original digital leaf physiognomy models, for example, the standard error for temperature is +/- 4 oC and ~+100 / -50 cm for ln(precipitation). Your early result for precipitation is very promising!
+
+ 
+
+-Our original temperature model includes margin score, feret diameter ratio, and number of teeth / internal perimeter. Your importance analysis highlights the first two as important. Our precipitation model includes leaf area, perimeter ratio, and number of teeth / internal perimeter; your analysis identifies leaf area as important. It also identifies feret diameter ratio, which hadn’t emerged in our analyses.
+
+ 
+
+Cheers,
+
+Dana
+
+
+Hi Dana,
+
+Nice to hear from you! Sorry this is taking so long. I try to chip away at it when I get a spare moment, but that's not the most efficient way to get this done. 
+
+That being said, I've made a bit of progress on the non-phylogenetic baselines. Currently, I am mainly struggling to incorporate phylogeny into some of the more complex algorithms. It's likely that I've gotten a bit carried away testing various non-phylogenetic models to improve predictive accuracy. Going forward, I'll just try and get some kind of phylogenetically informed prediction.
+
+Below I've attached some of the main results from the non-phylogenetic comparisons. The take home is that RandomForest performs the best (indicating some non-linearity). The R2 is much higher for MAT than MAP at 0.57 vs 0.37 (based on RandomFOrest). And the relative importance of the variables seems generally consistent with previous work, but I'd defer to your judgement. 
+
+MAT IMPORTANCE
+                 Overall
+evergreen         14.978
+major.length.cm   11.518
+perim.area.cm2    11.297
+ln.leaf.area.mm2   8.171
+blade.area.cm2     7.780
+margin.score       7.707
+leaf.area.cm2      5.666
+perimeter.cm       5.497
+petiole.width.cm   4.097
+compact            4.057
+pw2.a.ratio        3.741
+feret.diam.ratio   3.673
+petiole.area.cm2   3.533
+shape.factor       3.213
+
+LOG(MAP) IMPORTANCE
+                 Overall
+perim.area.cm2   0.16478
+ln.leaf.area.mm2 0.13247
+evergreen        0.11244
+major.length.cm  0.11214
+leaf.area.cm2    0.10809
+blade.area.cm2   0.10335
+perimeter.cm     0.08340
+petiole.width.cm 0.06914
+pw2.a.ratio      0.04564
+compact          0.04372
+shape.factor     0.03783
+feret.diam.ratio 0.03100
+petiole.area.cm2 0.02227
+margin.score     0.01068
+
+I've also got some plots you can look at to see the approximate effect of the top 4 variables. These are the partial dependence functions (I.e., marginal effects).
+
+MAT:
+mat_top4_PDP_grid.png
+LOG MAP:
+log_map_top4_PDP_grid.png
+
+Again, sorry for the delay in getting this done. It's difficult to work on this kind of thing piecemeal. And the phylogenetic regression can be really tricky to get working in a way that allows you to also perform some of the more advanced Machine Learning techniques (which are important IMO when we have so many variables and non-linear effects).
+
+Let me try to hammer out some quick phylogenetic comparisons in the next week or so. I'll use some of these important non-phylogenetic variables as a starting point and go from there.
+
+Best,
+James
+
+
+Oh I should also mention that I'd like to include a similar site-by-site baseline if you think that makes sense. What I'm showing in the previous email are species averaged results (since we'll be adding phylogeny). But I believe (and correct me if I'm wrong) some of the previous methodologies have taken site averages of the phenotypic measurements and used that for prediction. 
+
+Best,
+James
+
+Thank you James, I really appreciate the work you have done.
+
+ 
+
+A few thoughts:
+
+ 
+
+A stronger correlation with MAT vs. MAP makes sense – that’s what most people find.
+ 
+
+Yes, traditional leaf-climate models used in paleobotany are based on site-mean physiognomy. This is driven by convenience, not biology (a species-level approach probably makes more biological sense). I’m personally agnostic. For example, it’s easy enough to aggregate species-level predictions of MAT (presumably as individual pdfs) into a site-level pdf. Go with whatever is easier / stronger.
+ 
+
+Will you be including tooth-based traits other than margin.score? These are traits that start with “tooth” and “teeth” (see list below). These traits tend to be climatically informative. Perhaps you have excluded them because they are not present in untoothed leaves (cells are blank) and thus cause the within-species trait distributions to violate conditions for normality? In any case, I’m hoping that they can be included (e.g., use non-parametric tools). If you aggregate to the site level (point #2), this issue about normality disappears.
+ 
+
+Our primary application will be to fossil leaves, which are usually fragmented (just ask Eric 😊). This limits which traits we can use in a leaf-climate model. These are the traits (and their logged companions) I feel comfortable measuring in fossils:
+-pw2.a.ratio (*but most folks don’t measure it…)
+
+-leaf.area.cm2 (which is the blade.area.cm2 + petiole_area.cm2; not all fossils are preserved well enough to reconstruct leaf area, but many are; some fossils have tooth information, but not leaf area)
+
+-feret.diam.ratio (similar restriction as leaf.area.cm2)
+
+-margin.score
+
+FOR TOOTHED SPECIES:
+
+-perim.ratio
+
+-teeth.perimeter.percm
+
+-teeth.interior.percm (strongly covaries with teeth.perimeter.percm)
+
+-avt.tooth.area
+
+-tooth.area.blade.area.ratio
+
+-tooth.area.perimeter
+
+-tooth.area.interior (strongly covaries with tooth.area.perimeter)
+
+-teeth.blade.area.ratio
+
+ 
+
+Best,
+
+Dana
+
+Cool, lots of good news!
+
+ 
+
+Biologically, I have no problems setting tooth trait values to zero for untoothed leaves (or to 1, in the case of perim.ratio). I just wasn’t sure if your statistical tools are OK—at the site level—with bimodal distributions; maybe this is an argument to stick with species-level analyses (and then aggregate species-level climate estimates to the site level at the end).
+
+Hi Dana, 
+
+Great, that's more or less what I was thinking too. Species based estimates as our approach and then we can run comparisons against site-based afterwards to compare performance. 
+
+And just to confirm..
+These variables if they are empty in the spreadsheet, can be set to 0?
+> vars_0
+[1] "primary.teeth.number"   "secondary.teeth.number" "teeth.number"          
+[4] "teeth.perimeter.percm"  "teeth.interior.percm"   "tooth.area.cm2"        
+[7] "avt.tooth.area"         "tooth.area.perimeter"   "tooth.area.interior"  
+ And these variables can be set to 1?
+> vars_1
+[1] "tooth.area.blade.area.ratio" "teeth.blade.area.ratio"     
+
+Best,
+James
+
+Hi James,
+
+ 
+
+All of your listed variables should be set to 0. “Perim.rato” should be set to 1.
+
+ 
+
+Can you do me a favor, though, and condition these changes on both the cell being blank AND margin.score = 1? This will add some redundancy and security to the operation, especially when we get to fossil case studies. Thanks!
