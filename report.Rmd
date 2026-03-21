@@ -279,7 +279,9 @@ This follows from the PIP formula applied leave-one-out, using the block-matrix 
 
 # Model Comparison
 
-RMSE for all seven models: three model types fit at species level and at site level, plus PIP. All non-phylogenetic RMSEs are from 10-fold CV; PIP uses LOOCV. In all cases each prediction excludes the observation being predicted, so the comparisons are methodologically consistent.
+RMSE for all eight models: three model types at species level, three at site level, PIP at species level, and PIP site-aggregated. All non-phylogenetic RMSEs are from 10-fold CV; both PIP variants use LOOCV. In all cases each prediction excludes the observation being predicted, so the comparisons are consistent.
+
+The site-aggregated PIP averages species-level LOOCV predictions across all training species present at each site. This is the approach a paleobotanist would use for a fossil assemblage: apply PIP to each taxon in the assemblage, then average across taxa.
 
 ```{r rmse-comparison}
 comp_mat <- read.csv("tables/comparison_mat_rmse.csv")
@@ -289,23 +291,25 @@ comp_mat$RMSE <- round(comp_mat$RMSE, 3)
 comp_map$RMSE <- round(comp_map$RMSE, 3)
 
 kable(comp_mat[, c("Model", "RMSE", "Level")],
-      caption = "MAT RMSE (°C). LOOCV for PIP; 10-fold CV for all other models.",
+      caption = "MAT RMSE (°C). LOOCV for PIP models; 10-fold CV for all other models.",
       row.names = FALSE) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
-  row_spec(which(comp_mat$Model == "PIP (phylogenetic)"), bold = TRUE)
+  row_spec(which(comp_mat$Model == "PIP (site-aggregated)"), bold = TRUE)
 ```
 
 ```{r rmse-comparison-map}
 kable(comp_map[, c("Model", "RMSE", "Level")],
-      caption = "log(MAP) RMSE. LOOCV for PIP; 10-fold CV for all other models.",
+      caption = "log(MAP) RMSE. LOOCV for PIP models; 10-fold CV for all other models.",
       row.names = FALSE) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
-  row_spec(which(comp_map$Model == "PIP (phylogenetic)"), bold = TRUE)
+  row_spec(which(comp_map$Model == "PIP (species)"), bold = TRUE)
 ```
 
-For MAT, the site-level models have lower RMSE than the species-level models. This is expected: averaging multiple specimens within a site reduces measurement noise. PIP sits between the two, with RMSE lower than the species-level baselines but higher than the site-level models. For log(MAP), PIP has the lowest RMSE overall.
+For MAT, site-aggregated PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (site-aggregated)"], 2)`°C) outperforms species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C). Averaging within sites reduces specimen-level noise while retaining the phylogenetic adjustment. Naive site-level models (no phylogeny) still have lower RMSE, likely because site averaging also reduces between-species trait variation that the phylogenetic model has not fully accounted for.
 
-The site-level models are not directly applicable to fossil prediction because a fossil locality rarely contains enough specimens to form a reliable site mean. Species-level and PIP models are better suited to that use case, where predictions are made from individual specimens.
+For log(MAP), species-level PIP has the lowest RMSE. The site-aggregated PIP is intermediate. MAP shows stronger phylogenetic signal at the species level, and site averaging does not help as much as it does for MAT.
+
+The site-level non-phylogenetic models are included as a reference but are not directly applicable to fossil prediction. A fossil locality rarely yields enough taxa to form a stable site mean, and there is no phylogeny to draw on. The site-aggregated PIP is the operationally preferred approach for fossil assemblages.
 
 Observed vs. predicted scatter plots (RF via 10-fold CV; PIP via LOOCV):
 

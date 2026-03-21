@@ -100,6 +100,38 @@ map_loo <- pip_loocv(
 )
 
 # ==============================================================================
+# 3b. SITE-AGGREGATED PIP: AVERAGE SPECIES LOOCV PREDICTIONS WITHIN SITES
+# ==============================================================================
+
+# For each training site, average the species-level LOOCV predictions across
+# all training species present at that site. This combines phylogenetic
+# information (via PIP) with site-level averaging (noise reduction), and
+# mirrors how a paleobotanist would apply PIP to a fossil assemblage.
+
+raw_dat <- read.csv("data/RoyerLeafShapeClimateDataFixedNames_June2012.csv",
+                    stringsAsFactors = FALSE)
+raw_dat$genusSpecies[raw_dat$genusSpecies == " Dialyanthera sp."] <- "Dialyanthera sp."
+raw_dat$genusSpecies <- gsub(" ", "_", raw_dat$genusSpecies)
+
+train_spp <- names(mat_loo)
+site_sp   <- tapply(raw_dat$genusSpecies, raw_dat$Site,
+                    function(x) intersect(unique(x), train_spp))
+site_sp   <- site_sp[sapply(site_sp, length) > 0]
+
+mat_pip_site <- sapply(site_sp, function(spp) mean(mat_loo[spp]))
+map_pip_site <- sapply(site_sp, function(spp) mean(map_loo[spp]))
+
+dat_site         <- read.csv("data/dat_site.csv")
+dat_site$log_map <- log(dat_site$map)
+rownames(dat_site) <- dat_site$Site
+dat_site_aln     <- dat_site[names(site_sp), ]
+
+rmse_pip_site_mat <- sqrt(mean((dat_site_aln$mat     - mat_pip_site)^2))
+rmse_pip_site_map <- sqrt(mean((dat_site_aln$log_map - map_pip_site)^2))
+cat("Site-aggregated PIP RMSE — MAT:", round(rmse_pip_site_mat, 3),
+    " log(MAP):", round(rmse_pip_site_map, 3), "\n")
+
+# ==============================================================================
 # 4. RMSE COMPARISON TABLE
 # ==============================================================================
 
@@ -108,8 +140,9 @@ rmse          <- function(obs, pred) sqrt(mean((obs - pred)^2))
 
 comparison_mat <- data.frame(
   Model = c("LM (species)", "Elastic Net (species)", "Random Forest (species)",
-            "PIP (phylogenetic)",
-            "LM (site)", "Elastic Net (site)", "Random Forest (site)"),
+            "PIP (species)",
+            "LM (site)", "Elastic Net (site)", "Random Forest (site)",
+            "PIP (site-aggregated)"),
   RMSE  = c(
     get_best_rmse(all_results$mat$LM),
     get_best_rmse(all_results$mat$ENet),
@@ -117,16 +150,18 @@ comparison_mat <- data.frame(
     rmse(pip$dat_imputed_mat$mat, mat_loo),
     get_best_rmse(site_results$mat$LM),
     get_best_rmse(site_results$mat$ENet),
-    get_best_rmse(site_results$mat$RF)
+    get_best_rmse(site_results$mat$RF),
+    rmse_pip_site_mat
   ),
-  Level = c(rep("Species", 3), "Phylogenetic", rep("Site", 3))
+  Level = c(rep("Species", 3), "Phylogenetic", rep("Site", 3), "Site + Phylogenetic")
 )
 comparison_mat <- comparison_mat[order(comparison_mat$RMSE), ]
 
 comparison_map <- data.frame(
   Model = c("LM (species)", "Elastic Net (species)", "Random Forest (species)",
-            "PIP (phylogenetic)",
-            "LM (site)", "Elastic Net (site)", "Random Forest (site)"),
+            "PIP (species)",
+            "LM (site)", "Elastic Net (site)", "Random Forest (site)",
+            "PIP (site-aggregated)"),
   RMSE  = c(
     get_best_rmse(all_results$log_map$LM),
     get_best_rmse(all_results$log_map$ENet),
@@ -134,9 +169,10 @@ comparison_map <- data.frame(
     rmse(pip$dat_imputed_map$log_map, map_loo),
     get_best_rmse(site_results$log_map$LM),
     get_best_rmse(site_results$log_map$ENet),
-    get_best_rmse(site_results$log_map$RF)
+    get_best_rmse(site_results$log_map$RF),
+    rmse_pip_site_map
   ),
-  Level = c(rep("Species", 3), "Phylogenetic", rep("Site", 3))
+  Level = c(rep("Species", 3), "Phylogenetic", rep("Site", 3), "Site + Phylogenetic")
 )
 comparison_map <- comparison_map[order(comparison_map$RMSE), ]
 
