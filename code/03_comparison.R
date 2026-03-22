@@ -132,7 +132,11 @@ cat("Site-aggregated PIP RMSE — MAT:", round(rmse_pip_site_mat, 3),
     " log(MAP):", round(rmse_pip_site_map, 3), "\n")
 
 # Save per-site predictions for all models with site-level output
-# RF: extract CV predictions, align to dat_site row order
+# LM and RF: extract CV predictions, align to dat_site row order
+lm_site_mat <- site_results$mat$LM$pred[
+  order(site_results$mat$LM$pred$rowIndex), ]
+lm_site_map <- site_results$log_map$LM$pred[
+  order(site_results$log_map$LM$pred$rowIndex), ]
 rf_site_mat <- site_results$mat$RF$pred[
   order(site_results$mat$RF$pred$rowIndex), ]
 rf_site_map <- site_results$log_map$RF$pred[
@@ -143,6 +147,8 @@ site_preds <- data.frame(
   obs_mat     = dat_site$mat,
   obs_log_map = dat_site$log_map,
   obs_map     = dat_site$map,
+  lm_mat      = lm_site_mat$pred,
+  lm_log_map  = lm_site_map$pred,
   rf_mat      = rf_site_mat$pred,
   rf_log_map  = rf_site_map$pred,
   pip_mat     = mat_pip_site[dat_site$Site],

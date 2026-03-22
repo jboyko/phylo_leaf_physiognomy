@@ -329,21 +329,21 @@ The site-aggregated PIP approach tested here applies PIP to each species in the 
 
 ## Observed vs. predicted at the site scale
 
-The four panels below compare observed site-mean MAT and MAP against predictions from the best non-phylogenetic site model (Random Forest) and from site-aggregated PIP. Each point is one of the `r nrow(read.csv("tables/site_predictions.csv"))` training sites.
+The six panels below compare observed site-mean MAT and MAP against predictions from three models: the linear model (the baseline method analogous to traditional leaf physiognomy approaches), Random Forest (the best non-phylogenetic site model), and site-aggregated PIP. Each point is one of the `r nrow(read.csv("tables/site_predictions.csv"))` training sites.
 
-```{r site-scatter, fig.height=8, fig.width=10, message=FALSE}
+```{r site-scatter, fig.height=8, fig.width=13, message=FALSE}
 sp <- read.csv("tables/site_predictions.csv")
-sp <- sp[complete.cases(sp), ]   # sites with both RF and PIP predictions
+sp <- sp[complete.cases(sp), ]   # sites with LM, RF, and PIP predictions
+sp$lm_map  <- exp(sp$lm_log_map)
 sp$rf_map  <- exp(sp$rf_log_map)
 sp$pip_map <- exp(sp$pip_log_map)
 
+rmse_lm_mat  <- sqrt(mean((sp$obs_mat - sp$lm_mat)^2))
 rmse_rf_mat  <- sqrt(mean((sp$obs_mat - sp$rf_mat)^2))
 rmse_pip_mat <- sqrt(mean((sp$obs_mat - sp$pip_mat)^2))
+rmse_lm_map  <- sqrt(mean((sp$obs_map - sp$lm_map)^2))
 rmse_rf_map  <- sqrt(mean((sp$obs_map - sp$rf_map)^2))
 rmse_pip_map <- sqrt(mean((sp$obs_map - sp$pip_map)^2))
-
-lim_mat <- range(c(sp$obs_mat, sp$rf_mat, sp$pip_mat))
-lim_map <- range(c(sp$obs_map, sp$rf_map, sp$pip_map))
 
 make_scatter <- function(obs, pred, xlab, ylab, title, rmse_val, col) {
   ggplot(data.frame(obs = obs, pred = pred), aes(x = obs, y = pred)) +
@@ -357,31 +357,33 @@ make_scatter <- function(obs, pred, xlab, ylab, title, rmse_val, col) {
     labs(title = title, x = xlab, y = ylab)
 }
 
-p1 <- make_scatter(sp$obs_mat, sp$rf_mat,
+p1 <- make_scatter(sp$obs_mat, sp$lm_mat,
                    "Observed MAT (°C)", "Predicted MAT (°C)",
-                   "Random Forest (site) — MAT",
-                   rmse_rf_mat, "#cc4444")
-p2 <- make_scatter(sp$obs_mat, sp$pip_mat,
+                   "Linear Model (site) — MAT", rmse_lm_mat, "#888888")
+p2 <- make_scatter(sp$obs_mat, sp$rf_mat,
                    "Observed MAT (°C)", "Predicted MAT (°C)",
-                   "PIP site-aggregated — MAT",
-                   rmse_pip_mat, "#4444cc")
-p3 <- make_scatter(sp$obs_map, sp$rf_map,
+                   "Random Forest (site) — MAT", rmse_rf_mat, "#cc4444")
+p3 <- make_scatter(sp$obs_mat, sp$pip_mat,
+                   "Observed MAT (°C)", "Predicted MAT (°C)",
+                   "PIP site-aggregated — MAT", rmse_pip_mat, "#4444cc")
+p4 <- make_scatter(sp$obs_map, sp$lm_map,
                    "Observed MAP (mm)", "Predicted MAP (mm)",
-                   "Random Forest (site) — MAP",
-                   rmse_rf_map, "#cc4444")
-p4 <- make_scatter(sp$obs_map, sp$pip_map,
+                   "Linear Model (site) — MAP", rmse_lm_map, "#888888")
+p5 <- make_scatter(sp$obs_map, sp$rf_map,
                    "Observed MAP (mm)", "Predicted MAP (mm)",
-                   "PIP site-aggregated — MAP",
-                   rmse_pip_map, "#4444cc")
+                   "Random Forest (site) — MAP", rmse_rf_map, "#cc4444")
+p6 <- make_scatter(sp$obs_map, sp$pip_map,
+                   "Observed MAP (mm)", "Predicted MAP (mm)",
+                   "PIP site-aggregated — MAP", rmse_pip_map, "#4444cc")
 
-grid.arrange(p1, p2, p3, p4, ncol = 2)
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 3)
 ```
 
 ## What the comparison shows
 
-**MAT**: Site-aggregated PIP (RMSE `r round(rmse_pip_mat, 2)`°C) reduces error compared to species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C) but does not reach the accuracy of the naive site-level Random Forest (`r round(rmse_rf_mat, 2)`°C). The RF benefits from fitting directly on site-mean traits, which have lower variance than species-mean traits. PIP, trained at the species level, does not fully correct for this.
+**MAT**: The linear model (`r round(rmse_lm_mat, 2)`°C) is the weakest of the three site-level approaches, which mirrors the pattern at the species level. Random Forest (`r round(rmse_rf_mat, 2)`°C) is the strongest non-phylogenetic model. Site-aggregated PIP (`r round(rmse_pip_mat, 2)`°C) sits between them: it improves on species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C) by gaining the noise-reduction benefit of site averaging, but does not reach the RF because the PIP coefficients are trained at the species level.
 
-**MAP**: Patterns differ from MAT. Species-level PIP retains the best log(MAP) RMSE of any model (`r round(comp_map$RMSE[comp_map$Model == "PIP (species)"], 3)`). Site-aggregating the PIP predictions slightly worsens accuracy compared to species-level PIP, though it remains competitive with the non-phylogenetic site models (`r round(rmse_pip_map, 3)` vs `r round(rmse_rf_map, 3)`). MAP has a stronger species-level phylogenetic signal than MAT, and averaging within sites smooths out some of that signal.
+**MAP**: The linear model (`r round(rmse_lm_map, 2)` log RMSE) is again the weakest. Random Forest and site-aggregated PIP are similar. Species-level PIP (`r round(comp_map$RMSE[comp_map$Model == "PIP (species)"], 3)`) remains the overall best for MAP — MAP has a stronger species-level phylogenetic signal than MAT, and averaging within sites smooths out some of that signal rather than sharpening it.
 
 **Practical implication**: For a real fossil assemblage, site-aggregated PIP is the recommended approach. Each taxon gets a phylogenetically informed estimate, and averaging across taxa gives the locality estimate. The method outperforms treating each fossil taxon in isolation (species-level PIP) and does not require the site-mean trait averaging that is impractical for small fossil assemblages.
 
