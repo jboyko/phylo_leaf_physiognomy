@@ -61,6 +61,7 @@ Rscript code/01_nophy_regression.R   # Fit LM, ElasticNet, RF (fossil traits onl
 Rscript code/02_phy_regression.R     # Fit PGLS (MAT + MAP), save pip_components.rds
 Rscript code/03_comparison.R         # LOOCV, RMSE tables, importance, plots
 Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
+Rscript code/05_sample_size_analysis.R  # Bootstrap RMSE vs N specimens (site LM vs PIP)
 ```
 
 ---
@@ -74,15 +75,17 @@ Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
 - `data/tre_scaffold.tre` — family backbone + training species; used for fossil grafting in `04_`
 - `data/name_table_full.csv` — genus/family/order for all 123k WCVP tips (read by `02_`, avoids reloading the full tree)
 
-**`01_nophy_regression.R`** — Explicitly defines the 12 fossil-measurable predictors (`fossil_traits` vector at top of script). Pre-imputes once via `bagImpute` before CV. Uses `"impurity"` importance for RF (fast; `"permutation"` is slow and unnecessary for ranking). Fits models at both species level (saved to `models/nophy_models.rds`) and site level (saved to `models/site_models.rds`). No exports or plots — those live in `03_`.
+**`01_nophy_regression.R`** — Explicitly defines the 12 fossil-measurable predictors (`fossil_traits` vector at top of script). Pre-imputes once via `bagImpute` before CV. Uses `"impurity"` importance for RF (fast; `"permutation"` is slow and unnecessary for ranking). Fits models at both species level (saved to `models/nophy_models.rds`) and site level (saved to `models/site_models.rds`). `site_models.rds` also contains `impute_model` (the bagImpute object for site-level traits) and `pred_names` (the active predictor names), both needed by `05_sample_size_analysis.R`. No exports or plots — those live in `03_`.
 
 **`02_phy_regression.R`** — Reads `name_table_full.csv` (no need to reload the 123k tree). Extracts non-zero ElasticNet coefficients → active traits → PGLS formula. Fits PGLS for MAT and MAP via `pglmEstLambda()`. Saves `models/pip_components.rds` containing: beta, lambda, V_lam, residuals, design matrices, imputation models (full and traits-only), taxonomy, name_table_full, and pruned tree.
 
 **Lambda transformation convention**: `V_lam` is computed to match the `lamTrans()` function used internally by `pglmEstLambda()` — off-diagonals are multiplied by λ, diagonal is left unchanged (`diag(V_lam) <- diag(phylomat)`). Do NOT use `diag(V_lam) <- diag(V_lam) + (1 - lambda)`, which adds a dimensionless nugget incompatible with the VCV scale and inconsistent with fitting.
 
-**`03_comparison.R`** — All reporting in one place. Vectorised PIP LOOCV via Schur complement: `ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ` where `K = V⁻¹`. One matrix solve replaces N solves — O(N³) vs naive O(N⁴). Exports: nophy CV summaries, RF variable importance, PDP plots (top 4 per target), RMSE tables (species-level, site-level, and phylogenetic), scatter plots.
+**`03_comparison.R`** — All reporting in one place. Vectorised PIP LOOCV via Schur complement: `ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ` where `K = V⁻¹`. One matrix solve replaces N solves — O(N³) vs naive O(N⁴). Exports: nophy CV summaries, RF variable importance, PDP plots (top 4 per target), RMSE tables (species-level, site-level, and phylogenetic), scatter plots, and `tables/site_predictions.csv` (per-site predictions for LM, RF, and site-aggregated PIP). Also computes site-aggregated PIP by reading the raw data to build a species-site map, then averaging species-level LOOCV predictions within each site.
 
 **`04_fossil_predictions.R`** — The primary scientific output script. Loads `pip_components.rds` and `fossil_traits.csv`. Grafts fossils onto `tre_scaffold.tre` (family backbone ensures any angiosperm family can be placed). Prunes to training + fossils, computes cross-covariance V[training, fossil] via `vcv()`, applies PIP formula. Reuses `pip$V_lam_mat` and `pip$V_lam_map` — valid because covariance between two training species is independent of what other taxa are in the tree. Writes `tables/fossil_predictions.csv`.
+
+**`05_sample_size_analysis.R`** — Bootstraps N specimens (N = 1–50) from each training site and compares RMSE for site-level LM vs site-aggregated PIP. For each replicate and site, the LM receives subsample-mean traits; PIP averages LOOCV predictions for the species represented in the subsample. Writes `tables/sample_size_results.csv` and `tables/site_specimen_counts.csv`. Key caveat: the bootstrap comparison is not apples-to-apples at large N — the LM is tested on noisier inputs than it was trained on (full site means), so it appears to never catch PIP in the bootstrap curves. The CV reference points (diamonds in the report figure) show the LM's true full-site performance, where it does beat PIP for MAT. The plot is still being refined — see pending work below.
 
 **`code/Phylogenetically-Informed_Predictions_Source.R`** — PGLS library from Freckleton (2015), modified by Gardner et al. (2024). Key functions: `pglm()`, `pglmEstLambda()`, `pglmPredictMissing()`, `weights.p()`.
 
@@ -103,8 +106,11 @@ Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
 | `data/fossil_traits.csv` | User-provided fossil specimen traits |
 | `data/dat_site.csv` | Site-level averaged traits (92 sites); output of `00_` |
 | `models/nophy_models.rds` | Species-level caret model objects from `01_` |
-| `models/site_models.rds` | Site-level caret model objects from `01_` |
+| `models/site_models.rds` | Site-level caret model objects + `impute_model` + `pred_names`; from `01_` |
 | `models/pip_components.rds` | All PIP components for fossil prediction; from `02_` |
+| `tables/site_predictions.csv` | Per-site predictions (LM, RF, PIP) for site-level scatter plots; from `03_` |
+| `tables/sample_size_results.csv` | Bootstrap RMSE vs N specimens for LM and PIP; from `05_` |
+| `tables/site_specimen_counts.csv` | Median/mean specimens per site; from `05_` |
 
 ## R Package Dependencies
 
@@ -113,6 +119,10 @@ Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
 ## Git Commits
 
 Do not add Claude as a co-author in commit messages.
+
+## Pending Work
+
+- **Sample size plot (`05_`/`report.Rmd`)**: The bootstrap comparison (filled circles) is not apples-to-apples because the LM is tested on noisier inputs than it was trained on. The CV reference diamonds show where the LM ends up at full site size, but the visual is not yet fully satisfying. A proper fix would retrain the LM within the bootstrap (leave-one-site-out CV at each N), so both methods are evaluated on held-out sites using the same N-specimen inputs. This is more expensive but would give a fair crossover curve.
 
 ## Miscellaneous
 
