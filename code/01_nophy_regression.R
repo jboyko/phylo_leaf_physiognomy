@@ -121,5 +121,7 @@ for (target in target_vars) {
   }
 }
 
+site_results$impute_model  <- impute_site   # needed by 05_sample_size_analysis.R
+site_results$pred_names    <- pred_names_site
 saveRDS(site_results, file = "models/site_models.rds")
 cat("\nSaved models/site_models.rds\n")

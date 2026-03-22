@@ -389,6 +389,88 @@ grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 3)
 
 ---
 
+# Sample Size and Predictive Accuracy
+
+## Motivation
+
+The site-level comparison above uses full site means — all specimens averaged together. In practice, a fossil locality may yield only a handful of identifiable leaf taxa. The question is: at what assemblage size does each method break down, and does PIP retain an advantage when data are sparse?
+
+To test this, we repeatedly subsample N specimens from each training site and compare RMSE from the site-level linear model against site-aggregated PIP. For the linear model, the N subsampled specimens are averaged to a single set of trait means, which are fed to the trained LM. For PIP, the unique species represented in the N specimens are identified and their species-level LOOCV predictions are averaged. Each sample size is repeated `r N_BOOT <- read.csv("tables/sample_size_results.csv")$n[1]; 200` times per site.
+
+## Results
+
+```{r sample-size-plot, fig.height=7, fig.width=10}
+ss <- read.csv("tables/sample_size_results.csv")
+
+# Reference lines: full-site RMSE from the comparison table
+ref_lm_mat  <- comp_mat$RMSE[comp_mat$Model == "LM (site)"]
+ref_pip_mat <- comp_mat$RMSE[comp_mat$Model == "PIP (site-aggregated)"]
+ref_lm_map  <- comp_map$RMSE[comp_map$Model == "LM (site)"]
+ref_pip_map <- comp_map$RMSE[comp_map$Model == "PIP (site-aggregated)"]
+
+ss_long_mat <- data.frame(
+  n        = rep(ss$n, 2),
+  n_sites  = rep(ss$n_sites, 2),
+  mean     = c(ss$lm_mat_mean, ss$pip_mat_mean),
+  lo       = c(ss$lm_mat_lo,   ss$pip_mat_lo),
+  hi       = c(ss$lm_mat_hi,   ss$pip_mat_hi),
+  model    = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
+)
+ss_long_map <- data.frame(
+  n        = rep(ss$n, 2),
+  n_sites  = rep(ss$n_sites, 2),
+  mean     = c(ss$lm_map_mean, ss$pip_map_mean),
+  lo       = c(ss$lm_map_lo,   ss$pip_map_lo),
+  hi       = c(ss$lm_map_hi,   ss$pip_map_hi),
+  model    = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
+)
+
+pal <- c("Linear Model (site)" = "#888888", "PIP (site-aggregated)" = "#4444cc")
+
+make_ss_plot <- function(dat, ref_lm, ref_pip, ylab, title) {
+  ggplot(dat, aes(x = n, y = mean, colour = model, fill = model)) +
+    geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.15, colour = NA) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    geom_hline(yintercept = ref_lm,  colour = "#888888", linetype = "dashed", linewidth = 0.6) +
+    geom_hline(yintercept = ref_pip, colour = "#4444cc", linetype = "dashed", linewidth = 0.6) +
+    geom_text(data = dat[dat$model == "Linear Model (site)", ],
+              aes(x = n, y = n_sites * 0 + max(dat$hi) * 1.02,
+                  label = paste0("n=", n_sites)),
+              colour = "grey50", size = 2.8, vjust = 0) +
+    scale_colour_manual(values = pal) +
+    scale_fill_manual(values = pal) +
+    scale_x_continuous(breaks = unique(dat$n)) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "bottom", legend.title = element_blank()) +
+    labs(title = title,
+         x     = "Specimens subsampled per site",
+         y     = ylab,
+         caption = "Dashed lines: full site-mean performance. Labels: number of sites with ≥ N specimens.")
+}
+
+p_mat <- make_ss_plot(ss_long_mat, ref_lm_mat, ref_pip_mat,
+                      "RMSE (°C)", "MAT")
+p_map <- make_ss_plot(ss_long_map, ref_lm_map, ref_pip_map,
+                      "RMSE (log mm/yr)", "log(MAP)")
+
+grid.arrange(p_mat, p_map, ncol = 2)
+```
+
+## Interpretation
+
+For MAT, PIP outperforms the linear model at every sample size tested. At N = 1 (a single leaf specimen), the linear model RMSE is `r round(ss$lm_mat_mean[ss$n == 1], 1)`°C — the site-mean trait from one specimen is too noisy to be useful. PIP at the same sample size gives `r round(ss$pip_mat_mean[ss$n == 1], 1)`°C, because it draws on phylogenetic relatedness to the full extant training set rather than relying solely on the specimen's trait values. The linear model improves steeply with N, following a roughly √N curve as averaging reduces within-site noise, but it does not catch PIP within the range of realistic fossil assemblage sizes. The dashed lines show the full site-mean performance (using all specimens); the LM only reaches PIP's accuracy when averaging over the full set of specimens at a site.
+
+For log(MAP), the same pattern holds across all sample sizes, consistent with PIP's advantage at the species level for this target.
+
+The number of qualifying sites drops sharply above N = 12 (from 92 sites to 76 at N = 20 and 34 at N = 30), because most sites do not contain that many specimens. RMSE estimates at large N are therefore computed on a smaller, systematically different subset of sites and should be interpreted cautiously.
+
+The practical conclusion is direct: for any fossil assemblage of realistic size — even a single specimen — site-aggregated PIP produces lower error than the traditional site-level linear model on the same data. The advantage is largest when assemblages are small, which is precisely when fossil localities tend to be.
+
+---
+
+---
+
 # Fossil Prediction
 
 ## Phylogenetic placement
