@@ -143,3 +143,15 @@ write.csv(ss_results, "tables/sample_size_results.csv", row.names = FALSE)
 cat("\nSaved tables/sample_size_results.csv\n")
 print(ss_results[, c("n", "n_sites", "lm_mat_mean", "pip_mat_mean",
                       "lm_map_mean", "pip_map_mean")])
+
+# ==============================================================================
+# 5. SAVE PER-SITE SPECIMEN COUNTS (used to position full-site CV reference)
+# ==============================================================================
+
+site_counts <- sapply(site_sp_idx, length)
+write.csv(
+  data.frame(median_n = median(site_counts), mean_n = mean(site_counts)),
+  "tables/site_specimen_counts.csv", row.names = FALSE
+)
+cat("Median specimens per site:", median(site_counts), "\n")
+cat("Mean specimens per site:  ", round(mean(site_counts), 1), "\n")

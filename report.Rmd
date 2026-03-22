@@ -400,44 +400,55 @@ To test this, we repeatedly subsample N specimens from each training site and co
 ## Results
 
 ```{r sample-size-plot, fig.height=7, fig.width=10}
-ss <- read.csv("tables/sample_size_results.csv")
+ss     <- read.csv("tables/sample_size_results.csv")
+counts <- read.csv("tables/site_specimen_counts.csv")
+full_n <- counts$median_n   # median specimens per site = 27
 
-# Reference lines: full-site RMSE from the comparison table
+# Full-site CV RMSE from the comparison table (proper held-out evaluation)
 ref_lm_mat  <- comp_mat$RMSE[comp_mat$Model == "LM (site)"]
 ref_pip_mat <- comp_mat$RMSE[comp_mat$Model == "PIP (site-aggregated)"]
 ref_lm_map  <- comp_map$RMSE[comp_map$Model == "LM (site)"]
 ref_pip_map <- comp_map$RMSE[comp_map$Model == "PIP (site-aggregated)"]
 
 ss_long_mat <- data.frame(
-  n        = rep(ss$n, 2),
-  n_sites  = rep(ss$n_sites, 2),
-  mean     = c(ss$lm_mat_mean, ss$pip_mat_mean),
-  lo       = c(ss$lm_mat_lo,   ss$pip_mat_lo),
-  hi       = c(ss$lm_mat_hi,   ss$pip_mat_hi),
-  model    = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
+  n       = rep(ss$n, 2),
+  n_sites = rep(ss$n_sites, 2),
+  mean    = c(ss$lm_mat_mean, ss$pip_mat_mean),
+  lo      = c(ss$lm_mat_lo,   ss$pip_mat_lo),
+  hi      = c(ss$lm_mat_hi,   ss$pip_mat_hi),
+  model   = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
 )
 ss_long_map <- data.frame(
-  n        = rep(ss$n, 2),
-  n_sites  = rep(ss$n_sites, 2),
-  mean     = c(ss$lm_map_mean, ss$pip_map_mean),
-  lo       = c(ss$lm_map_lo,   ss$pip_map_lo),
-  hi       = c(ss$lm_map_hi,   ss$pip_map_hi),
-  model    = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
+  n       = rep(ss$n, 2),
+  n_sites = rep(ss$n_sites, 2),
+  mean    = c(ss$lm_map_mean, ss$pip_map_mean),
+  lo      = c(ss$lm_map_lo,   ss$pip_map_lo),
+  hi      = c(ss$lm_map_hi,   ss$pip_map_hi),
+  model   = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
 )
 
 pal <- c("Linear Model (site)" = "#888888", "PIP (site-aggregated)" = "#4444cc")
 
 make_ss_plot <- function(dat, ref_lm, ref_pip, ylab, title) {
+  # CV reference points (open diamonds) positioned at median specimens per site
+  cv_pts <- data.frame(
+    n     = c(full_n, full_n),
+    mean  = c(ref_lm, ref_pip),
+    model = c("Linear Model (site)", "PIP (site-aggregated)")
+  )
   ggplot(dat, aes(x = n, y = mean, colour = model, fill = model)) +
     geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.15, colour = NA) +
     geom_line(linewidth = 1) +
     geom_point(size = 2) +
-    geom_hline(yintercept = ref_lm,  colour = "#888888", linetype = "dashed", linewidth = 0.6) +
-    geom_hline(yintercept = ref_pip, colour = "#4444cc", linetype = "dashed", linewidth = 0.6) +
+    # CV reference points: open diamonds, slightly larger
+    geom_point(data = cv_pts, aes(x = n, y = mean, colour = model),
+               shape = 18, size = 5, show.legend = FALSE) +
+    annotate("text", x = full_n + 1, y = ref_lm - diff(range(dat$mean)) * 0.04,
+             label = "Full site\nmean (CV)", hjust = 0, size = 2.8, colour = "grey40") +
     geom_text(data = dat[dat$model == "Linear Model (site)", ],
-              aes(x = n, y = n_sites * 0 + max(dat$hi) * 1.02,
+              aes(x = n, y = max(dat$hi) * 1.03,
                   label = paste0("n=", n_sites)),
-              colour = "grey50", size = 2.8, vjust = 0) +
+              colour = "grey50", size = 2.5, vjust = 0) +
     scale_colour_manual(values = pal) +
     scale_fill_manual(values = pal) +
     scale_x_continuous(breaks = unique(dat$n)) +
@@ -446,26 +457,26 @@ make_ss_plot <- function(dat, ref_lm, ref_pip, ylab, title) {
     labs(title = title,
          x     = "Specimens subsampled per site",
          y     = ylab,
-         caption = "Dashed lines: full site-mean performance. Labels: number of sites with ≥ N specimens.")
+         caption = paste0("Filled circles: bootstrap RMSE (random subsampling). ",
+                          "Diamonds: full site-mean performance (10-fold CV, median N = ",
+                          full_n, "). Labels: sites with ≥ N specimens."))
 }
 
-p_mat <- make_ss_plot(ss_long_mat, ref_lm_mat, ref_pip_mat,
-                      "RMSE (°C)", "MAT")
-p_map <- make_ss_plot(ss_long_map, ref_lm_map, ref_pip_map,
-                      "RMSE (log mm/yr)", "log(MAP)")
+p_mat <- make_ss_plot(ss_long_mat, ref_lm_mat, ref_pip_mat, "RMSE (°C)",       "MAT")
+p_map <- make_ss_plot(ss_long_map, ref_lm_map, ref_pip_map, "RMSE (log mm/yr)", "log(MAP)")
 
 grid.arrange(p_mat, p_map, ncol = 2)
 ```
 
 ## Interpretation
 
-For MAT, PIP outperforms the linear model at every sample size tested. At N = 1 (a single leaf specimen), the linear model RMSE is `r round(ss$lm_mat_mean[ss$n == 1], 1)`°C — the site-mean trait from one specimen is too noisy to be useful. PIP at the same sample size gives `r round(ss$pip_mat_mean[ss$n == 1], 1)`°C, because it draws on phylogenetic relatedness to the full extant training set rather than relying solely on the specimen's trait values. The linear model improves steeply with N, following a roughly √N curve as averaging reduces within-site noise, but it does not catch PIP within the range of realistic fossil assemblage sizes. The dashed lines show the full site-mean performance (using all specimens); the LM only reaches PIP's accuracy when averaging over the full set of specimens at a site.
+Two different evaluations are shown. The filled circles with ribbons come from the bootstrap: the LM is given trait means computed from a random subsample of N specimens, while PIP averages species-level LOOCV predictions for whatever species appear in those N specimens. The diamond markers show each method's full-site performance from the main comparison section (10-fold CV for LM, LOOCV for PIP), placed at the median specimens per site (N = `r full_n`).
 
-For log(MAP), the same pattern holds across all sample sizes, consistent with PIP's advantage at the species level for this target.
+For MAT, the bootstrap shows PIP outperforming the LM at every subsampled N. This is partly a methodological asymmetry: the LM was trained on full site means and receives noisier inputs when only N < full-N specimens are available, while PIP's precomputed species-level predictions do not degrade in the same way. The diamond markers resolve this: at the full site mean (proper CV), the LM (`r ref_lm_mat`°C) outperforms site-aggregated PIP (`r ref_pip_mat`°C). The LM curve is converging toward its CV performance, and the crossover occurs somewhere around the median site size.
 
-The number of qualifying sites drops sharply above N = 12 (from 92 sites to 76 at N = 20 and 34 at N = 30), because most sites do not contain that many specimens. RMSE estimates at large N are therefore computed on a smaller, systematically different subset of sites and should be interpreted cautiously.
+For log(MAP), PIP holds its advantage even at the full site mean, consistent with its lead in the main comparison table.
 
-The practical conclusion is direct: for any fossil assemblage of realistic size — even a single specimen — site-aggregated PIP produces lower error than the traditional site-level linear model on the same data. The advantage is largest when assemblages are small, which is precisely when fossil localities tend to be.
+The practical implication depends on what a fossil assemblage looks like. The bootstrap lines represent the realistic scenario — sparse data from a locality. For fossil assemblages of fewer than roughly `r counts$median_n` specimens (the median site size in the training data), PIP is expected to outperform the site-level LM for MAT. For larger, well-sampled assemblages approaching the full site-mean condition, the LM is competitive. For MAP, PIP is preferred at any sample size.
 
 ---
 
