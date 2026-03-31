@@ -15,6 +15,8 @@ tables/
 # Derived data files (outputs of 00_data_cleaning.R)
 data/tre_add.tre
 data/tre_pruned.tre
+data/tre_scaffold.tre
+data/name_table_full.csv
 data/data_species.csv
 data/data_cleaned.csv
 data/dat_site.csv
@@ -24,3 +26,12 @@ data/RoyerLeafShapeClimateDataFixedNames_June2012.xlsx
 
 # Old/archive directory (large, legacy files)
 old/
+
+# Generated report output (reproduced from report.Rmd)
+report.html
+
+# R plotting artifact
+Rplots.pdf
+
+# Web assets accompanying saved article HTML (doc/pip.html renders from the web)
+doc/pip_files/
