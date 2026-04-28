@@ -1,23 +1,27 @@
 # ==============================================================================
-# 03_fossil_predictions.R
-# Predict MAT and log(MAP) for fossil specimens using PIP
-# (Phylogenetically-Informed Predictions)
+# 04_fossil_predictions.R
+# Predict MAT and log(MAP) for fossil sites using four methods:
 #
-# Scaffold: data/tre_scaffold.tre  -- family-level angiosperm backbone with all
-#           training species grafted in. Fossils placed here so any angiosperm
-#           family resolves to the correct phylogenetic neighbourhood.
+#  LM sp    : LM trained on extant species means; fossil species grand means
+#             predicted per species, averaged to site
+#  LM site  : LM trained on extant site means; fossil site-mean traits
+#             predicted directly per site
+#  PIP sp   : PIP using fossil species grand means, averaged to site
+#  PIP+site : PIP using site-specific fossil species means, averaged to site
 #
-# Key property: vcv(tree_pruned)[i,j] == vcv(tree_scaffold)[i,j] for any two
-# training species, so pip$V_lam_mat / pip$V_lam_map are reused unchanged.
-# Only the cross-covariance V[training, fossil] needs to be computed.
+# PIP sp and PIP+site share the same phylogenetic adjustment (same tip
+# placement); they differ only in the trait values used for the GLS prediction.
 #
 # Requires:
 #   models/pip_components.rds   -- output of 02_phy_regression.R
+#   models/nophy_models.rds     -- output of 01_nophy_regression.R
+#   models/site_models.rds      -- output of 01_nophy_regression.R
 #   data/tre_scaffold.tre       -- output of 00_data_cleaning.R
-#   data/fossil_traits.csv      -- user-provided fossil data
+#   data/fossil_traits.csv      -- species-site rows with trait + age_ma columns
 #
 # Output:
-#   tables/fossil_predictions.csv
+#   tables/fossil_site_comparison.csv   -- site-level 4-model comparison
+#   tables/fossil_predictions.csv       -- per-species PIP predictions
 # ==============================================================================
 
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
@@ -31,227 +35,312 @@ source("code/Phylogenetically-Informed_Predictions_Source.R")
 # USER SETTINGS
 # ==============================================================================
 
-# What to do when a fossil predates the MRCA of its genus/family/order in the
-# scaffold tree (i.e., the fossil is older than the crown age of its clade):
-#
-#   "ancestral_branch" — walk up the tree to find the branch that spans the
-#                        fossil's age and split it there; tip terminates at the
-#                        correct time depth (recommended: trusts the fossil age)
-#
-#   "node"             — attach directly at the MRCA node with a minimal edge
-#                        (0.001 Ma); simpler, but ignores the fossil's true age
-
 PLACEMENT_FALLBACK <- "ancestral_branch"
 
 # ==============================================================================
-# 1. LOAD COMPONENTS AND FOSSIL DATA
+# 1. LOAD COMPONENTS
 # ==============================================================================
 
-pip  <- readRDS("models/pip_components.rds")
-foss <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
+pip       <- readRDS("models/pip_components.rds")
+nophy     <- readRDS("models/nophy_models.rds")
+site_mods <- readRDS("models/site_models.rds")
+foss      <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
 
-cat("Loaded", nrow(foss), "fossil specimens\n")
+cat("Loaded", nrow(foss), "fossil species-site rows\n")
+
+trait_cols <- nophy$pred_names   # 12 fossil-measurable traits
 
 # ==============================================================================
-# 2. GRAFT FOSSILS ONTO THE FULL BACKBONE TREE
+# 2. PREPARE AGGREGATIONS
 # ==============================================================================
 
-# Load full backbone: all tips in genus_species format, 97 angiosperm orders
-tree <- read.tree("data/tre_scaffold.tre")
-h    <- max(nodeHeights(tree))
+# 2a. Species grand means (average across all sites a species appears in)
+foss_sp <- aggregate(foss[, c(trait_cols, "age_ma")],
+                     by  = list(species = foss$species,
+                                genus   = foss$genus,
+                                family  = foss$family,
+                                order   = foss$order),
+                     FUN = mean, na.rm = TRUE)
 
-# Genus lookup from tip labels (format: genus_species)
+# 2b. Site means (average all species-site rows within each site)
+foss_site_means <- aggregate(foss[, trait_cols],
+                             by  = list(site   = foss$site,
+                                        age_ma = foss$age_ma),
+                             FUN = mean, na.rm = TRUE)
+
+# Species → sites lookup (needed to aggregate species predictions back to sites)
+sp_site_map <- unique(foss[, c("species", "site", "age_ma")])
+
+# ==============================================================================
+# 3. LM SPECIES-LEVEL
+# ==============================================================================
+
+# Impute using species-level training imputation model
+foss_sp_imp <- predict(nophy$impute_model, newdata = foss_sp[, trait_cols])
+
+lm_sp_mat <- predict(nophy$mat$LM,      newdata = foss_sp_imp)
+lm_sp_map <- predict(nophy$log_map$LM,  newdata = foss_sp_imp)
+
+foss_sp$mat_lm_sp  <- as.numeric(lm_sp_mat)
+foss_sp$map_lm_sp  <- exp(as.numeric(lm_sp_map))
+
+# Propagate species predictions back to site rows, then average per site
+sp_lm <- merge(sp_site_map,
+               foss_sp[, c("species", "mat_lm_sp", "map_lm_sp")],
+               by = "species")
+site_lm_sp <- aggregate(cbind(mat_lm_sp, map_lm_sp) ~ site + age_ma,
+                         data = sp_lm, FUN = mean)
+
+cat("LM species-level predictions done\n")
+
+# ==============================================================================
+# 4. LM SITE-LEVEL
+# ==============================================================================
+
+pred_names_site <- site_mods$pred_names
+foss_site_imp   <- predict(site_mods$impute_model,
+                           newdata = foss_site_means[, pred_names_site])
+
+site_lm_mat <- predict(site_mods$mat$LM,     newdata = foss_site_imp)
+site_lm_map <- predict(site_mods$log_map$LM, newdata = foss_site_imp)
+
+site_lm_site <- data.frame(
+  site        = foss_site_means$site,
+  age_ma      = foss_site_means$age_ma,
+  mat_lm_site = as.numeric(site_lm_mat),
+  map_lm_site = exp(as.numeric(site_lm_map))
+)
+
+cat("LM site-level predictions done\n")
+
+# ==============================================================================
+# 5. GRAFT UNIQUE FOSSIL SPECIES ONTO SCAFFOLD TREE
+# ==============================================================================
+
+tree     <- read.tree("data/tre_scaffold.tre")
+h        <- max(nodeHeights(tree))
 tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
+name_tbl   <- pip$name_table_full
 
-# Full-tree taxonomy: covers all WCVP genera (all 97 orders)
-name_tbl <- pip$name_table_full   # columns: order, family, genus, species, tip_label
+for (j in seq_len(nrow(foss_sp))) {
+  fossil_name <- foss_sp$species[j]
+  age_ma      <- foss_sp$age_ma[j]
 
-for (j in 1:nrow(foss)) {
-  fossil_name <- foss$fossil_name[j]
-  age_ma      <- foss$age_ma[j]
+  if (fossil_name %in% tree$tip.label) next   # already placed
 
   target_node <- NULL
 
-  # ── Genus match ───────────────────────────────────────────────────────────
-  genus_tips <- tree$tip.label[tip_genera == foss$genus[j]]
+  # Genus match
+  genus_tips <- tree$tip.label[tip_genera == foss_sp$genus[j]]
   if (length(genus_tips) >= 2) {
     target_node <- getMRCA(tree, genus_tips)
   } else if (length(genus_tips) == 1) {
     target_node <- which(tree$tip.label == genus_tips[1])
   }
 
-  # ── Family fallback ───────────────────────────────────────────────────────
-  if (is.null(target_node)) {
-    fam_genera <- unique(name_tbl$genus[name_tbl$family == foss$family[j]])
+  # Family fallback
+  if (is.null(target_node) && nzchar(foss_sp$family[j]) &&
+      foss_sp$family[j] != "unknown") {
+    fam_genera <- unique(name_tbl$genus[name_tbl$family == foss_sp$family[j]])
     fam_tips   <- tree$tip.label[tip_genera %in% fam_genera]
     if (length(fam_tips) >= 2) target_node <- getMRCA(tree, fam_tips)
     else if (length(fam_tips) == 1) target_node <- which(tree$tip.label == fam_tips[1])
   }
 
-  # ── Order fallback ────────────────────────────────────────────────────────
-  if (is.null(target_node)) {
-    ord_genera <- unique(name_tbl$genus[name_tbl$order == foss$order[j]])
+  # Order fallback
+  if (is.null(target_node) && nzchar(foss_sp$order[j]) &&
+      foss_sp$order[j] != "unknown") {
+    ord_genera <- unique(name_tbl$genus[name_tbl$order == foss_sp$order[j]])
     ord_tips   <- tree$tip.label[tip_genera %in% ord_genera]
     if (length(ord_tips) >= 2) target_node <- getMRCA(tree, ord_tips)
     else if (length(ord_tips) == 1) target_node <- which(tree$tip.label == ord_tips[1])
   }
 
-  # ── Fallback: root (phylo adjustment → 0, most conservative) ─────────────
+  # Root fallback
   if (is.null(target_node)) {
-    warning("Order '", foss$order[j], "' not found in full WCVP tree. ",
-            "Placing fossil '", fossil_name, "' at tree root (conservative).")
-    target_node <- length(tree$tip.label) + 1L   # root node in ape convention
+    warning("No taxonomy match for '", fossil_name, "'. Placing at root.")
+    target_node <- length(tree$tip.label) + 1L
   }
 
-  # Edge length: tip terminates at fossil age before present
   node_ht  <- nodeheight(tree, target_node)
   edge_len <- (h - age_ma) - node_ht
 
   if (edge_len >= 0) {
-    # Normal case: fossil is younger than its placement node
     tree <- bind.tip(tree, tip.label = fossil_name,
                      where = target_node, edge.length = edge_len)
-    cat("Grafted '", fossil_name, "' onto ", foss$genus[j],
-        " clade at ", age_ma, " Ma\n", sep = "")
   } else if (PLACEMENT_FALLBACK == "ancestral_branch") {
-    # Fossil is older than its placement node — walk up toward the root to find
-    # the branch that spans the fossil's age, then split it at the correct time.
     fossil_ht <- h - age_ma
     node      <- target_node
     found     <- FALSE
     repeat {
       parent_idx <- which(tree$edge[, 2] == node)
-      if (length(parent_idx) == 0) break   # reached root without finding a span
+      if (length(parent_idx) == 0) break
       parent_node <- tree$edge[parent_idx, 1]
       parent_ht   <- nodeheight(tree, parent_node)
       if (parent_ht <= fossil_ht) {
-        # fossil_ht falls on the edge from parent_node → node; split it here
-        position <- nodeheight(tree, node) - fossil_ht   # distance back from child
-        tree <- bind.tip(tree, tip.label = fossil_name,
-                         where = node, position = position, edge.length = 0)
-        message("Note: '", fossil_name, "' (", age_ma, " Ma) predates its ",
-                foss$genus[j], " MRCA — attached on ancestral branch at correct age.")
+        position <- nodeheight(tree, node) - fossil_ht
+        tree  <- bind.tip(tree, tip.label = fossil_name,
+                          where = node, position = position, edge.length = 0)
         found <- TRUE
         break
       }
       node <- parent_node
     }
     if (!found) {
-      warning("Could not find spanning branch for '", fossil_name,
-              "'. Placing at root with minimal edge.")
+      warning("No spanning branch for '", fossil_name, "'. Placing at root.")
       tree <- bind.tip(tree, tip.label = fossil_name,
                        where = length(tree$tip.label) + 1L, edge.length = 0.001)
     }
   } else {
-    # PLACEMENT_FALLBACK == "node": attach at the MRCA with a minimal edge
-    warning("Fossil '", fossil_name, "' (", age_ma, " Ma) predates its ",
-            foss$genus[j], " MRCA — attaching at node with minimal edge (0.001 Ma).")
     tree <- bind.tip(tree, tip.label = fossil_name,
                      where = target_node, edge.length = 0.001)
   }
 
-  # Update tip_genera for subsequent fossils
   tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
 }
 
-# Fossils successfully placed
-placed_fossils <- foss$fossil_name[foss$fossil_name %in% tree$tip.label]
-if (length(placed_fossils) == 0) stop("No fossils could be placed on the tree.")
-foss <- foss[foss$fossil_name %in% placed_fossils, ]
+placed <- foss_sp$species[foss_sp$species %in% tree$tip.label]
+cat("Placed", length(placed), "/", nrow(foss_sp), "fossil species on tree\n")
+foss_sp <- foss_sp[foss_sp$species %in% placed, ]
 
 # ==============================================================================
-# 3. EXTRACT CROSS-COVARIANCE FROM PRUNED SUBTREE
+# 6. COMPUTE VCV CROSS-COVARIANCES
 # ==============================================================================
 
-idx_extant <- rownames(pip$dat_imputed_mat)   # training species names
-idx_fossil  <- foss$fossil_name               # placed fossil names
+idx_extant <- rownames(pip$dat_imputed_mat)
+idx_fossil  <- foss_sp$species
 
-# Prune expanded tree to training + fossils only — makes vcv() fast
 tree_small     <- keep.tip(tree, c(idx_extant, idx_fossil))
 phylomat_small <- vcv(tree_small)
 
-# Cross-covariance V[training, fossil]: off-diagonal → scale by lambda only
-# (the +1-lambda diagonal correction applies only to same-tip entries)
 V_cross_mat <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_mat
 V_cross_map <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_map
 
-# Reuse pre-stored training VCV inverse (unchanged by what fossils are added)
 V_inv_mat <- solve(pip$V_lam_mat)
 V_inv_map <- solve(pip$V_lam_map)
 
-# ==============================================================================
-# 4. IMPUTE MISSING FOSSIL TRAITS
-# ==============================================================================
-
-# Helper: build a data frame with all required trait columns (NAs for missing)
-pad_trait_cols <- function(fossil_df, required_cols) {
-  out <- as.data.frame(matrix(NA, nrow = nrow(fossil_df),
-                               ncol = length(required_cols),
-                               dimnames = list(NULL, required_cols)))
-  shared <- intersect(required_cols, names(fossil_df))
-  out[, shared] <- fossil_df[, shared]
-  return(out)
-}
-
-# MAT traits (use traits-only imputer — response is unknown for fossils)
-trait_cols_mat  <- all.vars(pip$formula_mat)[-1]
-fossil_mat_raw  <- pad_trait_cols(foss, trait_cols_mat)
-fossil_mat_imp  <- predict(pip$impute_model_mat_traits, newdata = fossil_mat_raw)
-rownames(fossil_mat_imp) <- foss$fossil_name
-
-# MAP traits
-trait_cols_map  <- all.vars(pip$formula_map)[-1]
-fossil_map_raw  <- pad_trait_cols(foss, trait_cols_map)
-fossil_map_imp  <- predict(pip$impute_model_map_traits, newdata = fossil_map_raw)
-rownames(fossil_map_imp) <- foss$fossil_name
-
-# ==============================================================================
-# 5. BUILD FOSSIL DESIGN MATRICES
-# ==============================================================================
-
-# Add dummy response columns so model.matrix can parse the formula
-fossil_mat_imp$mat     <- 0
-fossil_map_imp$log_map <- 0
-
-X_fossil_mat <- model.matrix(pip$formula_mat, fossil_mat_imp)
-X_fossil_mat <- X_fossil_mat[, colnames(pip$X_mat), drop = FALSE]
-
-X_fossil_map <- model.matrix(pip$formula_map, fossil_map_imp)
-X_fossil_map <- X_fossil_map[, colnames(pip$X_map), drop = FALSE]
-
-# ==============================================================================
-# 6. APPLY PIP FORMULA
-# ==============================================================================
-
-# Reorder residuals to match VCV row order
 resid_ord_mat <- pip$resid_mat[idx_extant]
 resid_ord_map <- pip$resid_map[idx_extant]
 
-phylo_adj_mat <- t(V_cross_mat) %*% V_inv_mat %*% resid_ord_mat   # m × 1
-phylo_adj_map <- t(V_cross_map) %*% V_inv_map %*% resid_ord_map   # m × 1
-
-yhat_mat <- as.numeric(X_fossil_mat %*% pip$beta_mat + phylo_adj_mat)
-yhat_map <- as.numeric(X_fossil_map %*% pip$beta_map + phylo_adj_map)
-
-# Prediction SE from coefficient uncertainty (design-matrix propagation)
-se_mat <- sqrt(diag(X_fossil_mat %*% pip$vcv_mat %*% t(X_fossil_mat)))
-se_map <- sqrt(diag(X_fossil_map %*% pip$vcv_map %*% t(X_fossil_map)))
+# Phylogenetic adjustment — same for PIP sp and PIP+site
+phylo_adj_mat <- as.numeric(t(V_cross_mat) %*% V_inv_mat %*% resid_ord_mat)
+phylo_adj_map <- as.numeric(t(V_cross_map) %*% V_inv_map %*% resid_ord_map)
+names(phylo_adj_mat) <- idx_fossil
+names(phylo_adj_map) <- idx_fossil
 
 # ==============================================================================
-# 7. OUTPUT RESULTS
+# 7. IMPUTE FOSSIL TRAITS FOR PIP
 # ==============================================================================
 
-results <- data.frame(
-  fossil_name  = foss$fossil_name,
-  mat_pred     = yhat_mat,
-  mat_95lo     = yhat_mat - 1.96 * se_mat,
-  mat_95hi     = yhat_mat + 1.96 * se_mat,
-  log_map_pred = yhat_map,
-  map_pred     = exp(yhat_map),
-  map_95lo     = exp(yhat_map - 1.96 * se_map),
-  map_95hi     = exp(yhat_map + 1.96 * se_map)
+pad_cols <- function(df, cols) {
+  out <- as.data.frame(matrix(NA, nrow = nrow(df), ncol = length(cols),
+                               dimnames = list(NULL, cols)))
+  shared <- intersect(cols, names(df))
+  out[, shared] <- df[, shared]
+  out
+}
+
+trait_cols_mat <- all.vars(pip$formula_mat)[-1]
+trait_cols_map <- all.vars(pip$formula_map)[-1]
+
+# Species grand means for PIP sp
+sp_mat_raw <- pad_cols(foss_sp, trait_cols_mat)
+sp_map_raw <- pad_cols(foss_sp, trait_cols_map)
+sp_mat_imp <- predict(pip$impute_model_mat_traits, newdata = sp_mat_raw)
+sp_map_imp <- predict(pip$impute_model_map_traits, newdata = sp_map_raw)
+rownames(sp_mat_imp) <- foss_sp$species
+rownames(sp_map_imp) <- foss_sp$species
+
+# ==============================================================================
+# 8. BUILD DESIGN MATRICES FOR PIP SP
+# ==============================================================================
+
+sp_mat_imp$mat     <- 0
+sp_map_imp$log_map <- 0
+X_sp_mat <- model.matrix(pip$formula_mat, sp_mat_imp)[, colnames(pip$X_mat), drop = FALSE]
+X_sp_map <- model.matrix(pip$formula_map, sp_map_imp)[, colnames(pip$X_map), drop = FALSE]
+
+# ==============================================================================
+# 9. PIP SPECIES-LEVEL PREDICTIONS
+# ==============================================================================
+
+yhat_sp_mat <- as.numeric(X_sp_mat %*% pip$beta_mat) + phylo_adj_mat[foss_sp$species]
+yhat_sp_map <- as.numeric(X_sp_map %*% pip$beta_map) + phylo_adj_map[foss_sp$species]
+
+foss_sp$mat_pip_sp  <- yhat_sp_mat
+foss_sp$map_pip_sp  <- exp(yhat_sp_map)
+
+sp_pip <- merge(sp_site_map,
+                foss_sp[, c("species", "mat_pip_sp", "map_pip_sp")],
+                by = "species")
+site_pip_sp <- aggregate(cbind(mat_pip_sp, map_pip_sp) ~ site + age_ma,
+                          data = sp_pip, FUN = mean)
+
+cat("PIP species-level predictions done\n")
+
+# ==============================================================================
+# 10. PIP+SITE PREDICTIONS
+# ==============================================================================
+
+# For each species-site row, use site-specific trait values with the
+# species-level phylogenetic adjustment
+
+site_sp_mat_raw <- pad_cols(foss, trait_cols_mat)
+site_sp_map_raw <- pad_cols(foss, trait_cols_map)
+site_sp_mat_imp <- predict(pip$impute_model_mat_traits, newdata = site_sp_mat_raw)
+site_sp_map_imp <- predict(pip$impute_model_map_traits, newdata = site_sp_map_raw)
+rownames(site_sp_mat_imp) <- foss$fossil_name
+rownames(site_sp_map_imp) <- foss$fossil_name
+
+site_sp_mat_imp$mat     <- 0
+site_sp_map_imp$log_map <- 0
+X_site_mat <- model.matrix(pip$formula_mat, site_sp_mat_imp)[, colnames(pip$X_mat), drop = FALSE]
+X_site_map <- model.matrix(pip$formula_map, site_sp_map_imp)[, colnames(pip$X_map), drop = FALSE]
+
+# GLS prediction uses site-specific traits; phylo adjustment from species placement
+yhat_site_mat <- as.numeric(X_site_mat %*% pip$beta_mat) +
+                   phylo_adj_mat[foss$species]
+yhat_site_map <- as.numeric(X_site_map %*% pip$beta_map) +
+                   phylo_adj_map[foss$species]
+
+foss$mat_pip_site <- yhat_site_mat
+foss$map_pip_site <- exp(yhat_site_map)
+
+site_pip_site <- aggregate(cbind(mat_pip_site, map_pip_site) ~ site + age_ma,
+                            data = foss, FUN = mean)
+
+# Also save per-species PIP+site predictions
+results_per_species <- foss[, c("fossil_name", "species", "site", "age_ma",
+                                 "mat_pip_site", "map_pip_site")]
+write.csv(results_per_species, "tables/fossil_predictions.csv", row.names = FALSE)
+cat("PIP+site predictions done\n")
+
+# ==============================================================================
+# 11. OUTPUT COMPARISON TABLE (LONG FORMAT)
+# ==============================================================================
+
+site_comparison <- Reduce(
+  function(x, y) merge(x, y, by = c("site", "age_ma")),
+  list(site_lm_sp, site_lm_site, site_pip_sp, site_pip_site)
 )
+site_comparison <- site_comparison[order(-site_comparison$age_ma), ]
 
-print(results)
-write.csv(results, "tables/fossil_predictions.csv", row.names = FALSE)
-cat("\nResults written to tables/fossil_predictions.csv\n")
+# Round for readability
+mat_cols <- grep("^mat_", names(site_comparison), value = TRUE)
+map_cols <- grep("^map_", names(site_comparison), value = TRUE)
+site_comparison[, mat_cols] <- round(site_comparison[, mat_cols], 1)
+site_comparison[, map_cols] <- round(site_comparison[, map_cols], 0)
+
+mat_df <- site_comparison[, c("site", "age_ma", mat_cols)]
+names(mat_df) <- sub("^mat_", "", names(mat_df))
+mat_df$variable <- "MAT"
+map_df <- site_comparison[, c("site", "age_ma", map_cols)]
+names(map_df) <- sub("^map_", "", names(map_df))
+map_df$variable <- "MAP"
+site_long <- rbind(mat_df, map_df)
+site_long <- site_long[, c("site", "age_ma", "variable",
+                          "lm_sp", "lm_site", "pip_sp", "pip_site")]
+cat("\nLong-form site comparison:\n")
+print(site_long, row.names = FALSE)
+write.csv(site_long, "tables/fossil_site_comparison.csv", row.names = FALSE)
+cat("\nResults written to tables/fossil_site_comparison.csv\n")

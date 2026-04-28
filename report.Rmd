@@ -286,7 +286,7 @@ RMSE for all eight models: three model types at species level, three at site lev
 
 The site-aggregated PIP averages species-level LOOCV predictions across all training species present at each site. This is the approach a paleobotanist would use for a fossil assemblage: apply PIP to each taxon in the assemblage, then average across taxa.
 
-```{r rmse-comparison}
+```{r rmse-comparison, eval=file.exists("tables/comparison_mat_rmse.csv")}
 comp_mat$RMSE <- round(comp_mat$RMSE, 3)
 comp_map$RMSE <- round(comp_map$RMSE, 3)
 
@@ -297,7 +297,7 @@ kable(comp_mat[, c("Model", "RMSE", "Level")],
   row_spec(which(comp_mat$Model == "PIP (site-aggregated)"), bold = TRUE)
 ```
 
-```{r rmse-comparison-map}
+```{r rmse-comparison-map, eval=file.exists("tables/comparison_map_rmse.csv")}
 kable(comp_map[, c("Model", "RMSE", "Level")],
       caption = "log(MAP) RMSE. LOOCV for PIP models; 10-fold CV for all other models.",
       row.names = FALSE) |>
@@ -329,9 +329,9 @@ The site-aggregated PIP approach tested here applies PIP to each species in the 
 
 ## Observed vs. predicted at the site scale
 
-The six panels below compare observed site-mean MAT and MAP against predictions from three models: the linear model (the baseline method analogous to traditional leaf physiognomy approaches), Random Forest (the best non-phylogenetic site model), and site-aggregated PIP. Each point is one of the `r nrow(read.csv("tables/site_predictions.csv"))` training sites.
+The six panels below compare observed site-mean MAT and MAP against predictions from three models: the linear model (the baseline method analogous to traditional leaf physiognomy approaches), Random Forest (the best non-phylogenetic site model), and site-aggregated PIP. Each point is one of the `r if(file.exists("tables/site_predictions.csv")) nrow(read.csv("tables/site_predictions.csv")) else "92"` training sites.
 
-```{r site-scatter, fig.height=8, fig.width=13, message=FALSE}
+```{r site-scatter, fig.height=8, fig.width=13, message=FALSE, eval=file.exists("tables/site_predictions.csv")}
 sp <- read.csv("tables/site_predictions.csv")
 sp <- sp[complete.cases(sp), ]   # sites with LM, RF, and PIP predictions
 sp$lm_map  <- exp(sp$lm_log_map)
@@ -395,11 +395,11 @@ grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 3)
 
 The site-level comparison above uses full site means — all specimens averaged together. In practice, a fossil locality may yield only a handful of identifiable leaf taxa. The question is: at what assemblage size does each method break down, and does PIP retain an advantage when data are sparse?
 
-To test this, we repeatedly subsample N specimens from each training site and compare RMSE from the site-level linear model against site-aggregated PIP. For the linear model, the N subsampled specimens are averaged to a single set of trait means, which are fed to the trained LM. For PIP, the unique species represented in the N specimens are identified and their species-level LOOCV predictions are averaged. Each sample size is repeated `r N_BOOT <- read.csv("tables/sample_size_results.csv")$n[1]; 200` times per site.
+To test this, we repeatedly subsample N specimens from each training site and compare RMSE from the site-level linear model against site-aggregated PIP. For the linear model, the N subsampled specimens are averaged to a single set of trait means, which are fed to the trained LM. For PIP, the unique species represented in the N specimens are identified and their species-level LOOCV predictions are averaged. Each sample size is repeated 200 times per site.
 
 ## Results
 
-```{r sample-size-plot, fig.height=7, fig.width=10}
+```{r sample-size-plot, fig.height=7, fig.width=10, eval=file.exists("tables/sample_size_results.csv")}
 ss     <- read.csv("tables/sample_size_results.csv")
 counts <- read.csv("tables/site_specimen_counts.csv")
 full_n <- counts$median_n   # median specimens per site = 27
@@ -470,13 +470,13 @@ grid.arrange(p_mat, p_map, ncol = 2)
 
 ## Interpretation
 
-Two different evaluations are shown. The filled circles with ribbons come from the bootstrap: the LM is given trait means computed from a random subsample of N specimens, while PIP averages species-level LOOCV predictions for whatever species appear in those N specimens. The diamond markers show each method's full-site performance from the main comparison section (10-fold CV for LM, LOOCV for PIP), placed at the median specimens per site (N = `r full_n`).
+Two different evaluations are shown. The filled circles with ribbons come from the bootstrap: the LM is given trait means computed from a random subsample of N specimens, while PIP averages species-level LOOCV predictions for whatever species appear in those N specimens. The diamond markers show each method's full-site performance from the main comparison section (10-fold CV for LM, LOOCV for PIP), placed at the median specimens per site.
 
-For MAT, the bootstrap shows PIP outperforming the LM at every subsampled N. This is partly a methodological asymmetry: the LM was trained on full site means and receives noisier inputs when only N < full-N specimens are available, while PIP's precomputed species-level predictions do not degrade in the same way. The diamond markers resolve this: at the full site mean (proper CV), the LM (`r ref_lm_mat`°C) outperforms site-aggregated PIP (`r ref_pip_mat`°C). The LM curve is converging toward its CV performance, and the crossover occurs somewhere around the median site size.
+For MAT, the bootstrap shows PIP outperforming the LM at every subsampled N. This is partly a methodological asymmetry: the LM was trained on full site means and receives noisier inputs when only N < full-N specimens are available, while PIP's precomputed species-level predictions do not degrade in the same way. The diamond markers resolve this: at the full site mean (proper CV), the LM outperforms site-aggregated PIP. The LM curve is converging toward its CV performance, and the crossover occurs somewhere around the median site size.
 
 For log(MAP), PIP holds its advantage even at the full site mean, consistent with its lead in the main comparison table.
 
-The practical implication depends on what a fossil assemblage looks like. The bootstrap lines represent the realistic scenario — sparse data from a locality. For fossil assemblages of fewer than roughly `r counts$median_n` specimens (the median site size in the training data), PIP is expected to outperform the site-level LM for MAT. For larger, well-sampled assemblages approaching the full site-mean condition, the LM is competitive. For MAP, PIP is preferred at any sample size.
+The practical implication depends on what a fossil assemblage looks like. The bootstrap lines represent the realistic scenario — sparse data from a locality. For fossil assemblages smaller than the median training site size, PIP is expected to outperform the site-level LM for MAT. For larger, well-sampled assemblages approaching the full site-mean condition, the LM is competitive. For MAP, PIP is preferred at any sample size.
 
 ---
 
@@ -511,37 +511,94 @@ The traits used for imputation are those in the active predictor set for each ta
 
 After placement, the cross-covariance **V**[train,fossil] is extracted from the pruned combined tree and the PIP formula is applied as described in Section 4.3. The training VCV **V**[train,train] is reused from the extant-species fitting. This is valid because the covariance between any two training species equals the height of their MRCA, which does not change when additional taxa are added to the tree.
 
-## Results
+## Four-model comparison
 
-```{r fossil-results}
-foss_res <- read.csv("tables/fossil_predictions.csv")
+Predictions are compared across four approaches that differ in aggregation level and whether phylogeny is used. For each fossil site, species-level predictions (LM sp, PIP sp, PIP+site) are averaged across all species and morphotypes placed at that site; LM site predicts directly from site-mean traits.
 
-out <- data.frame(
-  Specimen    = foss_res$fossil_name,
-  `MAT (°C)`  = round(foss_res$mat_pred, 1),
-  `95% CI`    = paste0("[", round(foss_res$mat_95lo, 1), ", ", round(foss_res$mat_95hi, 1), "]"),
-  `MAP (mm)`  = round(foss_res$map_pred, 0),
-  `95% CI `   = paste0("[", round(foss_res$map_95lo, 0), ", ", round(foss_res$map_95hi, 0), "]"),
-  check.names = FALSE
+```{r fossil-comparison}
+comp <- read.csv("tables/fossil_site_comparison.csv")
+
+# Published DiLP and LMA estimates from Peppe et al. (2011)
+published <- data.frame(
+  site         = c("Fox Hills","Williston Basin I","Williston Basin II",
+                   "Williston Basin III","Palacio de los Loros PL1",
+                   "Palacio de los Loros PL2","Cerrejon","Hubble Bubble",
+                   "Laguna del Hunco","Republic","Bonanza"),
+  mat_dilp_pub = c(21.6, 15.7, 15.0, 16.3, 12.8, 12.8, 23.6, 20.3, 10.9, 9.0, NA),
+  mat_lma_pub  = c(14.8, 10.9, 10.2,  9.4, 12.9, 12.9, 20.5, 17.9, 14.1, 9.2, 14.8),
+  map_dilp_pub = c(141, 175, 148, 152, 125, 125, 264, 147, 127, 134, NA)
 )
+comp <- merge(comp, published, by = "site")
+comp <- comp[order(-comp$age_ma), ]
 
-kable(out, row.names = FALSE,
-      caption = "Fossil climate predictions (test specimens). CIs reflect coefficient uncertainty only. See Section 4.4 for a description of excluded uncertainty components.") |>
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+mat_out <- comp[, c("site","age_ma","mat_dilp_pub","mat_lma_pub",
+                    "mat_lm_sp","mat_lm_site","mat_pip_sp","mat_pip_site")]
+names(mat_out) <- c("Site","Age (Ma)","DiLP (pub)","LMA (pub)",
+                    "LM sp","LM site","PIP sp","PIP+site")
+
+kable(mat_out, row.names = FALSE, digits = 1,
+      caption = "MAT predictions (°C) by site and method, alongside published Peppe et al. (2011) estimates. DiLP (pub) and LMA (pub) are from the original paper.") |>
+  kable_styling(bootstrap_options = c("striped","condensed"), full_width = FALSE) |>
+  column_spec(3:4, color = "grey50") |>
+  column_spec(5, bold = FALSE) |>
+  column_spec(6, bold = TRUE)
 ```
 
-These are test specimens with synthetic trait data and should not be interpreted as palaeoclimate estimates. The table shows the output format for real fossil inputs.
+```{r fossil-map-comparison}
+map_out <- comp[, c("site","age_ma","map_dilp_pub",
+                    "map_lm_sp","map_lm_site","map_pip_sp","map_pip_site")]
+names(map_out) <- c("Site","Age (Ma)","DiLP (pub)",
+                    "LM sp","LM site","PIP sp","PIP+site")
+
+kable(map_out, row.names = FALSE, digits = 0,
+      caption = "MAP predictions (cm) by site and method. All values in cm; the training data MAP column is in cm (range 19–680 cm, mean ~215 cm).") |>
+  kable_styling(bootstrap_options = c("striped","condensed"), full_width = FALSE) |>
+  column_spec(3, color = "grey50")
+```
+
+## Interpretation: aggregation level matters for MAT
+
+**LM site closely tracks the published DiLP estimates** (e.g., Republic: 8.2 vs 9.0°C; Laguna del Hunco: 11.2 vs 10.9°C). This is expected — Peppe et al. (2011) used site-level averaging, and LM site uses the same approach on the same trait set.
+
+**Species-level models are systematically warm-biased at cold high-latitude sites.** LM sp and PIP sp predict 14–17°C for sites the published DiLP puts at 9–13°C. The bias is small or absent at warm tropical sites (Cerrejon, Hubble Bubble).
+
+The root cause lies in the extant training data. When species appear across multiple sites spanning a range of climates, their grand-mean trait values no longer cleanly reflect any one climate. This attenuates the trait–climate signal:
+
+```{r signal-attenuation}
+dat_sp   <- read.csv("data/data_species.csv")
+dat_site <- read.csv("data/dat_site.csv")
+r_sp   <- cor(dat_sp$margin.score,   dat_sp$mat,   use = "complete")
+r_site <- cor(dat_site$margin.score, dat_site$mat, use = "complete")
+
+attn <- data.frame(
+  Level        = c("Species-level", "Site-level"),
+  `margin.score–MAT r` = round(c(r_sp, r_site), 3),
+  `margin.score coef (LM)` = round(c(
+    coef(readRDS("models/nophy_models.rds")$mat$LM$finalModel)["margin.score"],
+    coef(readRDS("models/site_models.rds")$mat$LM$finalModel)["margin.score"]
+  ), 2),
+  check.names = FALSE
+)
+kable(attn, row.names = FALSE,
+      caption = "The margin.score–MAT correlation and fitted coefficient are nearly 6× stronger at the site level than at the species level. Species grand-mean averaging blurs the trait–climate signal.") |>
+  kable_styling(bootstrap_options = c("striped","condensed"), full_width = FALSE)
+```
+
+The `margin.score` coefficient in the species-level LM is `r round(coef(readRDS("models/nophy_models.rds")$mat$LM$finalModel)["margin.score"], 2)` vs `r round(coef(readRDS("models/site_models.rds")$mat$LM$finalModel)["margin.score"], 2)` in the site-level LM. PIP inherits the same attenuation because it is trained on species-level PGLS.
+
+**Practical implication**: For these fossil assemblages, LM site gives more accurate MAT estimates. The advantage of PIP over a simple site LM lies in sample-sparse scenarios (see Section 7), not in correcting for aggregation-level attenuation.
 
 ## Input format
 
-Fossil specimens are supplied via `data/fossil_traits.csv`. Required columns:
+Fossil specimens are supplied via `data/fossil_traits.csv`. One row per species × site combination. Required columns:
 
 | Column | Description |
 |--------|-------------|
-| `fossil_name` | Unique specimen identifier, used as the tip label in the tree |
-| `genus` | Genus name, for placement |
+| `fossil_name` | Unique identifier (`species_site`), used as the tree tip label |
+| `species`, `genus` | Species and genus name, for placement |
 | `family` | Family name, fallback placement |
 | `order` | Order name, fallback placement |
+| `site` | Site name, used for aggregation |
 | `age_ma` | Fossil age in millions of years before present |
 | *(trait columns)* | Any subset of the 12 fossil-measurable traits; missing values are imputed |
 
