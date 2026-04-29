@@ -8,6 +8,11 @@ output:
     toc_depth: 3
     theme: flatly
     number_sections: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE}
@@ -95,13 +100,13 @@ Both conditions must be met: the cell is blank and `margin.score == 1`. Without 
 
 The phylogenetic model operates at the species level, so the primary dataset uses species-mean trait values. After aggregation, it contains **`r nrow(pip$dat_imputed_mat)` species** with at least partial trait information.
 
-A second dataset aggregates all specimens within each site to site-mean trait values, giving **`r nrow(read.csv("data/dat_site.csv"))` sites**. This is the aggregation scale used by traditional leaf physiognomy methods (CLAMP, DiLP), where a fossil assemblage from a single locality is treated as one observation. The site-level non-phylogenetic models are fit on this dataset and included in the model comparison as a reference.
+A second dataset aggregates all specimens within each site to site-mean trait values, giving **`r nrow(read.csv("data/dat_site.csv"))` sites**. This is the aggregation scale used by traditional leaf physiognomy methods (CLAMP, DiLP), where all specimens from a single site are treated as one observation. Site-level models are covered in Section 6.
 
 ---
 
 # Non-Phylogenetic Baseline Models
 
-Three non-phylogenetic model types are fit: ordinary least squares linear regression (LM), regularised linear regression (Elastic Net), and Random Forest. Each is fit twice: once on the species-level dataset and once on the site-level dataset. These six models provide a reference for evaluating the phylogenetic model and for comparison with the traditional site-based approach used by CLAMP and DiLP.
+Three non-phylogenetic model types are fit at the species level: ordinary least squares linear regression (LM), regularised linear regression (Elastic Net), and Random Forest. These models provide a reference for evaluating PIP. Site-level models are covered in Section 6.
 
 ## Model setup
 
@@ -282,34 +287,28 @@ This follows from the PIP formula applied leave-one-out, using the block-matrix 
 
 # Model Comparison
 
-RMSE for all eight models: three model types at species level, three at site level, PIP at species level, and PIP site-aggregated. All non-phylogenetic RMSEs are from 10-fold CV; both PIP variants use LOOCV. In all cases each prediction excludes the observation being predicted, so the comparisons are consistent.
-
-The site-aggregated PIP averages species-level LOOCV predictions across all training species present at each site. This is the approach a paleobotanist would use for a fossil assemblage: apply PIP to each taxon in the assemblage, then average across taxa.
+RMSE for species-level models: LM, Elastic Net, Random Forest, and PIP. Non-phylogenetic models use 10-fold CV; PIP uses LOOCV. In both cases each prediction excludes the observation being predicted.
 
 ```{r rmse-comparison}
-comp_mat$RMSE <- round(comp_mat$RMSE, 3)
-comp_map$RMSE <- round(comp_map$RMSE, 3)
+spc_mat <- comp_mat[comp_mat$Level == "Species", ]
+spc_map <- comp_map[comp_map$Level == "Species", ]
+spc_mat$RMSE <- round(spc_mat$RMSE, 3)
+spc_map$RMSE <- round(spc_map$RMSE, 3)
 
-kable(comp_mat[, c("Model", "RMSE", "Level")],
-      caption = "MAT RMSE (°C). LOOCV for PIP models; 10-fold CV for all other models.",
+kable(spc_mat[, c("Model", "RMSE")],
+      caption = "MAT RMSE (°C). LOOCV for PIP; 10-fold CV for other models.",
       row.names = FALSE) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
-  row_spec(which(comp_mat$Model == "PIP (site-aggregated)"), bold = TRUE)
+  row_spec(which(spc_mat$Model == "PIP (species)"), bold = TRUE)
 ```
 
 ```{r rmse-comparison-map}
-kable(comp_map[, c("Model", "RMSE", "Level")],
-      caption = "log(MAP) RMSE. LOOCV for PIP models; 10-fold CV for all other models.",
+kable(spc_map[, c("Model", "RMSE")],
+      caption = "log(MAP) RMSE. LOOCV for PIP; 10-fold CV for other models.",
       row.names = FALSE) |>
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
-  row_spec(which(comp_map$Model == "PIP (species)"), bold = TRUE)
+  row_spec(which(spc_map$Model == "PIP (species)"), bold = TRUE)
 ```
-
-For MAT, site-aggregated PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (site-aggregated)"], 2)`°C) outperforms species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C). Averaging within sites reduces specimen-level noise while retaining the phylogenetic adjustment. Naive site-level models (no phylogeny) still have lower RMSE, likely because site averaging also reduces between-species trait variation that the phylogenetic model has not fully accounted for.
-
-For log(MAP), species-level PIP has the lowest RMSE. The site-aggregated PIP is intermediate. MAP shows stronger phylogenetic signal at the species level, and site averaging does not help as much as it does for MAT.
-
-The site-level non-phylogenetic models are included as a reference but are not directly applicable to fossil prediction. A fossil locality rarely yields enough taxa to form a stable site mean, and there is no phylogeny to draw on. The site-aggregated PIP is the operationally preferred approach for fossil assemblages.
 
 Observed vs. predicted scatter plots (RF via 10-fold CV; PIP via LOOCV):
 
@@ -319,21 +318,41 @@ include_graphics("plots/model_comparison.png")
 
 ---
 
-# Site-Level Analysis
+# Site-Level Models
 
-## Motivation
+Traditional leaf physiognomy methods (CLAMP, DiLP) work at the site scale: all leaf specimens from a site are averaged to a single set of trait values, from which one climate estimate is made. The site-level models here apply the same three non-phylogenetic methods from Section 3 to site-mean trait values. Site-aggregated PIP averages species-level LOOCV predictions across all species present at each site, weighted by specimen count so that common species contribute proportionally more -- consistent with how the LM uses trait means. An alternative would be to weight each species equally (presence/absence), which would treat each taxon as an independent signal regardless of how many specimens were collected.
 
-Traditional leaf physiognomy methods (CLAMP, DiLP) work at the site scale: all leaf specimens from a fossil locality are averaged to produce a single set of trait values, from which one climate estimate is made. This averaging reduces noise from specimen-to-specimen variation but discards the within-site taxonomic signal. It is also the natural unit for fossil assemblages, where the locality is what the paleobotanist wants to reconstruct, not any individual taxon.
+## Cross-validation results
 
-The site-aggregated PIP approach tested here applies PIP to each species in the assemblage individually, then averages the predictions. It uses the same field data a paleobotanist would collect, but draws on the phylogenetic signal of each taxon rather than only on site-mean trait values.
+```{r site-cv-mat}
+site_mat <- comp_mat[comp_mat$Level == "Site" | comp_mat$Model == "PIP (site-aggregated)", ]
+site_mat$RMSE <- round(site_mat$RMSE, 3)
+
+kable(site_mat[, c("Model", "RMSE")],
+      caption = "MAT RMSE (°C) for site-level models. LOOCV for PIP; 10-fold CV for other models.",
+      row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
+  row_spec(which(site_mat$Model == "PIP (site-aggregated)"), bold = TRUE)
+```
+
+```{r site-cv-map}
+site_map <- comp_map[comp_map$Level == "Site" | comp_map$Model == "PIP (site-aggregated)", ]
+site_map$RMSE <- round(site_map$RMSE, 3)
+
+kable(site_map[, c("Model", "RMSE")],
+      caption = "log(MAP) RMSE for site-level models. LOOCV for PIP; 10-fold CV for other models.",
+      row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
+  row_spec(which(site_map$Model == "PIP (site-aggregated)"), bold = TRUE)
+```
 
 ## Observed vs. predicted at the site scale
 
-The six panels below compare observed site-mean MAT and MAP against predictions from three models: the linear model (the baseline method analogous to traditional leaf physiognomy approaches), Random Forest (the best non-phylogenetic site model), and site-aggregated PIP. Each point is one of the `r nrow(read.csv("tables/site_predictions.csv"))` training sites.
+Each point is one of the `r nrow(read.csv("tables/site_predictions.csv"))` training sites.
 
 ```{r site-scatter, fig.height=8, fig.width=13, message=FALSE}
 sp <- read.csv("tables/site_predictions.csv")
-sp <- sp[complete.cases(sp), ]   # sites with LM, RF, and PIP predictions
+sp <- sp[complete.cases(sp), ]
 sp$lm_map  <- exp(sp$lm_log_map)
 sp$rf_map  <- exp(sp$rf_log_map)
 sp$pip_map <- exp(sp$pip_log_map)
@@ -359,78 +378,95 @@ make_scatter <- function(obs, pred, xlab, ylab, title, rmse_val, col) {
 
 p1 <- make_scatter(sp$obs_mat, sp$lm_mat,
                    "Observed MAT (°C)", "Predicted MAT (°C)",
-                   "Linear Model (site) — MAT", rmse_lm_mat, "#888888")
+                   "Linear Model (site): MAT", rmse_lm_mat, "#888888")
 p2 <- make_scatter(sp$obs_mat, sp$rf_mat,
                    "Observed MAT (°C)", "Predicted MAT (°C)",
-                   "Random Forest (site) — MAT", rmse_rf_mat, "#cc4444")
+                   "Random Forest (site): MAT", rmse_rf_mat, "#cc4444")
 p3 <- make_scatter(sp$obs_mat, sp$pip_mat,
                    "Observed MAT (°C)", "Predicted MAT (°C)",
-                   "PIP site-aggregated — MAT", rmse_pip_mat, "#4444cc")
+                   "PIP site-aggregated: MAT", rmse_pip_mat, "#4444cc")
 p4 <- make_scatter(sp$obs_map, sp$lm_map,
                    "Observed MAP (mm)", "Predicted MAP (mm)",
-                   "Linear Model (site) — MAP", rmse_lm_map, "#888888")
+                   "Linear Model (site): MAP", rmse_lm_map, "#888888")
 p5 <- make_scatter(sp$obs_map, sp$rf_map,
                    "Observed MAP (mm)", "Predicted MAP (mm)",
-                   "Random Forest (site) — MAP", rmse_rf_map, "#cc4444")
+                   "Random Forest (site): MAP", rmse_rf_map, "#cc4444")
 p6 <- make_scatter(sp$obs_map, sp$pip_map,
                    "Observed MAP (mm)", "Predicted MAP (mm)",
-                   "PIP site-aggregated — MAP", rmse_pip_map, "#4444cc")
+                   "PIP site-aggregated: MAP", rmse_pip_map, "#4444cc")
 
 grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 3)
 ```
 
-## What the comparison shows
-
-**MAT**: The linear model (`r round(rmse_lm_mat, 2)`°C) is the weakest of the three site-level approaches, which mirrors the pattern at the species level. Random Forest (`r round(rmse_rf_mat, 2)`°C) is the strongest non-phylogenetic model. Site-aggregated PIP (`r round(rmse_pip_mat, 2)`°C) sits between them: it improves on species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C) by gaining the noise-reduction benefit of site averaging, but does not reach the RF because the PIP coefficients are trained at the species level.
-
-**MAP**: The linear model (`r round(rmse_lm_map, 2)` log RMSE) is again the weakest. Random Forest and site-aggregated PIP are similar. Species-level PIP (`r round(comp_map$RMSE[comp_map$Model == "PIP (species)"], 3)`) remains the overall best for MAP — MAP has a stronger species-level phylogenetic signal than MAT, and averaging within sites smooths out some of that signal rather than sharpening it.
-
-**Practical implication**: For a real fossil assemblage, site-aggregated PIP is the recommended approach. Each taxon gets a phylogenetically informed estimate, and averaging across taxa gives the locality estimate. The method outperforms treating each fossil taxon in isolation (species-level PIP) and does not require the site-mean trait averaging that is impractical for small fossil assemblages.
+For MAT, Site-aggregated PIP (`r round(rmse_pip_mat, 2)`°C) is the weakest of the three. Random Forest (`r round(rmse_rf_mat, 2)`°C) is one of the strongest non-phylogenetic site model. The linear model (`r round(rmse_lm_mat, 2)`°C) falls between them. For MAP, the linear model is the weakest; Random Forest and site-aggregated PIP are similar.
 
 ---
 
-# Sample Size and Predictive Accuracy
+# Cross-Level Comparison and Sample Size
 
-## Motivation
+## Full model comparison
 
-The site-level comparison above uses full site means — all specimens averaged together. In practice, a fossil locality may yield only a handful of identifiable leaf taxa. The question is: at what assemblage size does each method break down, and does PIP retain an advantage when data are sparse?
+The table below combines all models across both levels.
 
-To test this, we repeatedly subsample N specimens from each training site and compare RMSE from the site-level linear model against site-aggregated PIP. For the linear model, the N subsampled specimens are averaged to a single set of trait means, which are fed to the trained LM. For PIP, the unique species represented in the N specimens are identified and their species-level LOOCV predictions are averaged. Each sample size is repeated `r N_BOOT <- read.csv("tables/sample_size_results.csv")$n[1]; 200` times per site.
+```{r full-comparison-mat}
+comp_mat$RMSE <- round(comp_mat$RMSE, 3)
+comp_map$RMSE <- round(comp_map$RMSE, 3)
 
-## Results
+kable(comp_mat[, c("Model", "RMSE", "Level")],
+      caption = "MAT RMSE (°C). LOOCV for PIP models; 10-fold CV for all other models.",
+      row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
+  row_spec(which(comp_mat$Model == "PIP (site-aggregated)"), bold = TRUE)
+```
+
+```{r full-comparison-map}
+kable(comp_map[, c("Model", "RMSE", "Level")],
+      caption = "log(MAP) RMSE. LOOCV for PIP models; 10-fold CV for all other models.",
+      row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE) |>
+  row_spec(which(comp_map$Model == "PIP (species)"), bold = TRUE)
+```
+
+For MAT, site-aggregated PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (site-aggregated)"], 2)`°C) improves over species-level PIP (`r round(comp_mat$RMSE[comp_mat$Model == "PIP (species)"], 2)`°C). Averaging within sites reduces specimen-level noise while retaining the phylogenetic adjustment. Site-level non-phylogenetic models still have lower RMSE, likely because site averaging also reduces between-species trait variation that the phylogenetic model has not fully accounted for.
+
+For log(MAP), species-level PIP has the lowest RMSE. 
+
+Site-aggregated PIP outperforms treating each species in isolation (species-level PIP) for MAT, by gaining the noise-reduction benefit of averaging across taxa. It does not require computing site-mean traits, making it applicable when only a small number of species are available.
+
+## Sample size analysis
+
+The comparison above uses full site means, with all specimens averaged together. In practice, a site may yield only a small number of identifiable taxa. The question is: at what sample size does each method break down, and does PIP retain an advantage when data are sparse?
+
+To test this, we repeatedly subsample up to N specimens from each training site and compare RMSE from the site-level linear model against site-aggregated PIP. Sites with fewer than N specimens contribute all their specimens, so all `r nrow(read.csv("data/dat_site.csv"))` sites are included at every sample size. For the linear model, the subsampled specimens are averaged to a single set of trait means, which are fed to the trained LM. For PIP, the species in the subsample that are present in the training set are identified, and their species-level LOOCV predictions are averaged weighted by specimen count in the subsample, matching the LM's implicit abundance-weighting. Both models are evaluated on the same sites within each replicate: sites where no training species appeared in the subsample are excluded from both RMSE calculations. Each sample size is repeated 200 times per site.
 
 ```{r sample-size-plot, fig.height=7, fig.width=10}
 ss     <- read.csv("tables/sample_size_results.csv")
 counts <- read.csv("tables/site_specimen_counts.csv")
-full_n <- counts$median_n   # median specimens per site = 27
+full_n <- counts$median_n
 
-# Full-site CV RMSE from the comparison table (proper held-out evaluation)
 ref_lm_mat  <- comp_mat$RMSE[comp_mat$Model == "LM (site)"]
 ref_pip_mat <- comp_mat$RMSE[comp_mat$Model == "PIP (site-aggregated)"]
 ref_lm_map  <- comp_map$RMSE[comp_map$Model == "LM (site)"]
 ref_pip_map <- comp_map$RMSE[comp_map$Model == "PIP (site-aggregated)"]
 
 ss_long_mat <- data.frame(
-  n       = rep(ss$n, 2),
-  n_sites = rep(ss$n_sites, 2),
-  mean    = c(ss$lm_mat_mean, ss$pip_mat_mean),
-  lo      = c(ss$lm_mat_lo,   ss$pip_mat_lo),
-  hi      = c(ss$lm_mat_hi,   ss$pip_mat_hi),
-  model   = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
+  n     = rep(ss$n, 2),
+  mean  = c(ss$lm_mat_mean, ss$pip_mat_mean),
+  lo    = c(ss$lm_mat_lo,   ss$pip_mat_lo),
+  hi    = c(ss$lm_mat_hi,   ss$pip_mat_hi),
+  model = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
 )
 ss_long_map <- data.frame(
-  n       = rep(ss$n, 2),
-  n_sites = rep(ss$n_sites, 2),
-  mean    = c(ss$lm_map_mean, ss$pip_map_mean),
-  lo      = c(ss$lm_map_lo,   ss$pip_map_lo),
-  hi      = c(ss$lm_map_hi,   ss$pip_map_hi),
-  model   = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
+  n     = rep(ss$n, 2),
+  mean  = c(ss$lm_map_mean, ss$pip_map_mean),
+  lo    = c(ss$lm_map_lo,   ss$pip_map_lo),
+  hi    = c(ss$lm_map_hi,   ss$pip_map_hi),
+  model = rep(c("Linear Model (site)", "PIP (site-aggregated)"), each = nrow(ss))
 )
 
 pal <- c("Linear Model (site)" = "#888888", "PIP (site-aggregated)" = "#4444cc")
 
 make_ss_plot <- function(dat, ref_lm, ref_pip, ylab, title) {
-  # CV reference points (open diamonds) positioned at median specimens per site
   cv_pts <- data.frame(
     n     = c(full_n, full_n),
     mean  = c(ref_lm, ref_pip),
@@ -440,45 +476,35 @@ make_ss_plot <- function(dat, ref_lm, ref_pip, ylab, title) {
     geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.15, colour = NA) +
     geom_line(linewidth = 1) +
     geom_point(size = 2) +
-    # CV reference points: open diamonds, slightly larger
     geom_point(data = cv_pts, aes(x = n, y = mean, colour = model),
                shape = 18, size = 5, show.legend = FALSE) +
     annotate("text", x = full_n + 1, y = ref_lm - diff(range(dat$mean)) * 0.04,
              label = "Full site\nmean (CV)", hjust = 0, size = 2.8, colour = "grey40") +
-    geom_text(data = dat[dat$model == "Linear Model (site)", ],
-              aes(x = n, y = max(dat$hi) * 1.03,
-                  label = paste0("n=", n_sites)),
-              colour = "grey50", size = 2.5, vjust = 0) +
     scale_colour_manual(values = pal) +
     scale_fill_manual(values = pal) +
     scale_x_continuous(breaks = unique(dat$n)) +
     theme_minimal(base_size = 12) +
     theme(legend.position = "bottom", legend.title = element_blank()) +
     labs(title = title,
-         x     = "Specimens subsampled per site",
-         y     = ylab,
-         caption = paste0("Filled circles: bootstrap RMSE (random subsampling). ",
-                          "Diamonds: full site-mean performance (10-fold CV, median N = ",
-                          full_n, "). Labels: sites with ≥ N specimens."))
+         x     = "Specimens subsampled per site (all 92 sites included)",
+         y     = ylab)
 }
 
-p_mat <- make_ss_plot(ss_long_mat, ref_lm_mat, ref_pip_mat, "RMSE (°C)",       "MAT")
+p_mat <- make_ss_plot(ss_long_mat, ref_lm_mat, ref_pip_mat, "RMSE (°C)",        "MAT")
 p_map <- make_ss_plot(ss_long_map, ref_lm_map, ref_pip_map, "RMSE (log mm/yr)", "log(MAP)")
 
 grid.arrange(p_mat, p_map, ncol = 2)
 ```
 
-## Interpretation
+*Filled circles: bootstrap RMSE (200 replicates). Sites with fewer than N specimens contribute all their specimens. Diamonds: full site-mean CV performance (10-fold CV for LM, LOOCV for PIP), placed at the median site size (N = `r full_n`).*
 
-Two different evaluations are shown. The filled circles with ribbons come from the bootstrap: the LM is given trait means computed from a random subsample of N specimens, while PIP averages species-level LOOCV predictions for whatever species appear in those N specimens. The diamond markers show each method's full-site performance from the main comparison section (10-fold CV for LM, LOOCV for PIP), placed at the median specimens per site (N = `r full_n`).
+Two different evaluations are shown. The filled circles with ribbons come from the bootstrap: the LM is given trait means from a random subsample of N specimens, while PIP averages species-level LOOCV predictions for whatever species appear in those N specimens. The diamond markers show each method's full-site performance (10-fold CV for LM, LOOCV for PIP), placed at the median specimens per site (N = `r full_n`).
 
 For MAT, the bootstrap shows PIP outperforming the LM at every subsampled N. This is partly a methodological asymmetry: the LM was trained on full site means and receives noisier inputs when only N < full-N specimens are available, while PIP's precomputed species-level predictions do not degrade in the same way. The diamond markers resolve this: at the full site mean (proper CV), the LM (`r ref_lm_mat`°C) outperforms site-aggregated PIP (`r ref_pip_mat`°C). The LM curve is converging toward its CV performance, and the crossover occurs somewhere around the median site size.
 
 For log(MAP), PIP holds its advantage even at the full site mean, consistent with its lead in the main comparison table.
 
-The practical implication depends on what a fossil assemblage looks like. The bootstrap lines represent the realistic scenario — sparse data from a locality. For fossil assemblages of fewer than roughly `r counts$median_n` specimens (the median site size in the training data), PIP is expected to outperform the site-level LM for MAT. For larger, well-sampled assemblages approaching the full site-mean condition, the LM is competitive. For MAP, PIP is preferred at any sample size.
-
----
+For sites with fewer than roughly `r counts$median_n` specimens (the median site size in the training data), PIP is expected to outperform the site-level LM for MAT. For larger, well-sampled sites approaching the full site-mean condition, the LM is competitive. For MAP, PIP is preferred at any sample size.
 
 ---
 
@@ -559,7 +585,7 @@ Scripts run in order:
 
 ```
 00_data_cleaning.R      # trait filling, species + site aggregation, scaffold tree
-01_nophy_regression.R   # LM, Elastic Net, Random Forest — species and site level
+01_nophy_regression.R   # LM, Elastic Net, Random Forest (species and site level)
 02_phy_regression.R     # PGLS (MAT + MAP), save PIP components
 03_comparison.R         # LOOCV, RMSE tables, importance, plots
 04_fossil_predictions.R # fossil climate prediction via PIP

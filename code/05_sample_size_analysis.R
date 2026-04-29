@@ -65,63 +65,73 @@ for (s in seq_along(SAMPLE_SIZES)) {
   n <- SAMPLE_SIZES[s]
   cat("Sample size N =", n, "... ")
 
-  # Sites with at least n specimens and observed climate
-  valid_sites <- names(site_sp_idx)[sapply(site_sp_idx, length) >= n]
+  # All sites with observed climate; small sites use all their specimens
+  valid_sites <- names(site_sp_idx)
   cat(length(valid_sites), "sites\n")
 
-  lm_mat_boot  <- numeric(N_BOOT)
-  pip_mat_boot <- numeric(N_BOOT)
-  lm_map_boot  <- numeric(N_BOOT)
-  pip_map_boot <- numeric(N_BOOT)
+  lm_mat_boot    <- numeric(N_BOOT)
+  pip_mat_boot   <- numeric(N_BOOT)
+  lm_map_boot    <- numeric(N_BOOT)
+  pip_map_boot   <- numeric(N_BOOT)
+  pip_ok_n_boot  <- numeric(N_BOOT)
 
   for (b in seq_len(N_BOOT)) {
-    lm_mat_pred  <- numeric(length(valid_sites))
     pip_mat_pred <- numeric(length(valid_sites))
-    lm_map_pred  <- numeric(length(valid_sites))
     pip_map_pred <- numeric(length(valid_sites))
     obs_mat      <- numeric(length(valid_sites))
     obs_map      <- numeric(length(valid_sites))
+    # Trait matrix for batched LM imputation + prediction
+    trait_mat    <- matrix(NA_real_, nrow = length(valid_sites),
+                           ncol = length(pred_names),
+                           dimnames = list(valid_sites, pred_names))
 
     for (s_idx in seq_along(valid_sites)) {
       site_name <- valid_sites[s_idx]
       rows      <- site_sp_idx[[site_name]]
-      sub_rows  <- sample(rows, n, replace = FALSE)
+      sub_rows  <- sample(rows, min(n, length(rows)), replace = FALSE)
       sub_dat   <- raw_dat[sub_rows, ]
 
-      # ── LM prediction ────────────────────────────────────────────────────────
-      # Compute subsample-mean traits, impute NAs, predict with trained LM
+      # ── Collect trait means for LM (batch imputed below) ─────────────────────
       avail_traits <- intersect(pred_names, names(sub_dat))
-      trait_means  <- colMeans(sub_dat[, avail_traits, drop = FALSE], na.rm = TRUE)
-      trait_df     <- as.data.frame(as.list(trait_means))
-      # Pad any missing columns with NA (will be imputed)
-      for (tr in pred_names[!pred_names %in% avail_traits]) trait_df[[tr]] <- NA
-      trait_df  <- trait_df[, pred_names, drop = FALSE]
-      trait_imp <- predict(impute_site, newdata = trait_df)
-
-      lm_mat_pred[s_idx] <- predict(site_mods$mat$LM,     newdata = trait_imp)
-      lm_map_pred[s_idx] <- predict(site_mods$log_map$LM, newdata = trait_imp)
+      trait_mat[s_idx, avail_traits] <-
+        colMeans(sub_dat[, avail_traits, drop = FALSE], na.rm = TRUE)
 
       # ── PIP prediction ────────────────────────────────────────────────────────
-      # Average species-level LOOCV predictions for species in the subsample
+      # Weighted average of species-level LOOCV predictions, weighted by
+      # specimen count in the subsample (matches LM's implicit abundance-weighting)
       sub_spp <- intersect(unique(sub_dat$genusSpecies), names(mat_loo))
-      pip_mat_pred[s_idx] <- if (length(sub_spp) > 0) mean(mat_loo[sub_spp]) else NA
-      pip_map_pred[s_idx] <- if (length(sub_spp) > 0) mean(map_loo[sub_spp]) else NA
+      if (length(sub_spp) > 0) {
+        spp_wts <- as.numeric(table(sub_dat$genusSpecies)[sub_spp])
+        pip_mat_pred[s_idx] <- weighted.mean(mat_loo[sub_spp], w = spp_wts)
+        pip_map_pred[s_idx] <- weighted.mean(map_loo[sub_spp], w = spp_wts)
+      } else {
+        pip_mat_pred[s_idx] <- NA
+        pip_map_pred[s_idx] <- NA
+      }
 
       obs_mat[s_idx] <- dat_site[site_name, "mat"]
       obs_map[s_idx] <- dat_site[site_name, "log_map"]
     }
 
-    # RMSE: for PIP drop sites where no training species appeared in the subsample
-    pip_ok <- !is.na(pip_mat_pred)
-    lm_mat_boot[b]  <- sqrt(mean((obs_mat        - lm_mat_pred)^2))
-    pip_mat_boot[b] <- sqrt(mean((obs_mat[pip_ok] - pip_mat_pred[pip_ok])^2))
-    lm_map_boot[b]  <- sqrt(mean((obs_map        - lm_map_pred)^2))
-    pip_map_boot[b] <- sqrt(mean((obs_map[pip_ok] - pip_map_pred[pip_ok])^2))
+    # ── Batch impute and predict for LM (one call per bootstrap) ─────────────
+    trait_imp    <- predict(impute_site, newdata = as.data.frame(trait_mat))
+    lm_mat_pred  <- as.numeric(predict(site_mods$mat$LM,     newdata = trait_imp))
+    lm_map_pred  <- as.numeric(predict(site_mods$log_map$LM, newdata = trait_imp))
+
+    # RMSE: restrict both models to sites where PIP has a prediction
+    # (sites where at least one training species appeared in the subsample)
+    pip_ok           <- !is.na(pip_mat_pred)
+    pip_ok_n_boot[b] <- sum(pip_ok)
+    lm_mat_boot[b]   <- sqrt(mean((obs_mat[pip_ok] - lm_mat_pred[pip_ok])^2))
+    pip_mat_boot[b]  <- sqrt(mean((obs_mat[pip_ok] - pip_mat_pred[pip_ok])^2))
+    lm_map_boot[b]   <- sqrt(mean((obs_map[pip_ok] - lm_map_pred[pip_ok])^2))
+    pip_map_boot[b]  <- sqrt(mean((obs_map[pip_ok] - pip_map_pred[pip_ok])^2))
   }
 
   results[[s]] <- data.frame(
     n            = n,
     n_sites      = length(valid_sites),
+    pip_n_sites  = round(mean(pip_ok_n_boot)),
     lm_mat_mean  = mean(lm_mat_boot),
     lm_mat_lo    = quantile(lm_mat_boot,  0.025),
     lm_mat_hi    = quantile(lm_mat_boot,  0.975),
@@ -141,7 +151,7 @@ for (s in seq_along(SAMPLE_SIZES)) {
 ss_results <- do.call(rbind, results)
 write.csv(ss_results, "tables/sample_size_results.csv", row.names = FALSE)
 cat("\nSaved tables/sample_size_results.csv\n")
-print(ss_results[, c("n", "n_sites", "lm_mat_mean", "pip_mat_mean",
+print(ss_results[, c("n", "n_sites", "pip_n_sites", "lm_mat_mean", "pip_mat_mean",
                       "lm_map_mean", "pip_map_mean")])
 
 # ==============================================================================
