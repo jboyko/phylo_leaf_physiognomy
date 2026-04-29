@@ -11,8 +11,8 @@ This equation is computed in two distinct parts in the R script: the trait-based
 
 This part calculates the expected climate value based strictly on the measured morphology of the fossil leaves, ignoring evolutionary history.
 
-* **$X$ (`X_sp_mat` or `X_site_mat`)**: The design matrix of fossil traits. It has dimensions $m \times p$, where $m$ is the number of fossil observations and $p$ is the number of trait variables plus an intercept column. Each row contains the trait data for one fossil entity.
-* **$\beta$ (`pip$beta_mat`)**: A column vector of dimensions $p \times 1$ containing the regression coefficients. These coefficients were previously estimated from the modern species data using Phylogenetic Generalized Least Squares (PGLS).
+* **$X$ (`X_sp_mat` or `X_site_mat`)**: The design matrix of fossil traits. It has dimensions $m \times p$, where $p$ is the number of trait variables plus an intercept column and $m$ depends on the variant: $m$ = number of fossil species for PIP sp (and LM sp), $m$ = number of species-by-site rows for PIP+site, and $m$ = number of fossil sites for LM site. Each row contains the trait data for one fossil entity.
+* **$\beta$ (`pip$beta_mat`)**: A column vector of dimensions $p \times 1$ containing the regression coefficients. These coefficients were estimated from the modern species data using Phylogenetic Generalized Least Squares (PGLS) with Pagel's $\lambda$ jointly estimated.
 
 The operation $X\beta$ represents standard matrix multiplication. The trait values in each row of $X$ are multiplied by their corresponding coefficients in $\beta$ and summed, resulting in a base predicted value of dimensions $m \times 1$. 
 
@@ -20,14 +20,14 @@ The operation $X\beta$ represents standard matrix multiplication. The trait valu
 
 This part calculates the correction factor applied to the trait-based prediction. It uses the known errors of the modern species to adjust the predictions of the fossil species based on how closely related they are on the evolutionary tree.
 
-* **$e$ (`resid_ord_mat`)**: A column vector of dimensions $n \times 1$, where $n$ is the number of modern species. This vector contains the residuals (actual climate minus trait-predicted climate) for the modern species.
-* **$V_{inv}$ (`V_inv_mat`)**: A square matrix of dimensions $n \times n$. It is the inverse of the variance-covariance matrix of the modern species. The original covariance matrix represents the shared evolutionary branch lengths between modern species pairs. The inverse matrix is used to account for the non-independence of the modern species data.
-* **$V_{cross}^T$ (`t(V_cross_mat)`)**: $V_{cross}$ is a cross-covariance matrix of dimensions $n \times m$, representing the shared evolutionary branch lengths between the $n$ modern species and the $m$ fossil species. The operation `t()` transposes it to dimensions $m \times n$. The script scales this matrix by Pagel's $\lambda$ (`pip$lambda_mat`), a parameter that quantifies the strength of the phylogenetic signal.
+* **$e$ (`resid_ord_mat`)**: A column vector of dimensions $n \times 1$, where $n$ is the number of modern species. This vector contains the raw residuals (actual climate minus $X\beta$) for the modern species.
+* **$V_{inv}$ (`V_inv_mat`)**: A square matrix of dimensions $n \times n$. It is the inverse of the $\lambda$-transformed phylogenetic covariance matrix `V_lam` for the modern species: off-diagonal entries of the raw VCV are multiplied by Pagel's $\lambda$ while the diagonal is preserved (`V_lam <- V * lambda; diag(V_lam) <- diag(V)`). The raw VCV represents shared evolutionary branch lengths between modern species pairs; the $\lambda$-scaling matches the covariance structure under which $\beta$ was estimated, and the inversion accounts for non-independence among the modern species.
+* **$V_{cross}^T$ (`t(V_cross_mat)`)**: $V_{cross}$ is a cross-covariance matrix of dimensions $n \times m$, representing the shared evolutionary branch lengths between the $n$ modern species and the $m$ fossil entries. Because no fossil species appears in the extant training dataset, the modern and fossil tip sets are disjoint with respect to the VCV the model was trained on — every entry of $V_{cross}$ is therefore an off-diagonal cell of the full VCV (a shared branch length between two different taxa, never a self-covariance). This means the entire block is uniformly scaled by $\lambda$ (`pip$lambda_mat`) with no diagonal exception, consistent with the $\lambda$-scaling already implicit in $V_{inv}$. The operation `t()` transposes it to dimensions $m \times n$.
 
 **The Sequential Calculation:**
 
-1.  **$V_{inv} e$**: The inverse covariance matrix is multiplied by the modern residuals. This isolates the independent phylogenetic error for each modern species, removing the redundant error caused by shared ancestry among the modern species themselves. The result is an $n \times 1$ vector.
-2.  **$V_{cross}^T (V_{inv} e)$**: The transposed cross-covariance matrix is multiplied by the isolated modern errors. This projects the modern errors onto the fossil species. If a fossil species shares a long evolutionary branch with a specific modern species, a larger proportion of that modern species' residual error is applied as an adjustment to the fossil's prediction. The final result is an $m \times 1$ vector (`phylo_adj_mat`).
+1.  **$V_{inv} e$**: The inverse covariance matrix is multiplied by the modern residuals. This is the GLS "whitening" step: it solves $V x = e$, decorrelating the residuals so that variance shared via common ancestry among the modern species is not double-counted when projected onto the fossils. The result is an $n \times 1$ vector.
+2.  **$V_{cross}^T (V_{inv} e)$**: The transposed cross-covariance matrix is multiplied by the decorrelated modern errors. This projects them onto the fossil entries. If a fossil shares a long evolutionary branch with a specific modern species, a larger proportion of that modern species' (decorrelated) residual is applied as an adjustment to the fossil's prediction. The final result is an $m \times 1$ vector (`phylo_adj_mat`).
 
 ### 3. The Final Prediction
 
@@ -35,15 +35,17 @@ In Sections 9 and 10 of the script, the two components are added together:
 
 $$\hat{y} = X\beta + \text{phylo\_adj}$$
 
-* **PIP sp**: Uses the aggregated species-level trait means for matrix $X$.
-* **PIP+site**: Uses the specific site-level trait values for matrix $X$, but utilizes the exact same species-level phylogenetic adjustment vector.
+* **PIP sp**: Uses one row per fossil species, with that species' grand-mean trait values (averaged across all sites it appears in) for matrix $X$. Per-species predictions are then averaged within each fossil site.
+* **PIP+site**: Uses one row per species-by-site combination, with the species' site-specific trait values for matrix $X$. The phylogenetic adjustment is indexed by species, so all rows for the same species share the same adjustment regardless of site. Per-(species, site) predictions are averaged within each fossil site.
 
-The final output is an $m \times 1$ vector containing the temperature (`yhat_sp_mat`) or precipitation (`yhat_sp_map`) prediction for each fossil input. Because the precipitation model operates on $\log(\text{MAP})$, the script applies the exponential function `exp()` to the final vector to return the values to a standard linear scale.
+The final output of $X\beta + \text{phylo\_adj}$ is an $m \times 1$ vector containing the temperature (`yhat_sp_mat`) or precipitation (`yhat_sp_map`) prediction for each fossil input. Because the precipitation model operates on $\log(\text{MAP})$, the script applies the exponential function `exp()` to the final vector to return the values to a standard linear scale.
 
 # PART 2
 This example calculates a Phylogenetically-Informed Prediction (PIP) for the Mean Annual Temperature (MAT) of a single fossil species.
 
-Assume the biological trait measured is the proportion of leaves with toothed margins, designated as Tooth Proportion (TP). 
+Assume the biological trait measured is the proportion of leaves with toothed margins, designated as Tooth Proportion (TP).
+
+For simplicity, assume Pagel's $\lambda = 1$, so $V_{cross}$ and $V_{inv}$ are unscaled (scaling by $\lambda$ would multiply $V_{cross}$ entry-wise by $\lambda$ and replace $V$ with $V_{lam}$ before inversion).
 
 ### 1. Initial Parameters and Data
 
@@ -57,7 +59,7 @@ There is one fossil species, F. Its trait is measured from the fossil record, bu
 * **Species F:** $\text{TP} = 0.5$, $\text{MAT} = ?$
 
 **The Regression Model ($\beta$)**
-Prior analysis of all modern plant species yielded a standard linear regression model predicting MAT from TP. The coefficients are an intercept of 25 and a slope of -15.
+Take the PGLS coefficients as given for this illustration: intercept = 25 and slope = -15. (In the actual pipeline, $\beta$ comes from `pglmEstLambda()` fit on the full extant species dataset; here we just adopt fixed values so the rest of the algebra is concrete.)
 $$\beta = \begin{bmatrix} 25 \\ -15 \end{bmatrix}$$
 
 ### 2. Computing the Trait-Based Prediction ($X\beta$)
