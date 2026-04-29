@@ -16,7 +16,7 @@ Run scripts in order. Each script sets `setwd()` to a hardcoded path — update 
 Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate to species, build scaffold tree
 Rscript code/01_nophy_regression.R   # Fit LM, ElasticNet, Random Forest via caret
 Rscript code/02_phy_regression.R     # Fit PGLS (MAT + MAP), save PIP components
-Rscript code/03_comparison.R         # LOOCV, RMSE tables, variable importance, plots
+Rscript code/03_loso_cv.R            # LOSO CV across all 12 model configs, RMSE tables, model summaries
 Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossil specimens via PIP
 ```
 
@@ -28,24 +28,64 @@ rmarkdown::render("report.Rmd")
 
 ### What each script does
 
-**`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating to species-level means and site-level means. Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. Outputs `data/data_species.csv`, `data/dat_site.csv`, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
+**`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating. Outputs three site-level datasets for model comparison: `dat_site.csv` (specimen → site, zero-filled), `dat_site_sp_zero.csv` (species → site, zero-filled, species-weighted), and `dat_site_peppe.csv` (species → site, untoothed excluded from tooth trait averages — matching Peppe et al. 2011). Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. A `BUILD_PHYLOGENY` flag (default `FALSE`) skips the slow tree-building sections when only data changes. Outputs `data/data_species.csv`, the three site CSVs, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
 
-**`01_nophy_regression.R`** — Fits LM, ElasticNet, and Random Forest for MAT and log(MAP) using 10-fold CV via `caret`. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Pre-imputes once via `bagImpute` before CV for speed. Fits models at both species level and site level. Saves `models/nophy_models.rds` and `models/site_models.rds`.
+**`01_nophy_regression.R`** — Fits LM, ElasticNet, and Random Forest at **species level** for MAT and log(MAP) using 10-fold CV via `caret`. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Fits **LM only** at site level across six combinations (3 datasets × bagImpute / complete-case). All site configs stored under `site_models$configs`; backward-compatible top-level keys preserved. Saves `models/nophy_models.rds` and `models/site_models.rds`.
 
-**`02_phy_regression.R`** — Selects active traits from non-zero ElasticNet coefficients, fits PGLS for MAT and log(MAP) via `pglmEstLambda()`, saves all components for fossil prediction to `models/pip_components.rds`.
+**`02_phy_regression.R`** — Uses the same 12 predictor set as the LM (loaded from `nophy_models.rds`) — no ENet-based trait selection, ensuring fair comparison. Fits PGLS for MAT and log(MAP) via `pglmEstLambda()` in two variants: `impute` (bagImpute) and `cc` (complete-case, phylogeny pruned to complete species). All variants stored under `pip_components$configs`; backward-compatible top-level keys point to the `impute` variant. Saves `models/pip_components.rds`.
 
-**`03_comparison.R`** — All reporting: nophy CV summaries, RF variable importance, PDP plots, vectorised PIP LOOCV (`ŷ₋ᵢ = yᵢ − (Kε)ᵢ/Kᵢᵢ`), RMSE comparison across all models (species-level, site-level, phylogenetic), scatter plots.
+**`04_fossil_predictions.R`** — Grafts each unique fossil species onto `tre_scaffold.tre` (one tip per species) and runs four prediction approaches, writing a site-level comparison table to `tables/fossil_site_comparison.csv` and per-species PIP predictions to `tables/fossil_predictions.csv`:
 
-**`04_fossil_predictions.R`** — Grafts fossils onto `tre_scaffold.tre`, prunes to training + fossil tips, and applies the PIP formula: `ŷ = Xβ + V[training,fossil] · V[training,training]⁻¹ · ε`. Writes `tables/fossil_predictions.csv`. The `PLACEMENT_FALLBACK` flag at the top of the script controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default — walks up to split the correct branch at the fossil's age) or `"node"` (attaches at the MRCA with a minimal edge).
+| Method | Training data | Fossil input | Aggregation |
+| ------ | ------------ | ------------ | ----------- |
+| LM sp | extant species means | fossil species grand means | average per site |
+| LM site | extant site means | fossil site-mean traits | direct (one per site) |
+| PIP sp | extant species (PGLS) | fossil species grand means | average per site |
+| PIP+site | extant species (PGLS) | site-specific species means | average per site |
+
+PIP sp and PIP+site share the same phylogenetic adjustment (same tip placement); they differ only in the trait values used in the GLS term. The `PLACEMENT_FALLBACK` flag controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default) or `"node"`.
+
+**`03_loso_cv.R`** — Leave-one-site-out (LOSO) cross-validation across all 12 model configurations. Holds out each site entirely, retrains all models from scratch on the remaining sites, and predicts the held-out site. Stricter than analytical LOOCV — entire sites are withheld and models are retrained each fold, which better mirrors the fossil prediction setting. Saves per-fold model objects to `models/loso_cv_fold_XX.rds`. Outputs: `tables/loso_cv_rmse.csv`, `tables/loso_cv_site_predictions.csv`, `tables/loso_cv_model_coefs.csv` (per-fold coefficient estimates), `tables/loso_cv_model_fit.csv` (per-fold R², residual SE, lambda).
 
 **`report.Rmd`** — R Markdown report covering methodology and results. Renders to `report.html`.
+
+## LOSO CV Model Configurations
+
+`03_loso_cv.R` evaluates 6 model types, each in two NA-handling variants (bagImpute and complete-case), for a total of 12 configurations per climate target. Because the held-out unit is always a site, all predictions are site-level values. Column names use `sp_site` to indicate a species-level model whose predictions are averaged to site, and `site` to indicate a model trained directly on site-level data.
+
+**Species-level LM (`lm_sp_site`)**
+Ordinary least squares trained on species grand means (averaged across all training sites). Each held-out species gets a prediction from Xβ; those are averaged to a site estimate. No use of phylogenetic information. The trait-climate relationship learned at species resolution attenuates the signal relative to site-level training (e.g. `margin.score` coefficient ~0.90 vs ~5.16) because within-species trait variation across sites blurs the trait-climate correlation.
+
+**Site-level LM — `specimen` (`lm_site_specimen`)**
+Ordinary least squares trained on site means computed by averaging specimens directly to site. Simplest aggregation. Tooth traits are zero-filled for untoothed leaves before averaging.
+
+**Site-level LM — `sp_zero` (`lm_site_sp_zero`)**
+Ordinary least squares trained on site means via a two-step aggregation: specimens → species-within-site → site. Zero-filling still applied. Weights sites by species diversity rather than specimen count.
+
+**Site-level LM — `peppe` (`lm_site_peppe`)**
+Same two-step aggregation as `sp_zero`, but no zero-filling — untoothed species contribute `NA` to tooth traits, which are dropped via `na.rm = TRUE`. Matches the Peppe et al. (2011) methodology.
+
+**PGLS (`pgls_sp_site`)**
+Generalised least squares on species means with the phylogenetic VCV as the covariance structure. Beta is estimated as (X'V⁻¹X)⁻¹X'V⁻¹y, accounting for phylogenetic non-independence during fitting. Prediction for held-out species is Xβ only — no phylogenetic correction is applied at prediction time. Species predictions are averaged to site.
+
+**PIP (`pip_sp_site`)**
+Shares the same beta estimation as PGLS. Adds a phylogenetic covariance correction at prediction time: ŷ = Xβ + C·K·ε, where C is the cross-covariance between held-out and training species, K = V⁻¹, and ε are training residuals. Borrows signal from phylogenetically close training species. Species predictions are averaged to site.
+
+**Note on PGLS vs LM sp coefficients:** Comparing PGLS and LM sp trained on the same species-level data reveals that the phylogenetic VCV has little effect on the coefficient point estimates — most predictors yield similar betas under both methods, with differences concentrated in noisy, collinear tooth traits where small reweighting of observations causes large swings regardless of phylogenetic structure. The primary effect of PGLS is on standard errors and the residual covariance structure, not on the estimated relationships. This means any difference in predictive performance between LM sp and PIP is attributable to the prediction-time covariance correction (C·K·ε) rather than to fundamentally different coefficient estimates. The larger performance gap between species-level and site-level models is driven by aggregation level, not by the phylogenetic correction.
+
+| Axis | Options |
+| --- | --- |
+| Training level | species grand mean (`lm_sp_site`, `pgls_sp_site`, `pip_sp_site`), site mean (`lm_site_*`) |
+| Site aggregation method | specimen direct, sp_zero, peppe (site LM only) |
+| Phylogenetic adjustment | none (LM), fit-only (PGLS), fit + predict (PIP) |
+| NA handling | bagImpute, complete-case |
 
 ## Fossil-Measurable Trait Set
 
 All models are restricted to traits that can be measured from fossil leaf specimens (Dana Royer, pers. comm.). This ensures the extant training model can be directly applied to fossils without imputing unmeasurable characters.
 
 | Trait | Notes |
-|-------|-------|
+| ----- | ----- |
 | `ln.leaf.area.mm2` | Log leaf area; Dana's `leaf.area.cm2` (same measurement) |
 | `feret.diam.ratio` | Ratio of perpendicular diameters |
 | `pw2.a.ratio` | Petiole width² / area; not always measured |
@@ -64,10 +104,10 @@ Traits excluded despite predictive power: `evergreen` (phenological — not dete
 ## Data
 
 | File | Description |
-|------|-------------|
+| ---- | ----------- |
 | `data/RoyerLeafShapeClimateDataFixedNames_June2012.csv` | Raw leaf morphology + climate data |
 | `data/best_wcvp.tre_dated` | Dated angiosperm phylogeny (tip format: `order_family_genus_species`) |
-| `data/fossil_traits.csv` | User-provided fossil specimen traits for prediction |
+| `data/fossil_traits.csv` | Fossil specimen traits for prediction — one row per species × site, with columns `fossil_name`, `species`, `site`, `genus`, `family`, `order`, `age_ma`, and the 12 trait columns. MAP units throughout are **cm** (same as the training data). |
 
 Derived outputs (`data/data_species.csv`, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, `data/name_table_full.csv`, `models/`, `plots/`, `tables/`) are excluded from version control — regenerate by running the pipeline.
 

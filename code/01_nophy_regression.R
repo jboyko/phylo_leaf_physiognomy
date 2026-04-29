@@ -1,8 +1,6 @@
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
 library(caret)
-library(glmnet)
-library(ranger)
 
 # ==============================================================================
 # 1. LOAD DATA
@@ -47,81 +45,158 @@ predictors <- dat[, predictor_names]
 # 3. PRE-IMPUTE ONCE BEFORE CARET
 # ==============================================================================
 
-# bagImpute inside each caret CV fold would repeat 60 times (10 folds x 3
-# methods x 2 targets). Pre-imputing once is ~60x faster with negligible
-# effect on CV estimates (imputation uses predictor correlations only, not
-# the response, so leakage is minimal).
+# bagImpute inside each caret CV fold would repeat many times. Pre-imputing
+# once is much faster with negligible effect on CV estimates (imputation uses
+# predictor correlations only, not the response, so leakage is minimal).
 cat("Pre-imputing predictors...\n")
 impute_preproc <- preProcess(predictors, method = "bagImpute")
 predictors_imp <- predict(impute_preproc, predictors)
 
 # ==============================================================================
-# 4. FIT MODELS VIA 10-FOLD CV
+# 4. FIT SPECIES-LEVEL LM — IMPUTE AND COMPLETE-CASE VARIANTS
 # ==============================================================================
 
-ctrl <- trainControl(method = "cv", number = 10,
-                     savePredictions = "final")
+sp_configs <- list(
+  impute = list(impute = TRUE,  desc = "species, bagImpute"),
+  cc     = list(impute = FALSE, desc = "species, complete-case")
+)
 
+ctrl        <- trainControl(method = "cv", number = 10, savePredictions = "final")
 target_vars <- c("mat", "log_map")
-methods     <- c(LM = "lm", ENet = "glmnet", RF = "ranger")
-all_results <- list()
+sp_results  <- list()
 
-for (target in target_vars) {
-  cat("\n--- Target:", target, "---\n")
-  all_results[[target]] <- list()
-  for (m_label in names(methods)) {
-    cat("  Training", m_label, "...\n")
-    # Use impurity importance for RF: computed during tree construction at no
-    # extra cost. Permutation importance is more rigorous but much slower and
-    # unnecessary for predictor ranking / PDP plots.
-    tune_len <- if (methods[m_label] == "glmnet") 10 else 1
-    args     <- list(x = predictors_imp, y = dat[[target]],
-                     method = methods[m_label], trControl = ctrl,
-                     tuneLength = tune_len, preProcess = c("center", "scale"))
-    if (methods[m_label] == "ranger") args$importance <- "impurity"
-    all_results[[target]][[m_label]] <- do.call(train, args)
+for (cfg_name in names(sp_configs)) {
+  cfg <- sp_configs[[cfg_name]]
+  cat("\n===", cfg$desc, "===\n")
+
+  cfg_res <- list(desc = cfg$desc)
+
+  for (target in target_vars) {
+    if (cfg$impute) {
+      complete_rows <- !is.na(dat[[target]])
+      preds_fit     <- predictors_imp
+    } else {
+      complete_rows <- complete.cases(predictors) & !is.na(dat[[target]])
+      preds_fit     <- predictors
+    }
+    cat("  Training LM for", target, "| N:", sum(complete_rows), "\n")
+    cfg_res[[target]] <- list(LM = train(
+      x          = preds_fit[complete_rows, , drop = FALSE],
+      y          = dat[[target]][complete_rows],
+      method     = "lm",
+      trControl  = ctrl,
+      preProcess = c("center", "scale")
+    ))
   }
+
+  sp_results[[cfg_name]] <- cfg_res
 }
+
+# Backward-compatible top-level keys — impute variant, used by 02_ and 05_
+imp_sp      <- sp_results$impute
+all_results <- list(
+  configs      = sp_results,
+  pred_names   = predictor_names,
+  impute_model = impute_preproc,
+  mat          = imp_sp$mat,
+  log_map      = imp_sp$log_map
+)
 
 saveRDS(all_results, file = "models/nophy_models.rds")
 cat("\nSaved models/nophy_models.rds\n")
 
 # ==============================================================================
-# 5. SITE-LEVEL MODELS
+# 5. SITE-LEVEL LM — IMPUTE AND COMPLETE-CASE VARIANTS ACROSS THREE DATASETS
 # ==============================================================================
 
-# Traditional approach: one observation per site (site-mean traits).
-# Same 12 fossil-measurable traits, same 10-fold CV, same model types.
+# Each config specifies a site-level dataset and whether to use bagImpute or
+# complete-case analysis. All configs use LM only.
+#
+# Backward-compatible top-level keys ($mat$LM, $log_map$LM, $impute_model,
+# $pred_names) are set from specimen_impute to match the original pipeline.
+# All configs are also stored under $configs for comparison.
 
-dat_site         <- read.csv("data/dat_site.csv")
-dat_site$log_map <- log(dat_site$map)
+site_configs <- list(
+  specimen_impute = list(
+    file   = "data/dat_site.csv",
+    impute = TRUE,
+    desc   = "specimen -> site, bagImpute"
+  ),
+  specimen_cc = list(
+    file   = "data/dat_site.csv",
+    impute = FALSE,
+    desc   = "specimen -> site, complete-case"
+  ),
+  sp_zero_impute = list(
+    file   = "data/dat_site_sp_zero.csv",
+    impute = TRUE,
+    desc   = "species -> site (zero-fill), bagImpute"
+  ),
+  sp_zero_cc = list(
+    file   = "data/dat_site_sp_zero.csv",
+    impute = FALSE,
+    desc   = "species -> site (zero-fill), complete-case"
+  ),
+  peppe_impute = list(
+    file   = "data/dat_site_peppe.csv",
+    impute = TRUE,
+    desc   = "Peppe: species -> site (excl. untoothed), bagImpute"
+  ),
+  peppe_cc = list(
+    file   = "data/dat_site_peppe.csv",
+    impute = FALSE,
+    desc   = "Peppe: species -> site (excl. untoothed), complete-case"
+  )
+)
 
-na_pct_site      <- colSums(is.na(dat_site)) / nrow(dat_site)
-pred_names_site  <- fossil_traits[fossil_traits %in% names(dat_site) &
-                                    na_pct_site[fossil_traits] < NA_THRESHOLD]
-cat("Site-level predictors (", length(pred_names_site), "):",
-    paste(pred_names_site, collapse = ", "), "\n")
+site_results <- list(configs = list())
 
-preds_site     <- dat_site[, pred_names_site]
-impute_site    <- preProcess(preds_site, method = "bagImpute")
-preds_site_imp <- predict(impute_site, preds_site)
+for (cfg_name in names(site_configs)) {
+  cfg <- site_configs[[cfg_name]]
+  cat("\n===", cfg$desc, "===\n")
 
-site_results <- list()
-for (target in target_vars) {
-  cat("\n--- Site target:", target, "---\n")
-  site_results[[target]] <- list()
-  for (m_label in names(methods)) {
-    cat("  Training", m_label, "...\n")
-    tune_len <- if (methods[m_label] == "glmnet") 10 else 1
-    args     <- list(x = preds_site_imp, y = dat_site[[target]],
-                     method = methods[m_label], trControl = ctrl,
-                     tuneLength = tune_len, preProcess = c("center", "scale"))
-    if (methods[m_label] == "ranger") args$importance <- "impurity"
-    site_results[[target]][[m_label]] <- do.call(train, args)
+  d           <- read.csv(cfg$file)
+  d$log_map   <- log(d$map)
+
+  na_pct_s <- colSums(is.na(d)) / nrow(d)
+  pnames   <- fossil_traits[fossil_traits %in% names(d) &
+                               na_pct_s[fossil_traits] < NA_THRESHOLD]
+  cat("Predictors (", length(pnames), "):", paste(pnames, collapse = ", "), "\n")
+
+  preds <- d[, pnames, drop = FALSE]
+
+  if (cfg$impute) {
+    imp_obj   <- preProcess(preds, method = "bagImpute")
+    preds_fit <- predict(imp_obj, preds)
+  } else {
+    imp_obj   <- NULL
+    preds_fit <- preds
   }
+
+  cfg_res <- list(impute_model = imp_obj, pred_names = pnames, desc = cfg$desc)
+
+  for (target in target_vars) {
+    cat("  Training LM for", target, "...\n")
+    complete_rows    <- complete.cases(preds_fit) & !is.na(d[[target]])
+    cfg_res[[target]] <- list(LM = train(
+      x          = preds_fit[complete_rows, , drop = FALSE],
+      y          = d[[target]][complete_rows],
+      method     = "lm",
+      trControl  = ctrl,
+      preProcess = c("center", "scale")
+    ))
+  }
+
+  site_results$configs[[cfg_name]] <- cfg_res
 }
 
-site_results$impute_model  <- impute_site   # needed by 05_sample_size_analysis.R
-site_results$pred_names    <- pred_names_site
+# Backward-compatible top-level keys (used by 03_ and 05_) — point to the
+# original specimen -> site bagImpute config.
+orig                       <- site_results$configs$specimen_impute
+site_results$mat           <- orig$mat
+site_results$log_map       <- orig$log_map
+site_results$impute_model  <- orig$impute_model  # needed by 05_sample_size_analysis.R
+site_results$pred_names    <- orig$pred_names
+
 saveRDS(site_results, file = "models/site_models.rds")
 cat("\nSaved models/site_models.rds\n")

@@ -1,5 +1,9 @@
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
+# Set to TRUE to rebuild phylogenies (slow; only needed when tree or species
+# list changes). Set to FALSE to skip sections 4-8 and only regenerate data.
+BUILD_PHYLOGENY <- FALSE
+
 library(ape)
 library(phytools)
 
@@ -15,6 +19,10 @@ genera_names <- sapply(strsplit(dat$genusSpecies, "_"), `[`, 1)
 # ==============================================================================
 # 2. FILL TOOTH TRAITS FOR UNTOOTHED LEAVES (Dana Royer, pers. comm.)
 # ==============================================================================
+
+# Save pre-fill copy for Peppe-style aggregation (untoothed excluded from tooth
+# trait averages via na.rm = TRUE rather than pulled toward zero).
+dat_prefill <- dat
 
 # For confirmed untoothed leaves (blank AND margin.score == 1), tooth trait
 # absence is real — set to 0 (or 1 for perim.ratio) BEFORE aggregating so
@@ -41,19 +49,44 @@ dat_sp <- aggregate(dat[, 9:ncol(dat)],
 dat_sp <- dat_sp[dat_sp$Group.4 != "unknown", ]
 
 # ==============================================================================
-# 3b. AGGREGATE TO SITE LEVEL
+# 3b. AGGREGATE TO SITE LEVEL (three variants)
 # ==============================================================================
 
-# Traditional paleobotany approach: average all specimens within a site, then
-# predict climate from site-mean traits. This mirrors how CLAMP and DiLP are
-# typically applied.
-
-dat_site           <- aggregate(dat[, 9:ncol(dat)],
-                                by  = list(dat$Site),
-                                FUN = mean, na.rm = TRUE)
+# Variant 1: dat_site.csv — specimen → site directly (zero-filled tooth traits)
+# Each specimen weighted equally. Original approach.
+dat_site              <- aggregate(dat[, 9:ncol(dat)],
+                                   by  = list(dat$Site),
+                                   FUN = mean, na.rm = TRUE)
 colnames(dat_site)[1] <- "Site"
 write.csv(dat_site, file = "data/dat_site.csv", row.names = FALSE)
 cat("Wrote data/dat_site.csv (", nrow(dat_site), "sites)\n")
+
+# Variant 2: dat_site_sp_zero.csv — specimen → species-within-site → site
+# Zero-filled tooth traits; each species weighted equally within a site.
+dat_sp_site_zero       <- aggregate(dat[, 9:ncol(dat)],
+                                    by  = list(Site = dat$Site,
+                                               Species = dat$genusSpecies),
+                                    FUN = mean, na.rm = TRUE)
+dat_site_sp_zero       <- aggregate(dat_sp_site_zero[, -(1:2)],
+                                    by  = list(Site = dat_sp_site_zero$Site),
+                                    FUN = mean, na.rm = TRUE)
+write.csv(dat_site_sp_zero, file = "data/dat_site_sp_zero.csv", row.names = FALSE)
+cat("Wrote data/dat_site_sp_zero.csv (", nrow(dat_site_sp_zero), "sites)\n")
+
+# Variant 3: dat_site_peppe.csv — specimen → species-within-site → site
+# No zero-fill: untoothed species have NA tooth traits and are excluded from
+# tooth trait site means via na.rm = TRUE. Matches Peppe et al. (2011).
+dat_sp_site_peppe      <- aggregate(dat_prefill[, 9:ncol(dat_prefill)],
+                                    by  = list(Site = dat_prefill$Site,
+                                               Species = dat_prefill$genusSpecies),
+                                    FUN = mean, na.rm = TRUE)
+dat_site_peppe         <- aggregate(dat_sp_site_peppe[, -(1:2)],
+                                    by  = list(Site = dat_sp_site_peppe$Site),
+                                    FUN = mean, na.rm = TRUE)
+write.csv(dat_site_peppe, file = "data/dat_site_peppe.csv", row.names = FALSE)
+cat("Wrote data/dat_site_peppe.csv (", nrow(dat_site_peppe), "sites)\n")
+
+if (BUILD_PHYLOGENY) {
 
 # ==============================================================================
 # 4. LOAD FULL WCVP TREE AND BUILD NAME TABLE
@@ -131,8 +164,7 @@ orig_labels_bb      <- orig_labels[bb_idx]
 # 7. GRAFT TRAINING SPECIES ONTO BACKBONE
 # ==============================================================================
 
-# All getMRCA / bind.tip calls now run on the small scaffold rather than the
-# full 123k-tip tree. h is constant because bind.tip always reaches crown age.
+# All getMRCA / bind.tip calls now run on the small scaffold
 
 h <- max(nodeHeights(tree_scaffold))
 
@@ -190,7 +222,7 @@ cat("\n")
 # ==============================================================================
 
 # tre_scaffold.tre — family backbone + all training species; used by
-#   03_fossil_predictions.R to graft fossils into the full angiosperm topology
+#   04_fossil_predictions.R to graft fossils into the full angiosperm topology
 write.tree(tree_scaffold, file = "data/tre_scaffold.tre")
 cat("Wrote data/tre_scaffold.tre (", length(tree_scaffold$tip.label), "tips)\n")
 
@@ -202,3 +234,5 @@ cat("Wrote data/tre_pruned.tre (", length(tree_pruned$tip.label), "tips)\n")
 dat_pruned <- dat_sp[match(tree_pruned$tip.label, dat_sp$Group.1), ]
 write.csv(dat_pruned, file = "data/data_species.csv", row.names = FALSE)
 cat("Wrote data/data_species.csv (", nrow(dat_pruned), "species)\n")
+
+} # end BUILD_PHYLOGENY
