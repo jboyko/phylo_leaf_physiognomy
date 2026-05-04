@@ -2,6 +2,9 @@ setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
 library(ape)
 library(caret)
+library(dilp)
+library(dplyr)
+library(tibble)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
 
 # ==============================================================================
@@ -11,6 +14,12 @@ source("code/Phylogenetically-Informed_Predictions_Source.R")
 K_FOLDS      <- 10
 NA_THRESHOLD <- 0.40
 SEED         <- 42
+
+agg_cols <- c("pw2.a.ratio", "ln.leaf.area.mm2", "feret.diam.ratio", "margin.score",
+              "perim.ratio", "teeth.perimeter.percm", "teeth.interior.percm",
+              "avt.tooth.area", "tooth.area.blade.area.ratio", "tooth.area.perimeter",
+              "tooth.area.interior", "teeth.blade.area.ratio",
+              "mat", "map", "latitude_n", "longitude_e")
 
 fossil_traits <- c(
   "pw2.a.ratio", "ln.leaf.area.mm2", "feret.diam.ratio", "margin.score",
@@ -31,13 +40,10 @@ vars_tooth_0 <- c(
 # ==============================================================================
 
 fill_tooth_traits <- function(d) {
-  untoothed <- !is.na(d$margin.score) & d$margin.score == 1
-  for (v in vars_tooth_0) {
-    if (v %in% names(d)) d[[v]][untoothed & is.na(d[[v]])] <- 0
-  }
-  if ("perim.ratio" %in% names(d)) {
-    d[["perim.ratio"]][untoothed & is.na(d[["perim.ratio"]])] <- 1
-  }
+  untoothed    <- !is.na(d$margin.score) & d$margin.score == 1
+  tooth_in_d   <- intersect(vars_tooth_0, names(d))
+  for (v in tooth_in_d) d[[v]][untoothed] <- 0
+  if ("perim.ratio" %in% names(d)) d[["perim.ratio"]][untoothed] <- 1
   d
 }
 
@@ -120,29 +126,30 @@ active_pred_names <- function(dat_sp, pnames) {
   present[na_pct < NA_THRESHOLD]
 }
 
-# Aggregate specimens to species-level means. Mirrors 00_data_cleaning.R section 3.
+# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R section 3.
 agg_species <- function(d_filled) {
-  genera <- sapply(strsplit(d_filled$genusSpecies, "_"), `[`, 1)
-  dat_sp <- aggregate(d_filled[, 9:ncol(d_filled)],
-    by  = list(d_filled$genusSpecies, genera, d_filled$Family, d_filled$Order),
+  dat_sp <- aggregate(d_filled[, agg_cols],
+    by  = list(genusSpecies = d_filled$genusSpecies,
+               genus        = d_filled$genus,
+               Family       = d_filled$Family,
+               Order        = d_filled$Order),
     FUN = mean, na.rm = TRUE)
-  dat_sp <- dat_sp[dat_sp$Group.4 != "unknown", ]
+  dat_sp <- dat_sp[!is.na(dat_sp$Order) & dat_sp$Order != "unknown", ]
   # Collapse duplicate species names (same species with inconsistent Family/Order
-  # across specimens at different sites — a data quality issue in subsets).
-  if (anyDuplicated(dat_sp$Group.1)) {
-    num_cols <- setdiff(names(dat_sp), paste0("Group.", 1:4))
-    dat_sp   <- aggregate(dat_sp[, num_cols],
-                          by  = list(Group.1 = dat_sp$Group.1),
-                          FUN = mean, na.rm = TRUE)
+  # across sites — a data quality issue in subsets).
+  if (anyDuplicated(dat_sp$genusSpecies)) {
+    dat_sp <- aggregate(dat_sp[, agg_cols],
+                        by  = list(genusSpecies = dat_sp$genusSpecies),
+                        FUN = mean, na.rm = TRUE)
   }
   dat_sp$log_map <- log(dat_sp$map)
-  rownames(dat_sp) <- dat_sp$Group.1
+  rownames(dat_sp) <- dat_sp$genusSpecies
   dat_sp
 }
 
-# Aggregate specimens directly to site means (zero-filled tooth traits).
+# Aggregate morphotype means directly to site means (tooth-filled).
 agg_site_direct <- function(d_filled) {
-  d_agg              <- aggregate(d_filled[, 9:ncol(d_filled)],
+  d_agg              <- aggregate(d_filled[, agg_cols],
                                   by  = list(Site = d_filled$Site),
                                   FUN = mean, na.rm = TRUE)
   d_agg$log_map      <- log(d_agg$map)
@@ -150,29 +157,18 @@ agg_site_direct <- function(d_filled) {
   d_agg
 }
 
-# Aggregate: specimens → species-within-site → site (zero-filled).
+# With dilp data already at morphotype (species×site) level, this collapses
+# to the same result as agg_site_direct.
 agg_site_sp_zero <- function(d_filled) {
-  step1              <- aggregate(d_filled[, 9:ncol(d_filled)],
-                                  by  = list(Site    = d_filled$Site,
-                                             Species = d_filled$genusSpecies),
-                                  FUN = mean, na.rm = TRUE)
-  d_agg              <- aggregate(step1[, -(1:2)],
-                                  by  = list(Site = step1$Site),
-                                  FUN = mean, na.rm = TRUE)
-  d_agg$log_map      <- log(d_agg$map)
-  rownames(d_agg)    <- d_agg$Site
-  d_agg
+  agg_site_direct(d_filled)
 }
 
-# Aggregate: specimens → species-within-site → site (no zero-fill; Peppe 2011).
-# d_prefill is the raw data before tooth-trait filling.
+# Aggregate morphotype means → site without tooth-fill (Peppe 2011): untoothed
+# species have NA tooth traits and are excluded via na.rm = TRUE.
+# d_prefill is the morphotype data before tooth-trait filling.
 agg_site_peppe <- function(d_prefill) {
-  step1              <- aggregate(d_prefill[, 9:ncol(d_prefill)],
-                                  by  = list(Site    = d_prefill$Site,
-                                             Species = d_prefill$genusSpecies),
-                                  FUN = mean, na.rm = TRUE)
-  d_agg              <- aggregate(step1[, -(1:2)],
-                                  by  = list(Site = step1$Site),
+  d_agg              <- aggregate(d_prefill[, agg_cols],
+                                  by  = list(Site = d_prefill$Site),
                                   FUN = mean, na.rm = TRUE)
   d_agg$log_map      <- log(d_agg$map)
   rownames(d_agg)    <- d_agg$Site
@@ -183,11 +179,46 @@ agg_site_peppe <- function(d_prefill) {
 # 1. LOAD RAW DATA
 # ==============================================================================
 
-cat("Loading raw data...\n")
-raw_dat <- read.csv("data/RoyerLeafShapeClimateDataFixedNames_June2012.csv",
-                    stringsAsFactors = FALSE)
-raw_dat$genusSpecies[raw_dat$genusSpecies == " Dialyanthera sp."] <- "Dialyanthera sp."
-raw_dat$genusSpecies <- gsub(" ", "_", raw_dat$genusSpecies)
+cat("Loading raw data via dilp...\n")
+raw_leaf    <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
+                        fileEncoding = "latin1", stringsAsFactors = FALSE)
+dilp_out    <- dilp(raw_leaf)
+dat_leaf    <- dilp_out$processed_leaf_data
+dat_morpho  <- dilp_out$processed_morphotype_data
+
+# Re-attach taxonomy — mirrors 00_data_cleaning.R section 1
+dat_morpho <- subset(dat_morpho, select = -measurer_comments)
+taxonomy_lookup <- dat_leaf %>%
+  dplyr::select(site, morphotype, order, family, genus, species) %>%
+  distinct()
+dat_morpho <- dat_morpho %>%
+  left_join(taxonomy_lookup, by = c("site", "morphotype"))
+
+dat_morpho$genusSpecies <- gsub("[() ]", "_", paste(dat_morpho$genus, dat_morpho$species, sep = "_"))
+dat_morpho$map          <- dat_morpho$map_mm / 10   # mm -> cm (pipeline convention; CLAUDE.md §8)
+
+# Rename dilp columns to pipeline convention — mirrors 00_data_cleaning.R section 2
+rename_pipeline <- function(df) {
+  df %>% rename(
+    pw2.a.ratio                 = petiole_metric,
+    ln.leaf.area.mm2            = ln_leaf_area,
+    feret.diam.ratio            = fdr,
+    margin.score                = margin,
+    perim.ratio                 = perimeter_ratio,
+    teeth.perimeter.percm       = tc_p,
+    teeth.interior.percm        = tc_ip,
+    avt.tooth.area              = avg_ta,
+    tooth.area.blade.area.ratio = ta_ba,
+    tooth.area.perimeter        = ta_p,
+    tooth.area.interior         = ta_ip,
+    teeth.blade.area.ratio      = tc_ba,
+    mat                         = mat_c,
+    Site                        = site,
+    Family                      = family,
+    Order                       = order
+  )
+}
+raw_dat <- rename_pipeline(dat_morpho)  # pre-fill; fill_tooth_traits applied per fold
 
 dat_site_obs         <- read.csv("data/dat_site.csv", stringsAsFactors = FALSE)
 dat_site_obs$log_map <- log(dat_site_obs$map)

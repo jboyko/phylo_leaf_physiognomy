@@ -44,22 +44,26 @@ The regression slope of $\hat{y}$ on $y$ (ordinary least squares, with predicted
 
 ### Predictive accuracy
 
-PIP had the lowest RMSE for both MAT and log(MAP) under both missing-data strategies (Fig. 1). Among non-phylogenetic models, the site-level LM using the Peppe et al. (2011) aggregation performed best. The species-level LM and PGLS had higher RMSE than all site-level LM variants.
+PIP had the lowest RMSE for both MAT and log(MAP) under both missing-data strategies (Fig. 1). Among non-phylogenetic models, the site-level LM using the Peppe et al. (2011) aggregation performed best. For MAT, the species-level LM and PGLS had higher RMSE than all site-level LM variants. For log(MAP), LM species and PGLS outperformed the LM site (specimen) and LM site (sp+zero) configurations, though both remained worse than LM site (Peppe).
 
 ![Figure 1. Cross-validation RMSE for all twelve model configurations, faceted by target variable. Models are ordered by mean RMSE across both targets. Colour indicates model family.](../plots/fig1_rmse_comparison.png)
 
-**Table 1.** Ten-fold cross-validation RMSE for all twelve model configurations. Values are root mean squared error for MAT (°C) and log(MAP) (log cm). The complete-case (CC) entry for LM site, Peppe has 90 held-out sites; all other configurations have 92.
+**Table 1.** Ten-fold cross-validation RMSE for all twelve model configurations, ordered by MAT RMSE. Values are root mean squared error for MAT (°C) and log(MAP) (log cm). Impute configurations have 93 held-out sites. CC configurations have 82 sites (LM site, Peppe) or 84 sites (all others) due to complete-case filtering.
 
-| Model | MAT RMSE (°C) | log(MAP) RMSE |
-| --- | --- | --- |
-| PIP (impute) | 3.638 | 0.542 |
-| PIP (CC) | 3.653 | 0.545 |
-| LM site, Peppe (impute) | 3.913 | 0.572 |
-| LM site, Peppe (CC) | 3.943 | 0.581 |
-| LM site, specimen (impute) | 4.109 | 0.603 |
-| LM site, sp+zero (impute) | 4.129 | 0.600 |
-| LM species (impute) | 5.662 | 0.652 |
-| PGLS (impute) | 6.362 | 0.675 |
+| Model | MAT RMSE (°C) | log(MAP) RMSE | n sites |
+| --- | --- | --- | --- |
+| PIP (impute) | 3.417 | 0.525 | 93 |
+| PIP (CC) | 3.709 | 0.508 | 93 |
+| LM site, Peppe (CC) | 3.725 | 0.601 | 82 |
+| LM site, Peppe (impute) | 3.736 | 0.590 | 93 |
+| LM site, sp+zero (CC) | 4.207 | 0.683 | 84 |
+| LM site, specimen (CC) | 4.207 | 0.683 | 84 |
+| LM site, sp+zero (impute) | 4.209 | 0.672 | 93 |
+| LM site, specimen (impute) | 4.217 | 0.675 | 93 |
+| LM species (CC) | 5.186 | 0.644 | 84 |
+| LM species (impute) | 5.198 | 0.621 | 93 |
+| PGLS (impute) | 5.857 | 0.628 | 93 |
+| PGLS (CC) | 6.054 | 0.640 | 93 |
 
 PGLS and PIP share the same $\beta$ coefficients and phylogenetic covariance structure. PGLS predicts held-out sites from $X\beta$ alone. PIP adds the adjustment term $V_{cross}^T V_{inv} e$. PGLS has higher RMSE than the non-phylogenetic site-level LM for both targets, while PIP has lower RMSE. Comparing PGLS and PIP therefore isolates the predictive contribution of the phylogenetic adjustment term from the PGLS regression itself.
 
@@ -67,7 +71,7 @@ PGLS and PIP share the same $\beta$ coefficients and phylogenetic covariance str
 
 PIP had the lowest regression slope for both targets despite having the lowest RMSE (Fig. 2). Regression slopes and the bias-variance decomposition for all six impute models are given below.
 
-![Figure 2. Observed versus predicted climate for three model configurations (impute variant). Rows are model types; columns are target variables. The dashed line is the 1:1 reference. The solid line and shaded band show the OLS regression of predicted on observed with a 95% confidence interval. Axes are shared within each target variable column.](../plots/fig2_obs_vs_pred.png)
+![Figure 2. Observed versus predicted climate for three model configurations (impute variant). Rows are model types; columns are target variables. The dashed line is the 1:1 reference. The solid line and shaded band show the OLS regression of predicted on observed with a 95% confidence interval. Axes are independent per panel.](../plots/fig2_obs_vs_pred.png)
 
 **Table 2.** Regression slope and RMSE decomposition for impute model configurations, MAT target (°C). Slope is the OLS regression slope of predicted on observed (a slope of 1 indicates predictions spanning the full observed range). Mean bias is the mean signed prediction error (positive values indicate over-prediction). RMSE² decomposes as Bias² + Residual variance.
 
@@ -75,12 +79,12 @@ PIP had the lowest regression slope for both targets despite having the lowest R
 
 | Model | Slope | Mean bias (°C) | Bias² | Residual var. | RMSE |
 | --- | --- | --- | --- | --- | --- |
-| PIP | 0.59 | +0.64 | 0.41 | 12.83 | 3.638 |
-| LM site, Peppe | 0.78 | +0.13 | 0.02 | 15.29 | 3.913 |
-| LM site, specimen | 0.75 | +0.06 | 0.00 | 16.88 | 4.109 |
-| LM site, sp+zero | 0.75 | +0.05 | 0.00 | 17.05 | 4.129 |
-| LM species | 0.32 | +2.06 | 4.25 | 27.80 | 5.662 |
-| PGLS | 0.20 | +2.25 | 5.04 | 35.43 | 6.362 |
+| PIP | 0.59 | +0.60 | 0.36 | 11.31 | 3.417 |
+| LM site, Peppe | 0.78 | +0.04 | 0.00 | 13.95 | 3.736 |
+| LM site, sp+zero | 0.73 | +0.05 | 0.00 | 17.72 | 4.209 |
+| LM site, specimen | 0.73 | +0.05 | 0.00 | 17.78 | 4.217 |
+| LM species | 0.35 | +1.73 | 3.00 | 24.02 | 5.198 |
+| PGLS | 0.23 | +1.89 | 3.58 | 30.73 | 5.857 |
 
 **Table 3.** Regression slope and RMSE decomposition for impute model configurations, log(MAP) target (log cm). Column definitions as in Table 2.
 
@@ -88,13 +92,13 @@ PIP had the lowest regression slope for both targets despite having the lowest R
 
 | Model | Slope | Mean bias | Bias² | Residual var. | RMSE |
 | --- | --- | --- | --- | --- | --- |
-| PIP | 0.26 | +0.14 | 0.020 | 0.274 | 0.542 |
-| LM site, Peppe | 0.42 | −0.01 | 0.000 | 0.326 | 0.572 |
-| LM site, sp+zero | 0.38 | +0.01 | 0.000 | 0.360 | 0.600 |
-| LM site, specimen | 0.38 | +0.01 | 0.000 | 0.363 | 0.603 |
-| LM species | 0.11 | +0.20 | 0.040 | 0.385 | 0.652 |
-| PGLS | 0.09 | +0.24 | 0.057 | 0.399 | 0.675 |
+| PIP | 0.25 | +0.15 | 0.023 | 0.253 | 0.525 |
+| LM site, Peppe | 0.31 | +0.02 | 0.000 | 0.347 | 0.590 |
+| LM species | 0.11 | +0.21 | 0.044 | 0.342 | 0.621 |
+| PGLS | 0.10 | +0.22 | 0.048 | 0.346 | 0.628 |
+| LM site, sp+zero | 0.28 | +0.04 | 0.002 | 0.449 | 0.672 |
+| LM site, specimen | 0.27 | +0.04 | 0.001 | 0.454 | 0.675 |
 
-PIP has the lowest RMSE and the lowest regression slope for both targets. For MAT, PIP's slope is 0.59 versus 0.78 for the LM site (Peppe) model. For log(MAP), PIP's slope is 0.26 versus 0.42. PIP's lower slope indicates that its predictions do not span the observed climate range. Relative to the LM site (Peppe) model, PIP reduces residual variance by 2.46 °C² for MAT and by 0.052 for log(MAP), while increasing squared bias by 0.39 °C² for MAT and by 0.020 for log(MAP). The net change in RMSE² favors PIP in both cases.
+PIP has the lowest RMSE and the lowest regression slope for both targets. For MAT, PIP's slope is 0.59 versus 0.78 for the LM site (Peppe) model. For log(MAP), PIP's slope is 0.25 versus 0.31. PIP's lower slope indicates that its predictions do not span the observed climate range. Relative to the LM site (Peppe) model, PIP reduces residual variance by 2.64 °C² for MAT and by 0.094 for log(MAP), while increasing squared bias by 0.36 °C² for MAT and by 0.023 for log(MAP). The net change in RMSE² favors PIP in both cases.
 
 The phylogenetic adjustment $V_{cross}^T V_{inv} e$ weights each training species' decorrelated residual by its phylogenetic proximity to the held-out species. Training residuals average near zero across the full dataset, so for held-out species with no close phylogenetic neighbors carrying large, consistent residuals the adjustment is small and pulls the prediction toward the training mean. For sites at the extremes of the MAT and MAP distributions this produces a systematic compression of predictions toward the center of the observed range, which is visible as the sub-unity slopes in Figure 2. Fossil site predictions that fall near the boundaries of the training climate distribution will carry this shrinkage, and point estimates for such sites should be interpreted accordingly.

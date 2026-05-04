@@ -13,7 +13,7 @@ dat         <- read.csv("data/data_species.csv")
 all_results <- readRDS("models/nophy_models.rds")
 
 if (!"log_map" %in% names(dat)) dat$log_map <- log(dat$map)
-rownames(dat) <- dat$Group.1  # species names as rownames throughout
+rownames(dat) <- dat$genusSpecies  # species names as rownames throughout
 
 phylomat <- vcv(phy)
 diag(phylomat) <- diag(phylomat) + 1e-6
@@ -127,7 +127,7 @@ for (cfg_name in names(pgls_configs)) {
 # 5. SAVE PIP COMPONENTS
 # ==============================================================================
 
-taxonomy <- dat[, c("Group.1", "Group.2", "Group.3", "Group.4")]
+taxonomy <- dat[, c("genusSpecies", "genus", "Family", "Order")]
 colnames(taxonomy) <- c("species", "genus", "family", "order")
 
 # Backward-compatible top-level keys point to the impute variant, matching
