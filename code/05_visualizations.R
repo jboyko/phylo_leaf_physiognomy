@@ -134,7 +134,7 @@ p2 <- ggplot(preds_long, aes(x = observed, y = predicted, colour = family)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +
   geom_point(alpha = 0.55, size = 1.6) +
   geom_smooth(method = "lm", se = TRUE, linewidth = 0.8, alpha = 0.15) +
-  facet_grid(label ~ target_lab, scales = "free") +
+  facet_wrap(~ label + target_lab, ncol = 2, scales = "free") +
   scale_colour_manual(values = family_colours, name = "Model family") +
   scale_fill_manual(values = family_colours, guide = "none") +
   labs(
@@ -262,7 +262,7 @@ diag_table <- preds |>
     target_lab = ifelse(target == "mat", "MAT", "log(MAP)")
   ) |>
   arrange(target, rmse) |>
-  select(label, target_lab, n, slope, intercept, mean_bias, bias_sq, residual_var, rmse)
+  dplyr::select(label, target_lab, n, slope, intercept, mean_bias, bias_sq, residual_var, rmse)
 
 write.csv(diag_table, "tables/prediction_diagnostics.csv", row.names = FALSE)
 message("Saved tables/prediction_diagnostics.csv")

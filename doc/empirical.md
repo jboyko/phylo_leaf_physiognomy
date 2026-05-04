@@ -18,22 +18,22 @@ These analyses can be reproduced using the `dilp_pgls()` function in the dilp R 
 
 ## Results
 
-PIP MAT estimates ranged from 14.4 °C at Republic (49.4 Ma) to 22.6 °C at Cerrejon (58.0 Ma). MAP estimates ranged from 149 cm at Bonanza (47.3 Ma) to 222 cm at Cerrejon. The number of species contributing to each site average ranged from 6 at Palacio de los Loros PL2 to 118 at Laguna del Hunco. Site-level predictions are given in Table 4.
+PIP MAT estimates ranged from 14.2 °C at Republic (49.4 Ma) to 22.1 °C at Cerrejon (58.0 Ma). MAP estimates ranged from 151 cm at Republic and Bonanza to 225 cm at Cerrejon. The number of species contributing to each site average ranged from 6 at Palacio de los Loros PL2 to 118 at Laguna del Hunco. Site-level predictions are given in Table 4.
 
 **Table 4.** PIP site-level paleoclimate estimates for 11 fossil sites from Peppe et al. (2011). MAT is in °C. MAP is in cm. n is the number of fossil species contributing to the site mean.
 
 | Site | Age (Ma) | MAT (°C) | MAP (cm) | n |
 | --- | --- | --- | --- | --- |
-| Fox Hills | 66.5 | 16.5 | 157 | 25 |
-| Williston Basin I | 64.8 | 17.6 | 172 | 20 |
-| Williston Basin II | 63.5 | 16.6 | 170 | 23 |
-| Palacio de los Loros PL1 | 61.7 | 17.5 | 171 | 26 |
-| Palacio de los Loros PL2 | 61.7 | 18.5 | 162 | 6 |
-| Williston Basin III | 59.8 | 16.8 | 166 | 18 |
-| Cerrejon | 58.0 | 22.6 | 222 | 45 |
-| Hubble Bubble | 55.8 | 20.4 | 168 | 16 |
-| Laguna del Hunco | 51.9 | 17.3 | 173 | 118 |
-| Republic | 49.4 | 14.4 | 153 | 39 |
-| Bonanza | 47.3 | 17.7 | 149 | 25 |
+| Fox Hills | 66.5 | 16.2 | 156 | 25 |
+| Williston Basin I | 64.8 | 17.1 | 172 | 20 |
+| Williston Basin II | 63.5 | 16.2 | 166 | 23 |
+| Palacio de los Loros PL1 | 61.7 | 17.0 | 165 | 26 |
+| Palacio de los Loros PL2 | 61.7 | 18.1 | 159 | 6 |
+| Williston Basin III | 59.8 | 16.3 | 163 | 18 |
+| Cerrejon | 58.0 | 22.1 | 225 | 45 |
+| Hubble Bubble | 55.8 | 19.8 | 170 | 16 |
+| Laguna del Hunco | 51.9 | 16.8 | 170 | 118 |
+| Republic | 49.4 | 14.2 | 151 | 39 |
+| Bonanza | 47.3 | 17.0 | 151 | 25 |
 
-The cross-validation RMSE from Part 3 provides the relevant uncertainty benchmark for these estimates. PIP MAT predictions carry an expected error of approximately 3.6 °C (RMSE across 92 held-out modern sites). log(MAP) RMSE of 0.54 log cm corresponds to a multiplicative uncertainty of roughly a factor of 1.7 on the linear precipitation scale, so MAP estimates should be treated as order-of-magnitude reconstructions. Sites with few contributing species, particularly Palacio de los Loros PL2 (n = 6), carry additional uncertainty because the site mean is based on a small sample of species-level predictions.
+The cross-validation RMSE from Part 3 provides the relevant uncertainty benchmark for these estimates. PIP MAT predictions carry an expected error of approximately 3.4 °C (RMSE across 93 held-out modern sites). log(MAP) RMSE of 0.52 log cm corresponds to a multiplicative uncertainty of roughly a factor of 1.7 on the linear precipitation scale, so MAP estimates should be treated as order-of-magnitude reconstructions. Sites with few contributing species, particularly Palacio de los Loros PL2 (n = 6), carry additional uncertainty because the site mean is based on a small sample of species-level predictions.

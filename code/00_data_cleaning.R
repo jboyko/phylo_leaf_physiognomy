@@ -2,19 +2,34 @@ setwd("/Users/jboyko/phylo_leaf_physiognomy")
 
 # Set to TRUE to rebuild phylogenies (slow; only needed when tree or species
 # list changes). Set to FALSE to skip sections 4-8 and only regenerate data.
-BUILD_PHYLOGENY <- FALSE
+BUILD_PHYLOGENY <- TRUE
 
 library(ape)
 library(phytools)
+library(dilp)
+library(dplyr)
 
 # ==============================================================================
-# 1. LOAD AND CLEAN SPECIMEN-LEVEL DATA
+# 1. LOAD AND PROCESS SPECIMEN-LEVEL DATA VIA DILP
 # ==============================================================================
 
-dat <- read.csv("data/RoyerLeafShapeClimateDataFixedNames_June2012.csv")
-dat$genusSpecies[dat$genusSpecies == " Dialyanthera sp."] <- "Dialyanthera sp."
-dat$genusSpecies <- gsub(" ", "_", dat$genusSpecies)
-genera_names <- sapply(strsplit(dat$genusSpecies, "_"), `[`, 1)
+raw      <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
+                     fileEncoding = "latin1")
+dilp_out <- dilp(raw)
+dat_leaf <- dilp_out$processed_leaf_data
+dat      <- dilp_out$processed_morphotype_data  # species×site means
+
+# Re-attach taxonomy columns (dilp drops them) — Dana Royer, pers. comm.
+dat <- subset(dat, select = -measurer_comments)
+
+taxonomy_lookup <- dat_leaf %>%
+  dplyr::select(site, morphotype, order, family, genus, species) %>%
+  distinct()
+dat <- dat %>%
+  left_join(taxonomy_lookup, by = c("site", "morphotype"))
+
+dat$genusSpecies <- gsub("[() ]", "_", paste(dat$genus, dat$species, sep = "_"))
+dat$map          <- dat$map_mm / 10   # mm -> cm (pipeline convention; CLAUDE.md §8)
 
 # ==============================================================================
 # 2. FILL TOOTH TRAITS FOR UNTOOTHED LEAVES (Dana Royer, pers. comm.)
@@ -24,65 +39,84 @@ genera_names <- sapply(strsplit(dat$genusSpecies, "_"), `[`, 1)
 # trait averages via na.rm = TRUE rather than pulled toward zero).
 dat_prefill <- dat
 
-# For confirmed untoothed leaves (blank AND margin.score == 1), tooth trait
-# absence is real — set to 0 (or 1 for perim.ratio) BEFORE aggregating so
-# species means are biologically correct rather than NaN.
+# margin == 1 indicates untoothed; tooth trait absence is biologically real —
+# set to 0 (or 1 for perimeter_ratio) before aggregating.
+dat <- dat %>%
+  mutate(
+    tc_p            = ifelse(margin == 1, 0, tc_p),
+    tc_ip           = ifelse(margin == 1, 0, tc_ip),
+    tc_ba           = ifelse(margin == 1, 0, tc_ba),
+    ta_p            = ifelse(margin == 1, 0, ta_p),
+    ta_ip           = ifelse(margin == 1, 0, ta_ip),
+    ta_ba           = ifelse(margin == 1, 0, ta_ba),
+    avg_ta          = ifelse(margin == 1, 0, avg_ta),
+    perimeter_ratio = ifelse(margin == 1, 1, perimeter_ratio)
+  )
 
-vars_tooth_0 <- c("primary.teeth.number", "secondary.teeth.number",
-                   "teeth.number", "teeth.perimeter.percm",
-                   "teeth.interior.percm", "tooth.area.cm2",
-                   "avt.tooth.area", "tooth.area.perimeter",
-                   "tooth.area.interior", "tooth.area.blade.area.ratio",
-                   "teeth.blade.area.ratio")
-
-untoothed <- !is.na(dat$margin.score) & dat$margin.score == 1
-for (v in vars_tooth_0) dat[[v]][untoothed & is.na(dat[[v]])] <- 0
-dat[["perim.ratio"]][untoothed & is.na(dat[["perim.ratio"]])] <- 1
+# Rename dilp output columns to pipeline convention
+rename_pipeline <- function(df) {
+  df %>% rename(
+    pw2.a.ratio                 = petiole_metric,
+    ln.leaf.area.mm2            = ln_leaf_area,
+    feret.diam.ratio            = fdr,
+    margin.score                = margin,
+    perim.ratio                 = perimeter_ratio,
+    teeth.perimeter.percm       = tc_p,
+    teeth.interior.percm        = tc_ip,
+    avt.tooth.area              = avg_ta,
+    tooth.area.blade.area.ratio = ta_ba,
+    tooth.area.perimeter        = ta_p,
+    tooth.area.interior         = ta_ip,
+    teeth.blade.area.ratio      = tc_ba,
+    mat                         = mat_c,
+    Site                        = site,
+    Family                      = family,
+    Order                       = order
+  )
+}
+dat         <- rename_pipeline(dat)
+dat_prefill <- rename_pipeline(dat_prefill)
 
 # ==============================================================================
 # 3. AGGREGATE TO SPECIES LEVEL
 # ==============================================================================
 
-dat_sp <- aggregate(dat[, 9:ncol(dat)],
-  by = list(dat$genusSpecies, genera_names, dat$Family, dat$Order),
+agg_cols <- c("pw2.a.ratio", "ln.leaf.area.mm2", "feret.diam.ratio", "margin.score",
+              "perim.ratio", "teeth.perimeter.percm", "teeth.interior.percm",
+              "avt.tooth.area", "tooth.area.blade.area.ratio", "tooth.area.perimeter",
+              "tooth.area.interior", "teeth.blade.area.ratio",
+              "mat", "map", "latitude_n", "longitude_e")
+
+dat_sp <- aggregate(dat[, agg_cols],
+  by = list(genusSpecies = dat$genusSpecies,
+            genus        = dat$genus,
+            Family       = dat$Family,
+            Order        = dat$Order),
   FUN = mean, na.rm = TRUE)
-dat_sp <- dat_sp[dat_sp$Group.4 != "unknown", ]
+dat_sp <- dat_sp[!is.na(dat_sp$Order) & dat_sp$Order != "unknown", ]
+dat_sp <- dat_sp[grepl("[A-Za-z]", dat_sp$genusSpecies), ]
 
 # ==============================================================================
 # 3b. AGGREGATE TO SITE LEVEL (three variants)
 # ==============================================================================
 
-# Variant 1: dat_site.csv — specimen → site directly (zero-filled tooth traits)
-# Each specimen weighted equally. Original approach.
-dat_site              <- aggregate(dat[, 9:ncol(dat)],
-                                   by  = list(dat$Site),
-                                   FUN = mean, na.rm = TRUE)
-colnames(dat_site)[1] <- "Site"
+# Variant 1: morphotype → site (tooth-filled; each morphotype equally weighted)
+dat_site <- aggregate(dat[, agg_cols],
+                      by  = list(Site = dat$Site),
+                      FUN = mean, na.rm = TRUE)
 write.csv(dat_site, file = "data/dat_site.csv", row.names = FALSE)
 cat("Wrote data/dat_site.csv (", nrow(dat_site), "sites)\n")
 
-# Variant 2: dat_site_sp_zero.csv — specimen → species-within-site → site
-# Zero-filled tooth traits; each species weighted equally within a site.
-dat_sp_site_zero       <- aggregate(dat[, 9:ncol(dat)],
-                                    by  = list(Site = dat$Site,
-                                               Species = dat$genusSpecies),
-                                    FUN = mean, na.rm = TRUE)
-dat_site_sp_zero       <- aggregate(dat_sp_site_zero[, -(1:2)],
-                                    by  = list(Site = dat_sp_site_zero$Site),
-                                    FUN = mean, na.rm = TRUE)
-write.csv(dat_site_sp_zero, file = "data/dat_site_sp_zero.csv", row.names = FALSE)
-cat("Wrote data/dat_site_sp_zero.csv (", nrow(dat_site_sp_zero), "sites)\n")
+# Variant 2: with dilp data already at morphotype (species×site) level, the
+# two-step specimen→species→site path collapses to the same result as variant 1.
+write.csv(dat_site, file = "data/dat_site_sp_zero.csv", row.names = FALSE)
+cat("Wrote data/dat_site_sp_zero.csv (", nrow(dat_site), "sites)\n")
 
-# Variant 3: dat_site_peppe.csv — specimen → species-within-site → site
-# No zero-fill: untoothed species have NA tooth traits and are excluded from
-# tooth trait site means via na.rm = TRUE. Matches Peppe et al. (2011).
-dat_sp_site_peppe      <- aggregate(dat_prefill[, 9:ncol(dat_prefill)],
-                                    by  = list(Site = dat_prefill$Site,
-                                               Species = dat_prefill$genusSpecies),
-                                    FUN = mean, na.rm = TRUE)
-dat_site_peppe         <- aggregate(dat_sp_site_peppe[, -(1:2)],
-                                    by  = list(Site = dat_sp_site_peppe$Site),
-                                    FUN = mean, na.rm = TRUE)
+# Variant 3: morphotype → site without tooth-fill; untoothed species are
+# excluded from tooth trait site means via na.rm = TRUE. Matches Peppe et al. (2011).
+dat_site_peppe <- aggregate(dat_prefill[, agg_cols],
+                            by  = list(Site = dat_prefill$Site),
+                            FUN = mean, na.rm = TRUE)
 write.csv(dat_site_peppe, file = "data/dat_site_peppe.csv", row.names = FALSE)
 cat("Wrote data/dat_site_peppe.csv (", nrow(dat_site_peppe), "sites)\n")
 
@@ -169,15 +203,15 @@ orig_labels_bb      <- orig_labels[bb_idx]
 h <- max(nodeHeights(tree_scaffold))
 
 cat("Grafting", nrow(dat_sp), "training species onto backbone...\n")
-for (i in seq_along(dat_sp$Group.1)) {
+for (i in seq_along(dat_sp$genusSpecies)) {
   cat("\r  ", round(i / nrow(dat_sp) * 100, 1), "%")
-  current_sp <- dat_sp$Group.1[i]
+  current_sp <- dat_sp$genusSpecies[i]
   if (current_sp %in% tree_scaffold$tip.label) next
 
   target_node <- NULL
 
   # Genus: find backbone tips sharing the genus
-  g_orig <- orig_labels_bb[name_table_backbone$genus == dat_sp$Group.2[i]]
+  g_orig <- orig_labels_bb[name_table_backbone$genus == dat_sp$genus[i]]
   g_tips <- g_orig[g_orig %in% tree_scaffold$tip.label]
   if (length(g_tips) >= 2) {
     target_node <- getMRCA(tree_scaffold, g_tips)
@@ -187,7 +221,7 @@ for (i in seq_along(dat_sp$Group.1)) {
 
   # Family fallback
   if (is.null(target_node)) {
-    f_orig <- orig_labels_bb[name_table_backbone$family == dat_sp$Group.3[i]]
+    f_orig <- orig_labels_bb[name_table_backbone$family == dat_sp$Family[i]]
     f_tips <- f_orig[f_orig %in% tree_scaffold$tip.label]
     if (length(f_tips) >= 2) {
       target_node <- getMRCA(tree_scaffold, f_tips)
@@ -198,7 +232,7 @@ for (i in seq_along(dat_sp$Group.1)) {
 
   # Order fallback
   if (is.null(target_node)) {
-    o_orig <- orig_labels_bb[name_table_backbone$order == dat_sp$Group.4[i]]
+    o_orig <- orig_labels_bb[name_table_backbone$order == dat_sp$Order[i]]
     o_tips <- o_orig[o_orig %in% tree_scaffold$tip.label]
     if (length(o_tips) >= 2) {
       target_node <- getMRCA(tree_scaffold, o_tips)
@@ -227,11 +261,11 @@ write.tree(tree_scaffold, file = "data/tre_scaffold.tre")
 cat("Wrote data/tre_scaffold.tre (", length(tree_scaffold$tip.label), "tips)\n")
 
 # tre_pruned.tre — training species only; used for VCV in PGLS / PIP
-tree_pruned <- keep.tip(tree_scaffold, dat_sp$Group.1)
+tree_pruned <- keep.tip(tree_scaffold, dat_sp$genusSpecies)
 write.tree(tree_pruned, file = "data/tre_pruned.tre")
 cat("Wrote data/tre_pruned.tre (", length(tree_pruned$tip.label), "tips)\n")
 
-dat_pruned <- dat_sp[match(tree_pruned$tip.label, dat_sp$Group.1), ]
+dat_pruned <- dat_sp[match(tree_pruned$tip.label, dat_sp$genusSpecies), ]
 write.csv(dat_pruned, file = "data/data_species.csv", row.names = FALSE)
 cat("Wrote data/data_species.csv (", nrow(dat_pruned), "species)\n")
 
