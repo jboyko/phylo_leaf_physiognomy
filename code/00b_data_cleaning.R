@@ -19,8 +19,8 @@ lma_cols <- c("specimen_number", "site", "morphotype", "order", "family", "genus
               "length_of_cut_perimeter", "no_of_primary_teeth", "no_of_subsidiary_teeth",
               "MAT_C", "MAP_mm", "latitude_N", "longitude_E")
 input <- bind_rows(
-  input_1 %>% select(any_of(lma_cols)),
-  input_2 %>% select(any_of(lma_cols))
+  input_1 %>% dplyr::select(any_of(lma_cols)),
+  input_2 %>% dplyr::select(any_of(lma_cols))
 )
 
 input <- dilp(input)  #runs the dilp package
@@ -33,11 +33,11 @@ input.morphotype <- input$processed_morphotype_data #includes calculated variabl
 
 # Join taxonomy back via site+morphotype (safer than positional indexing)
 taxonomy_lookup <- input.leaf %>%
-  select(site, morphotype, order, family, genus, species) %>%
+  dplyr::select(site, morphotype, order, family, genus, species) %>%
   distinct()
 
 input.morphotype <- input.morphotype %>%
-  select(-any_of("measurer_comments")) %>%
+  dplyr::select(-any_of("measurer_comments")) %>%
   left_join(taxonomy_lookup, by = c("site", "morphotype")) %>%
   relocate(order, family, genus, species, .after = morphotype)
 
@@ -70,11 +70,36 @@ dat_sp_lma <- input.morphotype %>%
   summarise(across(all_of(numeric_cols), \(x) mean(x, na.rm = TRUE)),
             .groups = "drop")
 
-# Log-transform LMA and petiole_metric for modelling
+# Rename dilp columns to match climate pipeline convention
+dat_sp_lma <- dat_sp_lma %>%
+  rename(
+    pw2.a.ratio                 = petiole_metric,
+    ln.leaf.area.mm2            = ln_leaf_area,
+    feret.diam.ratio            = fdr,
+    margin.score                = margin,
+    perim.ratio                 = perimeter_ratio,
+    teeth.perimeter.percm       = tc_p,
+    teeth.interior.percm        = tc_ip,
+    avt.tooth.area              = avg_ta,
+    tooth.area.blade.area.ratio = ta_ba,
+    tooth.area.perimeter        = ta_p,
+    tooth.area.interior         = ta_ip,
+    teeth.blade.area.ratio      = tc_ba
+  )
+
+# Fossil-measurable predictors (same constraint as climate models)
+lma_fossil_traits <- c(
+  "pw2.a.ratio", "ln.leaf.area.mm2", "feret.diam.ratio", "margin.score",
+  "perim.ratio", "teeth.perimeter.percm", "teeth.interior.percm",
+  "avt.tooth.area", "tooth.area.blade.area.ratio", "tooth.area.perimeter",
+  "tooth.area.interior", "teeth.blade.area.ratio"
+)
+
+# Log-transform LMA; log10(pw2.a.ratio) retained for univariate reference
 dat_sp_lma <- dat_sp_lma %>%
   mutate(
-    log10_lma           = log10(lma_g_m2),
-    log10_petiole_metric = log10(petiole_metric)
+    log10_lma        = log10(lma_g_m2),
+    log10_pw2a_ratio = log10(pw2.a.ratio)
   )
 
 # ==============================================================================

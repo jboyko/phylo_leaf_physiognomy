@@ -22,9 +22,10 @@ foss_lma <- foss[!is.na(foss$log10_petiole_metric), ]
 cat("Fossils with petiole metric:", nrow(foss_lma), "of", nrow(foss), "\n")
 
 # ==============================================================================
-# 2. AGGREGATE TO SPECIES GRAND MEANS
+# 2. AGGREGATE: grand means for grafting, within-site means for prediction
 # ==============================================================================
 
+# Grand means — one row per species; used only for tree grafting
 foss_sp <- aggregate(
   foss_lma[, c("log10_petiole_metric", "age_ma")],
   by  = list(species = foss_lma$species,
@@ -34,22 +35,27 @@ foss_sp <- aggregate(
   FUN = mean, na.rm = TRUE
 )
 
-sp_site_map <- unique(foss_lma[, c("species", "site", "age_ma")])
+# Within-site means — one row per species × site; used to build X for prediction
+foss_site <- aggregate(
+  foss_lma[, "log10_petiole_metric", drop = FALSE],
+  by  = list(species = foss_lma$species,
+             site    = foss_lma$site,
+             age_ma  = foss_lma$age_ma),
+  FUN = mean, na.rm = TRUE
+)
 
 cat("Unique fossil species with petiole metric:", nrow(foss_sp), "\n")
+cat("Fossil species-site rows:", nrow(foss_site), "\n")
 
 # ==============================================================================
-# 3. LM (PEPPE) PREDICTIONS
+# 3. LM PREDICTIONS
 # ==============================================================================
 
 lm_preds <- predict(nophy$model,
-                    newdata = foss_sp[, "log10_petiole_metric", drop = FALSE])
-foss_sp$lma_lm <- 10^as.numeric(lm_preds)
+                    newdata = foss_site[, "log10_petiole_metric", drop = FALSE])
+foss_site$lma_lm <- 10^as.numeric(lm_preds)
 
-sp_lm <- merge(sp_site_map,
-               foss_sp[, c("species", "lma_lm")],
-               by = "species")
-site_lm <- aggregate(lma_lm ~ site + age_ma, data = sp_lm, FUN = mean)
+site_lm <- aggregate(lma_lm ~ site + age_ma, data = foss_site, FUN = mean)
 
 cat("LM predictions done\n")
 
@@ -169,19 +175,18 @@ names(phylo_adj) <- idx_fossil
 # 6. PIP PREDICTIONS
 # ==============================================================================
 
-# Build design matrix for fossil species
-X_fossil <- cbind(1, foss_sp$log10_petiole_metric)
+# Build design matrix from species-within-site means; phylo_adj is per species
+placed_site <- foss_site[foss_site$species %in% placed, ]
+
+X_fossil <- cbind(1, placed_site$log10_petiole_metric)
 colnames(X_fossil) <- colnames(pip$X)
-rownames(X_fossil) <- foss_sp$species
+rownames(X_fossil) <- placed_site$species
 
-# GLS prediction + phylogenetic correction
-yhat_log10 <- as.numeric(X_fossil %*% t(pip$beta)) + phylo_adj[foss_sp$species]
-foss_sp$lma_pip <- 10^yhat_log10
+# GLS prediction + phylogenetic correction (adjustment indexed by species)
+yhat_log10 <- as.numeric(X_fossil %*% t(pip$beta)) + phylo_adj[placed_site$species]
+placed_site$lma_pip <- 10^yhat_log10
 
-sp_pip <- merge(sp_site_map,
-                foss_sp[, c("species", "lma_pip")],
-                by = "species")
-site_pip <- aggregate(lma_pip ~ site + age_ma, data = sp_pip, FUN = mean)
+site_pip <- aggregate(lma_pip ~ site + age_ma, data = placed_site, FUN = mean)
 
 cat("PIP predictions done\n")
 
@@ -197,9 +202,11 @@ site_out[, c("lma_lm", "lma_pip")] <- round(site_out[, c("lma_lm", "lma_pip")], 
 cat("\nSite-level LMA predictions (g/m²):\n")
 print(site_out, row.names = FALSE)
 
-# Per-species predictions
-sp_out <- merge(sp_site_map, foss_sp[, c("species", "lma_lm", "lma_pip")],
-                by = "species")
+# Per-species-site predictions
+sp_out <- placed_site[, c("species", "site", "age_ma", "lma_pip")]
+sp_out <- merge(sp_out,
+                foss_site[foss_site$species %in% placed, c("species", "site", "lma_lm")],
+                by = c("species", "site"))
 sp_out <- sp_out[order(-sp_out$age_ma, sp_out$site, sp_out$species), ]
 
 write.csv(site_out, "tables/lma_fossil_site_predictions.csv", row.names = FALSE)

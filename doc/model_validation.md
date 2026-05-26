@@ -6,6 +6,8 @@
 
 Predictive accuracy was evaluated using 10-fold cross-validation with sites as the held-out unit, stratified by MAT. The 92 extant training sites were ranked by MAT and assigned to folds using a snake pattern, producing folds of approximately 9 sites each. In each fold, all sites in that fold were withheld in full and all models were refitted from scratch on the remaining sites. The held-out sites were then predicted using the refitted models and the held-out sites' leaf trait measurements. Every site is predicted exactly once across the 10 folds. A fossil site has no representation in the extant training data, and this design matches that condition by withholding each site entirely from the models used to predict it.
 
+The LMA analysis uses the same 10-fold framework with sites as the held-out unit. The 108 extant sites with both petiole metric measurements and known LMA are ranked by site-mean log₁₀(LMA) and assigned to folds using the same snake pattern, producing folds of approximately 11 sites each. At each fold, the held-out sites' morphotype measurements are withheld in full and all models are refitted from scratch on morphotypes from the remaining training sites, aggregated to species-level grand means. Held-out site predictions use within-site species means for the held-out morphotypes, averaged to a site-level estimate. This design matches the fossil prediction setting, where each fossil site contributes site-specific trait measurements per species.
+
 ### Model configurations
 
 Twelve model configurations were evaluated, representing six model types crossed with two missing-data strategies.
@@ -18,6 +20,8 @@ The sixth model type is PIP, the full Phylogenetically-Informed Prediction model
 
 Two missing-data strategies were applied. Under bag imputation (impute), missing predictor values are filled using bagged-tree imputation fitted to the full species-level dataset before cross-validation begins, and the imputation model is not refitted at each fold. Under complete-case analysis (CC), only species with no missing values across the 12 predictors are retained, and sites that become empty after this filter are dropped from that fold's evaluation, reducing the effective sample to 90 sites for some configurations.
 
+The LMA analysis evaluates three model types — LM, PGLS, and PIP — fitted to species-level means using a single predictor, log₁₀(petiole metric), where petiole metric is PW²/A (petiole width squared divided by blade area). Dana Royer (pers. comm.) established that LMA scales linearly with PW²/A in log–log space. Because the model has only one predictor, bag imputation is not applicable and a single complete-case configuration is used throughout. The PGLS and PIP components follow the same fitting procedure described above, with Pagel's λ estimated jointly with the regression coefficients.
+
 ### Evaluation metrics
 
 Three quantities are reported for each model and target variable across the $n$ held-out sites.
@@ -26,7 +30,7 @@ Root mean squared error (RMSE) is the primary accuracy metric.
 
 $$\text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (\hat{y}_i - y_i)^2}$$
 
-where $\hat{y}_i$ is the cross-validation predicted climate for site $i$ and $y_i$ is the observed climate. Target variables are MAT in degrees Celsius and log(MAP) in log centimetres.
+where $\hat{y}_i$ is the cross-validation prediction for observation $i$ (site for all targets) and $y_i$ is the observed value. For climate models, target variables are MAT in degrees Celsius and log(MAP) in log centimetres; for the LMA model the target is the site-mean log₁₀(LMA) in log₁₀ g m⁻².
 
 Mean bias $\bar{b}$ is the average signed prediction error.
 
@@ -69,7 +73,7 @@ PGLS and PIP share the same $\beta$ coefficients and phylogenetic covariance str
 
 ### Bias and residual variance
 
-PIP had the lowest regression slope for both targets despite having the lowest RMSE (Fig. 2). Regression slopes and the bias-variance decomposition for all six impute models are given below.
+PIP had the lowest RMSE for both climate targets despite having the most compressed predictions, as measured by the regression slope of predicted on observed (Fig. 2). Regression slopes and the bias-variance decomposition for all six impute models are given below.
 
 ![Figure 2. Observed versus predicted climate for three model configurations (impute variant). Rows are model types; columns are target variables. The dashed line is the 1:1 reference. The solid line and shaded band show the OLS regression of predicted on observed with a 95% confidence interval. Axes are independent per panel.](../plots/fig2_obs_vs_pred.png)
 
@@ -102,3 +106,27 @@ PIP had the lowest regression slope for both targets despite having the lowest R
 PIP has the lowest RMSE and the lowest regression slope for both targets. For MAT, PIP's slope is 0.59 versus 0.78 for the LM site (Peppe) model. For log(MAP), PIP's slope is 0.25 versus 0.31. PIP's lower slope indicates that its predictions do not span the observed climate range. Relative to the LM site (Peppe) model, PIP reduces residual variance by 2.64 °C² for MAT and by 0.094 for log(MAP), while increasing squared bias by 0.36 °C² for MAT and by 0.023 for log(MAP). The net change in RMSE² favors PIP in both cases.
 
 The phylogenetic adjustment $V_{cross}^T V_{inv} e$ weights each training species' decorrelated residual by its phylogenetic proximity to the held-out species. Training residuals average near zero across the full dataset, so for held-out species with no close phylogenetic neighbors carrying large, consistent residuals the adjustment is small and pulls the prediction toward the training mean. For sites at the extremes of the MAT and MAP distributions this produces a systematic compression of predictions toward the center of the observed range, which is visible as the sub-unity slopes in Figure 2. Fossil site predictions that fall near the boundaries of the training climate distribution will carry this shrinkage, and point estimates for such sites should be interpreted accordingly.
+
+### LMA predictive accuracy
+
+PIP had the lowest RMSE for log₁₀(LMA); PGLS and LM performed similarly to each other (Table 4). All three models were evaluated on 108 complete-case sites.
+
+**Table 4.** Ten-fold cross-validation RMSE for LMA models. Values are root mean squared error for site-mean log₁₀(LMA) (log₁₀ g m⁻²). Folds are stratified by site-mean log₁₀(LMA).
+
+| Model | log₁₀(LMA) RMSE | n sites |
+| --- | --- | --- |
+| PIP | 0.130 | 108 |
+| PGLS | 0.144 | 108 |
+| LM | 0.146 | 108 |
+
+### LMA bias and residual variance
+
+The bias-variance decomposition for site-mean log₁₀(LMA) is given in Table 5. All three models show a small positive mean bias of 0.02–0.03 log₁₀ g m⁻², and the differences across models are negligible. PIP's RMSE advantage over LM comes entirely from reduced residual variance (0.016 versus 0.020). This contrasts with the climate result, where PIP carried slightly higher bias than LM site (Peppe) alongside lower variance. For LMA, there is no bias cost: the adjustment reduces variance without trading it against accuracy in the mean. PIP also has the highest regression slope (0.665) among the three LMA models, followed by LM (0.577) and PGLS (0.543), meaning PIP predictions span more of the observed LMA range than either alternative. This is the opposite of the climate pattern, where PIP had the most compressed predictions of any model.
+
+**Table 5.** Regression slope and RMSE decomposition for LMA models, site-mean log₁₀(LMA) target. Column definitions as in Tables 2–3.
+
+| Model | Slope | Mean bias | Bias² | Residual var. | RMSE |
+| --- | --- | --- | --- | --- | --- |
+| PIP | 0.665 | +0.028 | 0.001 | 0.016 | 0.130 |
+| PGLS | 0.543 | +0.022 | 0.000 | 0.020 | 0.144 |
+| LM | 0.577 | +0.032 | 0.001 | 0.020 | 0.146 |

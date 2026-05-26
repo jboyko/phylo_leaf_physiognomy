@@ -6,7 +6,7 @@ library(tidyr)
 
 # ── 1. Load CSVs ───────────────────────────────────────────────────────────────
 rmse  <- read.csv("tables/lma_cv_rmse.csv",                  stringsAsFactors = FALSE)
-preds <- read.csv("tables/lma_cv_species_predictions.csv",   stringsAsFactors = FALSE)
+preds <- read.csv("tables/lma_cv_site_predictions.csv",      stringsAsFactors = FALSE)
 coefs <- read.csv("tables/lma_cv_model_coefs.csv",           stringsAsFactors = FALSE)
 fit   <- read.csv("tables/lma_cv_model_fit.csv",             stringsAsFactors = FALSE)
 
@@ -70,7 +70,7 @@ p2 <- ggplot(preds_long, aes(x = obs, y = predicted, colour = model)) +
   scale_colour_manual(values = model_colours, guide = "none") +
   coord_fixed(xlim = lims, ylim = lims) +
   labs(
-    title = "Observed vs. predicted — 10-fold CV (species level)",
+    title = "Observed vs. predicted — 10-fold CV (site level)",
     x     = "Observed log10(LMA)",
     y     = "Predicted log10(LMA)"
   ) +
