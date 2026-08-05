@@ -14,10 +14,11 @@ Scripts must be run in order. Each sets `setwd()` to a hardcoded path — update
 
 ```r
 Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate, build scaffold tree
+Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from April 2026 leaf data
 Rscript code/01_nophy_regression.R   # Fit non-phylogenetic models (species + site level)
 Rscript code/02_phy_regression.R     # Fit PGLS, save pip_components.rds
 Rscript code/03_loso_cv.R            # Leave-one-site-out cross-validation
-Rscript code/04_fossil_predictions.R # Predict MAT/MAP for fossils via PIP
+Rscript code/04_fossil_predictions.R # Formal-only primary + informal sensitivity
 Rscript code/05_visualizations.R     # Figures from LOSO CV outputs
 Rscript code/06_update_dilp_package.R # Regenerate dilp package model objects + constants
 ```
@@ -46,6 +47,9 @@ MAT and log(MAP) are the primary targets. Other climate variables (coldest month
 
 ### Fossil placement
 Fossils are commonly known only to family or order level, or may belong to extinct genera. Placement uses a genus → family → order MRCA fallback, with root as the final fallback. Fossil age sets the edge length so the tip sits at the correct time depth. When a fossil predates the crown age of its placement clade, the `PLACEMENT_FALLBACK` flag in `04_fossil_predictions.R` controls behaviour: `"ancestral_branch"` (default, preferred) walks up the tree to the branch alive at the fossil's age and splits it there; `"node"` attaches at the MRCA with a minimal edge.
+
+### Informal fossil taxonomy
+Dana's April 2026 fossil dataset marks informal order, family, and genus names with quotation marks. **Never use a quoted rank as phylogenetic evidence in the primary analysis.** `00c_fossil_data_cleaning.R` preserves the reported strings and rank-level informal flags while setting quoted placement ranks to `unknown`. `04_fossil_predictions.R` runs both `formal_only` (primary) and `include_informal` (sensitivity) scenarios and writes placement logs plus a site-level sensitivity table. The legacy output filenames always refer to the formal-only scenario.
 
 ### `internal.perimeter.cm` excluded
 This raw tooth-linked measurement (~67% NA) is not on Dana's fossil list and remains excluded. The ratio forms (`teeth.perimeter.percm`, `teeth.interior.percm`) are included instead — more appropriate for cross-specimen comparison.

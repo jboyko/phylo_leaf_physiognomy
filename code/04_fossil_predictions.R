@@ -20,8 +20,10 @@
 #   data/fossil_traits.csv      -- species-site rows with trait + age_ma columns
 #
 # Output:
-#   tables/fossil_site_comparison.csv   -- site-level 4-model comparison
-#   tables/fossil_predictions.csv       -- per-species PIP predictions
+#   tables/fossil_site_comparison.csv       -- formal-only site comparison
+#   tables/fossil_predictions.csv           -- formal-only species predictions
+#   tables/fossil_taxonomy_sensitivity.csv  -- scenario deltas by site
+#   tables/*_<scenario>.csv                  -- scenario predictions + placements
 # ==============================================================================
 
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
@@ -30,6 +32,7 @@ library(ape)
 library(phytools)
 library(caret)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
+source("code/fossil_taxonomy.R")
 
 # ==============================================================================
 # USER SETTINGS
@@ -44,11 +47,15 @@ PLACEMENT_FALLBACK <- "ancestral_branch"
 pip       <- readRDS("models/pip_components.rds")
 nophy     <- readRDS("models/nophy_models.rds")
 site_mods <- readRDS("models/site_models.rds")
-foss      <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
+foss_base <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
 
-cat("Loaded", nrow(foss), "fossil species-site rows\n")
+cat("Loaded", nrow(foss_base), "fossil species-site rows\n")
 
 trait_cols <- nophy$pred_names   # 12 fossil-measurable traits
+
+run_fossil_scenario <- function(taxonomy_scenario) {
+foss <- taxonomy_for_scenario(foss_base, taxonomy_scenario)
+cat("\n=== Taxonomy scenario:", taxonomy_scenario, "===\n")
 
 # ==============================================================================
 # 2. PREPARE AGGREGATIONS
@@ -56,11 +63,24 @@ trait_cols <- nophy$pred_names   # 12 fossil-measurable traits
 
 # 2a. Species grand means (average across all sites a species appears in)
 foss_sp <- aggregate(foss[, c(trait_cols, "age_ma")],
-                     by  = list(species = foss$species,
-                                genus   = foss$genus,
-                                family  = foss$family,
-                                order   = foss$order),
+                     by  = list(species = foss$species),
                      FUN = mean, na.rm = TRUE)
+
+resolve_species_taxon <- function(x) {
+  known <- unique(x[!is.na(x) & nzchar(x) & x != "unknown"])
+  if (length(known) > 1) {
+    stop("Conflicting taxonomy for one fossil species: ",
+         paste(known, collapse = ", "))
+  }
+  if (length(known) == 1) known else "unknown"
+}
+foss_sp_taxonomy <- aggregate(
+  cbind(genus, family, order) ~ species,
+  data = foss,
+  FUN = resolve_species_taxon
+)
+foss_sp <- merge(foss_sp, foss_sp_taxonomy, by = "species",
+                 all.x = TRUE, sort = FALSE)
 
 # 2b. Site means (average all species-site rows within each site)
 foss_site_means <- aggregate(foss[, trait_cols],
@@ -121,39 +141,71 @@ tree     <- read.tree("data/tre_scaffold.tre")
 h        <- max(nodeHeights(tree))
 tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
 name_tbl   <- pip$name_table_full
+placement_rows <- vector("list", nrow(foss_sp))
 
 for (j in seq_len(nrow(foss_sp))) {
   fossil_name <- foss_sp$species[j]
   age_ma      <- foss_sp$age_ma[j]
 
-  if (fossil_name %in% tree$tip.label) next   # already placed
+  if (fossil_name %in% tree$tip.label) {
+    placement_rows[[j]] <- data.frame(
+      taxonomy_scenario = taxonomy_scenario,
+      species = fossil_name,
+      placement_level = "existing_tip",
+      placement_target = fossil_name,
+      age_fallback = "none",
+      stringsAsFactors = FALSE
+    )
+    next
+  }
 
   target_node <- NULL
+  placement_level <- "root"
+  placement_target <- "root"
+  age_fallback <- "none"
 
   # Genus match
-  genus_tips <- tree$tip.label[tip_genera == foss_sp$genus[j]]
-  if (length(genus_tips) >= 2) {
-    target_node <- getMRCA(tree, genus_tips)
-  } else if (length(genus_tips) == 1) {
-    target_node <- which(tree$tip.label == genus_tips[1])
+  if (is_known_taxon(foss_sp$genus[j])) {
+    genus_tips <- tree$tip.label[tip_genera == foss_sp$genus[j]]
+    if (length(genus_tips) >= 2) {
+      target_node <- getMRCA(tree, genus_tips)
+      placement_level <- "genus"
+      placement_target <- foss_sp$genus[j]
+    } else if (length(genus_tips) == 1) {
+      target_node <- which(tree$tip.label == genus_tips[1])
+      placement_level <- "genus"
+      placement_target <- foss_sp$genus[j]
+    }
   }
 
   # Family fallback
-  if (is.null(target_node) && nzchar(foss_sp$family[j]) &&
-      foss_sp$family[j] != "unknown") {
+  if (is.null(target_node) && is_known_taxon(foss_sp$family[j])) {
     fam_genera <- unique(name_tbl$genus[name_tbl$family == foss_sp$family[j]])
     fam_tips   <- tree$tip.label[tip_genera %in% fam_genera]
-    if (length(fam_tips) >= 2) target_node <- getMRCA(tree, fam_tips)
-    else if (length(fam_tips) == 1) target_node <- which(tree$tip.label == fam_tips[1])
+    if (length(fam_tips) >= 2) {
+      target_node <- getMRCA(tree, fam_tips)
+      placement_level <- "family"
+      placement_target <- foss_sp$family[j]
+    } else if (length(fam_tips) == 1) {
+      target_node <- which(tree$tip.label == fam_tips[1])
+      placement_level <- "family"
+      placement_target <- foss_sp$family[j]
+    }
   }
 
   # Order fallback
-  if (is.null(target_node) && nzchar(foss_sp$order[j]) &&
-      foss_sp$order[j] != "unknown") {
+  if (is.null(target_node) && is_known_taxon(foss_sp$order[j])) {
     ord_genera <- unique(name_tbl$genus[name_tbl$order == foss_sp$order[j]])
     ord_tips   <- tree$tip.label[tip_genera %in% ord_genera]
-    if (length(ord_tips) >= 2) target_node <- getMRCA(tree, ord_tips)
-    else if (length(ord_tips) == 1) target_node <- which(tree$tip.label == ord_tips[1])
+    if (length(ord_tips) >= 2) {
+      target_node <- getMRCA(tree, ord_tips)
+      placement_level <- "order"
+      placement_target <- foss_sp$order[j]
+    } else if (length(ord_tips) == 1) {
+      target_node <- which(tree$tip.label == ord_tips[1])
+      placement_level <- "order"
+      placement_target <- foss_sp$order[j]
+    }
   }
 
   # Root fallback
@@ -169,6 +221,7 @@ for (j in seq_len(nrow(foss_sp))) {
     tree <- bind.tip(tree, tip.label = fossil_name,
                      where = target_node, edge.length = edge_len)
   } else if (PLACEMENT_FALLBACK == "ancestral_branch") {
+    age_fallback <- "ancestral_branch"
     fossil_ht <- h - age_ma
     node      <- target_node
     found     <- FALSE
@@ -188,17 +241,30 @@ for (j in seq_len(nrow(foss_sp))) {
     }
     if (!found) {
       warning("No spanning branch for '", fossil_name, "'. Placing at root.")
+      placement_level <- "root"
+      placement_target <- "root"
+      age_fallback <- "root"
       tree <- bind.tip(tree, tip.label = fossil_name,
                        where = length(tree$tip.label) + 1L, edge.length = 0.001)
     }
   } else {
+    age_fallback <- "node"
     tree <- bind.tip(tree, tip.label = fossil_name,
                      where = target_node, edge.length = 0.001)
   }
 
+  placement_rows[[j]] <- data.frame(
+    taxonomy_scenario = taxonomy_scenario,
+    species = fossil_name,
+    placement_level = placement_level,
+    placement_target = placement_target,
+    age_fallback = age_fallback,
+    stringsAsFactors = FALSE
+  )
   tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
 }
 
+placement_log <- do.call(rbind, placement_rows)
 placed <- foss_sp$species[foss_sp$species %in% tree$tip.label]
 cat("Placed", length(placed), "/", nrow(foss_sp), "fossil species on tree\n")
 foss_sp <- foss_sp[foss_sp$species %in% placed, ]
@@ -310,9 +376,17 @@ site_pip_site <- aggregate(cbind(mat_pip_site, map_pip_site) ~ site + age_ma,
                             data = foss, FUN = mean)
 
 # Also save per-species PIP+site predictions
-results_per_species <- foss[, c("fossil_name", "species", "site", "age_ma",
-                                 "mat_pip_site", "map_pip_site")]
-write.csv(results_per_species, "tables/fossil_predictions.csv", row.names = FALSE)
+results_per_species <- foss[, c(
+  "fossil_name", "species", "site", "age_ma",
+  "genus_reported", "family_reported", "order_reported",
+  "genus_informal", "family_informal", "order_informal",
+  "mat_pip_site", "map_pip_site"
+)]
+results_per_species$taxonomy_scenario <- taxonomy_scenario
+scenario_predictions_path <- file.path(
+  "tables", paste0("fossil_predictions_", taxonomy_scenario, ".csv")
+)
+write.csv(results_per_species, scenario_predictions_path, row.names = FALSE)
 cat("PIP+site predictions done\n")
 
 # ==============================================================================
@@ -342,5 +416,80 @@ site_long <- site_long[, c("site", "age_ma", "variable",
                           "lm_sp", "lm_site", "pip_sp", "pip_site")]
 cat("\nLong-form site comparison:\n")
 print(site_long, row.names = FALSE)
-write.csv(site_long, "tables/fossil_site_comparison.csv", row.names = FALSE)
-cat("\nResults written to tables/fossil_site_comparison.csv\n")
+site_long$taxonomy_scenario <- taxonomy_scenario
+scenario_site_path <- file.path(
+  "tables", paste0("fossil_site_comparison_", taxonomy_scenario, ".csv")
+)
+scenario_placement_path <- file.path(
+  "tables", paste0("fossil_placement_log_", taxonomy_scenario, ".csv")
+)
+write.csv(site_long, scenario_site_path, row.names = FALSE)
+write.csv(placement_log, scenario_placement_path, row.names = FALSE)
+cat("\nResults written to", scenario_site_path, "\n")
+
+list(
+  site = site_long,
+  species = results_per_species,
+  placement = placement_log
+)
+}
+
+# ==============================================================================
+# 12. RUN PRIMARY + SENSITIVITY SCENARIOS
+# ==============================================================================
+
+scenario_names <- c("formal_only", "include_informal")
+scenario_results <- setNames(
+  lapply(scenario_names, run_fossil_scenario),
+  scenario_names
+)
+
+# Backward-compatible outputs use Dana's requested formal-only interpretation.
+write.csv(
+  scenario_results$formal_only$species,
+  "tables/fossil_predictions.csv",
+  row.names = FALSE
+)
+write.csv(
+  scenario_results$formal_only$site,
+  "tables/fossil_site_comparison.csv",
+  row.names = FALSE
+)
+
+formal_site <- scenario_results$formal_only$site
+informal_site <- scenario_results$include_informal$site
+sensitivity <- merge(
+  formal_site,
+  informal_site,
+  by = c("site", "age_ma", "variable"),
+  suffixes = c("_formal_only", "_include_informal")
+)
+
+metric_cols <- c("lm_sp", "lm_site", "pip_sp", "pip_site")
+for (metric in metric_cols) {
+  sensitivity[[paste0(metric, "_delta")]] <-
+    sensitivity[[paste0(metric, "_include_informal")]] -
+    sensitivity[[paste0(metric, "_formal_only")]]
+  sensitivity[[paste0(metric, "_delta")]] <- ifelse(
+    sensitivity$variable == "MAT",
+    round(sensitivity[[paste0(metric, "_delta")]], 1),
+    round(sensitivity[[paste0(metric, "_delta")]], 0)
+  )
+}
+sensitivity <- sensitivity[, c(
+  "site", "age_ma", "variable",
+  as.vector(rbind(
+    paste0(metric_cols, "_formal_only"),
+    paste0(metric_cols, "_include_informal"),
+    paste0(metric_cols, "_delta")
+  ))
+)]
+write.csv(
+  sensitivity,
+  "tables/fossil_taxonomy_sensitivity.csv",
+  row.names = FALSE
+)
+
+cat("\nPrimary formal-only outputs also written to the legacy filenames.\n")
+cat("Sensitivity comparison written to",
+    "tables/fossil_taxonomy_sensitivity.csv\n")
