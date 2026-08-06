@@ -40,6 +40,36 @@ target_vars <- c("mat", "log_map")
 cat("Predictors (", length(pred_names), "):", paste(pred_names, collapse = ", "), "\n")
 
 # ==============================================================================
+# 3b. REPRODUCIBILITY / SAFETY HELPERS (issues #8, #14)
+# ==============================================================================
+
+SEED <- 42  # bagImpute (bagged trees) is stochastic; seed before every call
+            # for bit-reproducible imputed values and PGLS fits (issue #8).
+
+# aggregate(..., na.rm = TRUE) upstream (00_) can leave NaN (not NA) when a
+# species/trait combination has zero observations. bagImpute's predict() is
+# not guaranteed to treat NaN as missing, so coerce NaN -> NA before any
+# imputation step (issue #14).
+nan_to_na <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.numeric(col)) col[is.nan(col)] <- NA
+    col
+  })
+  df
+}
+
+# Fail loudly rather than silently propagate a corrupted (non-finite) value
+# into a design matrix (issue #14).
+assert_finite <- function(x, label) {
+  m <- as.matrix(x)
+  if (any(!is.finite(m))) {
+    bad <- colnames(m)[colSums(!is.finite(m)) > 0]
+    stop(sprintf("%s: non-finite values remain after imputation in columns: %s",
+                 label, paste(bad, collapse = ", ")))
+  }
+}
+
+# ==============================================================================
 # 4. FIT PGLS — IMPUTE AND COMPLETE-CASE VARIANTS
 # ==============================================================================
 
@@ -60,14 +90,20 @@ for (cfg_name in names(pgls_configs)) {
     cat("  Fitting PGLS for", target, "...\n")
 
     cols <- c(target, pred_names)
-    d    <- dat[, cols, drop = FALSE]
+    d    <- nan_to_na(dat[, cols, drop = FALSE])
 
     if (cfg$impute) {
       # Impute response + predictors for PGLS fitting
+      set.seed(SEED)
       imp_obj    <- preProcess(d, method = "bagImpute")
       d_fit      <- predict(imp_obj, d)
+      assert_finite(d_fit, paste0("PGLS d_fit (", cfg_name, ", ", target, ")"))
       # Traits-only imputation for fossil application (no observed response)
-      imp_traits <- preProcess(dat[, pred_names, drop = FALSE], method = "bagImpute")
+      traits_only <- nan_to_na(dat[, pred_names, drop = FALSE])
+      set.seed(SEED)
+      imp_traits <- preProcess(traits_only, method = "bagImpute")
+      assert_finite(predict(imp_traits, traits_only),
+                    paste0("impute_model_traits (", target, ")"))
       phy_fit    <- phy
       pm_fit     <- phylomat
       # Ensure row order matches VCV matrix
