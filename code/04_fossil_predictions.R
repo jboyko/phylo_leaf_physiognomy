@@ -134,153 +134,217 @@ site_lm_site <- data.frame(
 cat("LM site-level predictions done\n")
 
 # ==============================================================================
-# 5. GRAFT UNIQUE FOSSIL SPECIES ONTO SCAFFOLD TREE
+# 5. GRAFT FOSSIL TIPS ONTO SCAFFOLD TREE
 # ==============================================================================
+#
+# Two placement passes, using the same genus -> family -> order -> root
+# fallback, but at different tip granularity:
+#
+#  (a) foss_sp (species grand means): one tip per species, placed using the
+#      grand-mean age across its site occurrences. This is deliberately
+#      consistent with "PIP sp"'s own definition -- it already averages trait
+#      values across sites, so an averaged placement age is the matching
+#      choice for that method (issue #11's "document the grand-mean age
+#      choice" option).
+#  (b) foss (species-site occurrences): one tip PER OCCURRENCE, placed using
+#      that occurrence's own site age. "PIP+site" (the CLAUDE.md-recommended
+#      primary fossil model) uses these tips so a species spanning sites of
+#      very different ages is no longer collapsed onto a single blended-age
+#      branch (issue #11) -- each site occurrence gets its own phylogenetic
+#      adjustment computed from its own time depth.
+#
+# Placement failures (which should be rare, since a root fallback always
+# succeeds) are caught rather than allowed to error out or vanish, then
+# explicitly logged, counted, and excluded downstream (issue #13).
 
-tree     <- read.tree("data/tre_scaffold.tre")
-h        <- max(nodeHeights(tree))
-tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
+tree       <- read.tree("data/tre_scaffold.tre")
+h          <- max(nodeHeights(tree))
 name_tbl   <- pip$name_table_full
-placement_rows <- vector("list", nrow(foss_sp))
 
-for (j in seq_len(nrow(foss_sp))) {
-  fossil_name <- foss_sp$species[j]
-  age_ma      <- foss_sp$age_ma[j]
+graft_fossil_tip <- function(tree, tip_label, age_ma, genus, family, order) {
+  tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
 
-  if (fossil_name %in% tree$tip.label) {
-    placement_rows[[j]] <- data.frame(
-      taxonomy_scenario = taxonomy_scenario,
-      species = fossil_name,
-      placement_level = "existing_tip",
-      placement_target = fossil_name,
-      age_fallback = "none",
-      stringsAsFactors = FALSE
-    )
-    next
+  if (tip_label %in% tree$tip.label) {
+    return(list(tree = tree, placed = TRUE, placement_level = "existing_tip",
+                placement_target = tip_label, age_fallback = "none",
+                error = NA_character_))
   }
 
-  target_node <- NULL
-  placement_level <- "root"
-  placement_target <- "root"
-  age_fallback <- "none"
+  target_node      <- NULL
+  placement_level   <- "root"
+  placement_target  <- "root"
+  age_fallback      <- "none"
 
   # Genus match
-  if (is_known_taxon(foss_sp$genus[j])) {
-    genus_tips <- tree$tip.label[tip_genera == foss_sp$genus[j]]
+  if (is_known_taxon(genus)) {
+    genus_tips <- tree$tip.label[tip_genera == genus]
     if (length(genus_tips) >= 2) {
       target_node <- getMRCA(tree, genus_tips)
-      placement_level <- "genus"
-      placement_target <- foss_sp$genus[j]
+      placement_level <- "genus"; placement_target <- genus
     } else if (length(genus_tips) == 1) {
       target_node <- which(tree$tip.label == genus_tips[1])
-      placement_level <- "genus"
-      placement_target <- foss_sp$genus[j]
+      placement_level <- "genus"; placement_target <- genus
     }
   }
 
   # Family fallback
-  if (is.null(target_node) && is_known_taxon(foss_sp$family[j])) {
-    fam_genera <- unique(name_tbl$genus[name_tbl$family == foss_sp$family[j]])
+  if (is.null(target_node) && is_known_taxon(family)) {
+    fam_genera <- unique(name_tbl$genus[name_tbl$family == family])
     fam_tips   <- tree$tip.label[tip_genera %in% fam_genera]
     if (length(fam_tips) >= 2) {
       target_node <- getMRCA(tree, fam_tips)
-      placement_level <- "family"
-      placement_target <- foss_sp$family[j]
+      placement_level <- "family"; placement_target <- family
     } else if (length(fam_tips) == 1) {
       target_node <- which(tree$tip.label == fam_tips[1])
-      placement_level <- "family"
-      placement_target <- foss_sp$family[j]
+      placement_level <- "family"; placement_target <- family
     }
   }
 
   # Order fallback
-  if (is.null(target_node) && is_known_taxon(foss_sp$order[j])) {
-    ord_genera <- unique(name_tbl$genus[name_tbl$order == foss_sp$order[j]])
+  if (is.null(target_node) && is_known_taxon(order)) {
+    ord_genera <- unique(name_tbl$genus[name_tbl$order == order])
     ord_tips   <- tree$tip.label[tip_genera %in% ord_genera]
     if (length(ord_tips) >= 2) {
       target_node <- getMRCA(tree, ord_tips)
-      placement_level <- "order"
-      placement_target <- foss_sp$order[j]
+      placement_level <- "order"; placement_target <- order
     } else if (length(ord_tips) == 1) {
       target_node <- which(tree$tip.label == ord_tips[1])
-      placement_level <- "order"
-      placement_target <- foss_sp$order[j]
+      placement_level <- "order"; placement_target <- order
     }
   }
 
   # Root fallback
   if (is.null(target_node)) {
-    warning("No taxonomy match for '", fossil_name, "'. Placing at root.")
+    warning("No taxonomy match for '", tip_label, "'. Placing at root.")
     target_node <- length(tree$tip.label) + 1L
   }
 
-  node_ht  <- nodeheight(tree, target_node)
-  edge_len <- (h - age_ma) - node_ht
+  tryCatch({
+    node_ht  <- nodeheight(tree, target_node)
+    edge_len <- (h - age_ma) - node_ht
+    if (is.na(edge_len)) stop("edge length is NA (missing age_ma?)")
 
-  if (edge_len >= 0) {
-    tree <- bind.tip(tree, tip.label = fossil_name,
-                     where = target_node, edge.length = edge_len)
-  } else if (PLACEMENT_FALLBACK == "ancestral_branch") {
-    age_fallback <- "ancestral_branch"
-    fossil_ht <- h - age_ma
-    node      <- target_node
-    found     <- FALSE
-    repeat {
-      parent_idx <- which(tree$edge[, 2] == node)
-      if (length(parent_idx) == 0) break
-      parent_node <- tree$edge[parent_idx, 1]
-      parent_ht   <- nodeheight(tree, parent_node)
-      if (parent_ht <= fossil_ht) {
-        position <- nodeheight(tree, node) - fossil_ht
-        tree  <- bind.tip(tree, tip.label = fossil_name,
-                          where = node, position = position, edge.length = 0)
-        found <- TRUE
-        break
+    if (edge_len >= 0) {
+      tree <- bind.tip(tree, tip.label = tip_label,
+                       where = target_node, edge.length = edge_len)
+    } else if (PLACEMENT_FALLBACK == "ancestral_branch") {
+      age_fallback <- "ancestral_branch"
+      fossil_ht <- h - age_ma
+      node      <- target_node
+      found     <- FALSE
+      repeat {
+        parent_idx <- which(tree$edge[, 2] == node)
+        if (length(parent_idx) == 0) break
+        parent_node <- tree$edge[parent_idx, 1]
+        parent_ht   <- nodeheight(tree, parent_node)
+        if (parent_ht <= fossil_ht) {
+          position <- nodeheight(tree, node) - fossil_ht
+          tree  <- bind.tip(tree, tip.label = tip_label,
+                            where = node, position = position, edge.length = 0)
+          found <- TRUE
+          break
+        }
+        node <- parent_node
       }
-      node <- parent_node
+      if (!found) {
+        warning("No spanning branch for '", tip_label, "'. Placing at root.")
+        placement_level <- "root"; placement_target <- "root"
+        age_fallback <- "root"
+        tree <- bind.tip(tree, tip.label = tip_label,
+                         where = length(tree$tip.label) + 1L, edge.length = 0.001)
+      }
+    } else {
+      age_fallback <- "node"
+      tree <- bind.tip(tree, tip.label = tip_label,
+                       where = target_node, edge.length = 0.001)
     }
-    if (!found) {
-      warning("No spanning branch for '", fossil_name, "'. Placing at root.")
-      placement_level <- "root"
-      placement_target <- "root"
-      age_fallback <- "root"
-      tree <- bind.tip(tree, tip.label = fossil_name,
-                       where = length(tree$tip.label) + 1L, edge.length = 0.001)
-    }
-  } else {
-    age_fallback <- "node"
-    tree <- bind.tip(tree, tip.label = fossil_name,
-                     where = target_node, edge.length = 0.001)
-  }
-
-  placement_rows[[j]] <- data.frame(
-    taxonomy_scenario = taxonomy_scenario,
-    species = fossil_name,
-    placement_level = placement_level,
-    placement_target = placement_target,
-    age_fallback = age_fallback,
-    stringsAsFactors = FALSE
-  )
-  tip_genera <- sapply(strsplit(tree$tip.label, "_"), `[`, 1)
+    list(tree = tree, placed = TRUE, placement_level = placement_level,
+         placement_target = placement_target, age_fallback = age_fallback,
+         error = NA_character_)
+  }, error = function(e) {
+    list(tree = tree, placed = FALSE, placement_level = NA_character_,
+         placement_target = NA_character_, age_fallback = NA_character_,
+         error = conditionMessage(e))
+  })
 }
 
-placement_log <- do.call(rbind, placement_rows)
-placed <- foss_sp$species[foss_sp$species %in% tree$tip.label]
-cat("Placed", length(placed), "/", nrow(foss_sp), "fossil species on tree\n")
-foss_sp <- foss_sp[foss_sp$species %in% placed, ]
+# --- 5a. Species grand-mean tips (used by "PIP sp") ------------------------
+placement_rows_sp <- vector("list", nrow(foss_sp))
+for (j in seq_len(nrow(foss_sp))) {
+  res <- graft_fossil_tip(tree, foss_sp$species[j], foss_sp$age_ma[j],
+                          foss_sp$genus[j], foss_sp$family[j], foss_sp$order[j])
+  tree <- res$tree
+  placement_rows_sp[[j]] <- data.frame(
+    taxonomy_scenario = taxonomy_scenario,
+    tip_scope = "species_grand_mean",
+    species = foss_sp$species[j],
+    fossil_name = NA_character_,
+    site = NA_character_,
+    placed = res$placed,
+    placement_level = res$placement_level,
+    placement_target = res$placement_target,
+    age_fallback = res$age_fallback,
+    error = res$error,
+    stringsAsFactors = FALSE
+  )
+}
+
+placed_sp   <- foss_sp$species[vapply(placement_rows_sp, function(r) r$placed, logical(1))]
+dropped_sp  <- setdiff(foss_sp$species, placed_sp)
+cat("PIP sp: placed", length(placed_sp), "/", nrow(foss_sp), "fossil species on tree\n")
+if (length(dropped_sp) > 0) {
+  warning("Dropping ", length(dropped_sp), " fossil species that failed ",
+          "phylogenetic placement (PIP sp): ", paste(dropped_sp, collapse = ", "))
+}
+foss_sp <- foss_sp[foss_sp$species %in% placed_sp, ]
+
+# --- 5b. Site-occurrence tips (used by "PIP+site", the recommended model) --
+placement_rows_site <- vector("list", nrow(foss))
+for (j in seq_len(nrow(foss))) {
+  res <- graft_fossil_tip(tree, foss$fossil_name[j], foss$age_ma[j],
+                          foss$genus[j], foss$family[j], foss$order[j])
+  tree <- res$tree
+  placement_rows_site[[j]] <- data.frame(
+    taxonomy_scenario = taxonomy_scenario,
+    tip_scope = "site_occurrence",
+    species = foss$species[j],
+    fossil_name = foss$fossil_name[j],
+    site = foss$site[j],
+    placed = res$placed,
+    placement_level = res$placement_level,
+    placement_target = res$placement_target,
+    age_fallback = res$age_fallback,
+    error = res$error,
+    stringsAsFactors = FALSE
+  )
+}
+
+placed_occ  <- foss$fossil_name[vapply(placement_rows_site, function(r) r$placed, logical(1))]
+dropped_occ <- setdiff(foss$fossil_name, placed_occ)
+cat("PIP+site: placed", length(placed_occ), "/", nrow(foss), "fossil species-site rows on tree\n")
+if (length(dropped_occ) > 0) {
+  dropped_rows <- foss[foss$fossil_name %in% dropped_occ, c("fossil_name", "species", "site")]
+  warning("Dropping ", length(dropped_occ), " fossil species-site occurrences ",
+          "that failed phylogenetic placement (PIP+site): ",
+          paste(dropped_rows$fossil_name, collapse = ", "))
+  cat("  Dropped species-site rows (sites affected):",
+      paste(unique(dropped_rows$site), collapse = ", "), "\n")
+}
+foss <- foss[foss$fossil_name %in% placed_occ, ]
+
+placement_log <- rbind(do.call(rbind, placement_rows_sp),
+                       do.call(rbind, placement_rows_site))
 
 # ==============================================================================
 # 6. COMPUTE VCV CROSS-COVARIANCES
 # ==============================================================================
 
-idx_extant <- rownames(pip$dat_imputed_mat)
-idx_fossil  <- foss_sp$species
+idx_extant  <- rownames(pip$dat_imputed_mat)
+idx_fossil_sp  <- foss_sp$species     # species grand-mean tips (PIP sp)
+idx_fossil_occ <- foss$fossil_name    # site-occurrence tips (PIP+site, issue #11)
 
-tree_small     <- keep.tip(tree, c(idx_extant, idx_fossil))
+tree_small     <- keep.tip(tree, c(idx_extant, idx_fossil_sp, idx_fossil_occ))
 phylomat_small <- vcv(tree_small)
-
-V_cross_mat <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_mat
-V_cross_map <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_map
 
 V_inv_mat <- solve(pip$V_lam_mat)
 V_inv_map <- solve(pip$V_lam_map)
@@ -288,11 +352,27 @@ V_inv_map <- solve(pip$V_lam_map)
 resid_ord_mat <- pip$resid_mat[idx_extant]
 resid_ord_map <- pip$resid_map[idx_extant]
 
-# Phylogenetic adjustment — same for PIP sp and PIP+site
-phylo_adj_mat <- as.numeric(t(V_cross_mat) %*% V_inv_mat %*% resid_ord_mat)
-phylo_adj_map <- as.numeric(t(V_cross_map) %*% V_inv_map %*% resid_ord_map)
-names(phylo_adj_mat) <- idx_fossil
-names(phylo_adj_map) <- idx_fossil
+compute_phylo_adj <- function(idx_fossil) {
+  V_cross_mat <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_mat
+  V_cross_map <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_map
+  adj_mat <- as.numeric(t(V_cross_mat) %*% V_inv_mat %*% resid_ord_mat)
+  adj_map <- as.numeric(t(V_cross_map) %*% V_inv_map %*% resid_ord_map)
+  names(adj_mat) <- idx_fossil
+  names(adj_map) <- idx_fossil
+  list(mat = adj_mat, map = adj_map)
+}
+
+# Species-level adjustment for "PIP sp" (grand-mean tip placement)
+phylo_adj_sp  <- compute_phylo_adj(idx_fossil_sp)
+phylo_adj_mat <- phylo_adj_sp$mat
+phylo_adj_map <- phylo_adj_sp$map
+
+# Site-occurrence adjustment for "PIP+site" — computed from each occurrence's
+# own tip placement rather than reusing the grand-mean-age species adjustment
+# (issue #11).
+phylo_adj_occ     <- compute_phylo_adj(idx_fossil_occ)
+phylo_adj_site_mat <- phylo_adj_occ$mat
+phylo_adj_site_map <- phylo_adj_occ$map
 
 # ==============================================================================
 # 7. IMPUTE FOSSIL TRAITS FOR PIP
@@ -363,11 +443,13 @@ site_sp_map_imp$log_map <- 0
 X_site_mat <- model.matrix(pip$formula_mat, site_sp_mat_imp)[, colnames(pip$X_mat), drop = FALSE]
 X_site_map <- model.matrix(pip$formula_map, site_sp_map_imp)[, colnames(pip$X_map), drop = FALSE]
 
-# GLS prediction uses site-specific traits; phylo adjustment from species placement
+# GLS prediction uses site-specific traits; phylo adjustment from this
+# occurrence's own site-specific tip placement (issue #11) — not the
+# grand-mean-age species placement used by PIP sp.
 yhat_site_mat <- as.numeric(X_site_mat %*% pip$beta_mat) +
-                   phylo_adj_mat[foss$species]
+                   phylo_adj_site_mat[foss$fossil_name]
 yhat_site_map <- as.numeric(X_site_map %*% pip$beta_map) +
-                   phylo_adj_map[foss$species]
+                   phylo_adj_site_map[foss$fossil_name]
 
 foss$mat_pip_site <- yhat_site_mat
 foss$map_pip_site <- exp(yhat_site_map)
