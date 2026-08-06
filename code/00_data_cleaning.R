@@ -97,6 +97,25 @@ dat_sp <- aggregate(dat[, agg_cols],
   FUN = mean, na.rm = TRUE)
 dat_sp <- dat_sp[!is.na(dat_sp$Order) & dat_sp$Order != "unknown", ]
 dat_sp <- dat_sp[grepl("[A-Za-z]", dat_sp$genusSpecies), ]
+# Collapse duplicate species names (same species with inconsistent Family/Order
+# across sites — a data quality issue in subsets). Mirrors 03_loso_cv.R's
+# agg_species() trait-averaging rule; currently a no-op on the full dataset but
+# keeps the two aggregation paths from silently drifting apart (issue #15).
+# Unlike 03_ (which doesn't need taxonomy after this point), the scaffold-tree
+# grafting below needs genus/Family/Order, so the first-listed values are kept
+# and a warning is raised naming the affected species.
+if (anyDuplicated(dat_sp$genusSpecies)) {
+  dup_species <- unique(dat_sp$genusSpecies[duplicated(dat_sp$genusSpecies)])
+  warning("Species with inconsistent Family/Order across sites, collapsed by ",
+          "averaging traits and taking the first-listed Family/Order: ",
+          paste(dup_species, collapse = ", "))
+  taxon_lookup <- dat_sp[!duplicated(dat_sp$genusSpecies),
+                        c("genusSpecies", "genus", "Family", "Order")]
+  dat_sp <- aggregate(dat_sp[, agg_cols],
+    by  = list(genusSpecies = dat_sp$genusSpecies),
+    FUN = mean, na.rm = TRUE)
+  dat_sp <- merge(dat_sp, taxon_lookup, by = "genusSpecies", sort = FALSE)
+}
 
 # ==============================================================================
 # 3b. AGGREGATE TO SITE LEVEL (three variants)

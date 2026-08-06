@@ -129,7 +129,11 @@ active_pred_names <- function(dat_sp, pnames) {
   present[na_pct < NA_THRESHOLD]
 }
 
-# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R section 3.
+# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R
+# section 3's trait-averaging rule (issue #15): same two-step aggregate +
+# duplicate-species collapse. Unlike 00_, genus/Family/Order are not restored
+# after the collapse — this function's output only ever feeds VCV/trait
+# lookups keyed by genusSpecies within a CV fold, never scaffold-tree grafting.
 agg_species <- function(d_filled) {
   dat_sp <- aggregate(d_filled[, agg_cols],
     by  = list(genusSpecies = d_filled$genusSpecies,
