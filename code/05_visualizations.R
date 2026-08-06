@@ -72,7 +72,7 @@ p1 <- ggplot(rmse, aes(x = rmse, y = label, colour = family)) +
   facet_wrap(~ target_lab, scales = "free_x") +
   scale_colour_manual(values = family_colours, name = "Model family") +
   labs(
-    title = "LOSO-CV RMSE across model configurations",
+    title = "10-fold site-grouped CV RMSE across model configurations",
     x     = "RMSE",
     y     = NULL
   ) +
@@ -138,7 +138,7 @@ p2 <- ggplot(preds_long, aes(x = observed, y = predicted, colour = family)) +
   scale_colour_manual(values = family_colours, name = "Model family") +
   scale_fill_manual(values = family_colours, guide = "none") +
   labs(
-    title = "Observed vs. predicted - LOSO-CV site-level predictions",
+    title = "Observed vs. predicted - 10-fold site-grouped CV site-level predictions",
     x     = "Observed",
     y     = "Predicted"
   ) +
@@ -154,7 +154,7 @@ ggsave("plots/fig2_obs_vs_pred.pdf", p2, width = 8, height = 8)
 ggsave("plots/fig2_obs_vs_pred.png", p2, width = 8, height = 8, dpi = 150)
 message("Saved fig2_obs_vs_pred")
 
-# ── 5. Figure 3: Coefficient stability across LOSO folds (LM species impute) ──
+# ── 5. Figure 3: Coefficient stability across CV folds (LM species impute) ──
 coef_lm_sp <- coefs |>
   filter(
     method      == "LM",
@@ -181,7 +181,7 @@ p3 <- ggplot(coef_lm_sp, aes(x = estimate, y = predictor)) +
   scale_fill_manual(values = c("MAT (°C)" = "#d6604d", "log(MAP) (log cm)" = "#4393c3"),
                     name = NULL) +
   labs(
-    title = "Coefficient stability across LOSO folds - LM species (impute)",
+    title = "Coefficient stability across CV folds - LM species (impute)",
     x     = "Coefficient estimate",
     y     = NULL
   ) +
@@ -210,7 +210,7 @@ p4 <- ggplot(lambda_df, aes(x = na_label, y = lambda, fill = target_lab)) +
                     name = NULL) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(
-    title = "Pagel's lambda across LOSO folds - PGLS models",
+    title = "Pagel's lambda across CV folds - PGLS models",
     x     = NULL,
     y     = expression(paste("Pagel's ", lambda))
   ) +

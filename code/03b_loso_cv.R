@@ -122,7 +122,7 @@ diag(full_vcv) <- diag(full_vcv) + 1e-6
 cat("Full VCV:", nrow(full_vcv), "x", ncol(full_vcv), "\n")
 
 # ==============================================================================
-# 4. ASSIGN LOSO FOLDS (stratified by site-mean log10_lma, snake pattern)
+# 4. ASSIGN 10-FOLD SITE-GROUPED CV FOLDS (stratified by site-mean log10_lma, snake pattern)
 # ==============================================================================
 
 set.seed(SEED)
@@ -134,7 +134,7 @@ names(fold_assignment) <- foldable_sites
 cat("Fold sizes:", paste(table(fold_assignment), collapse = " "), "\n")
 
 # ==============================================================================
-# 5. LOSO CV LOOP
+# 5. 10-FOLD SITE-GROUPED CV LOOP
 # ==============================================================================
 
 cv_results      <- list()
@@ -622,7 +622,7 @@ rmse_rows <- data.frame(
 )
 rmse_rows <- rmse_rows[order(rmse_rows$rmse), ]
 
-cat("\n10-fold LOSO CV RMSE (log10 LMA, site level):\n")
+cat("\n10-fold site-grouped CV RMSE (log10 LMA, site level):\n")
 print(rmse_rows, row.names = FALSE)
 
 # ==============================================================================
