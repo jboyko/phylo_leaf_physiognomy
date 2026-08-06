@@ -39,18 +39,20 @@ dat$map          <- dat$map_mm / 10   # mm -> cm (pipeline convention; CLAUDE.md
 # trait averages via na.rm = TRUE rather than pulled toward zero).
 dat_prefill <- dat
 
-# margin == 1 indicates untoothed; tooth trait absence is biologically real —
-# set to 0 (or 1 for perimeter_ratio) before aggregating.
+# margin == 1 indicates untoothed; tooth trait absence is biologically real
+# ONLY when the cell is also blank (NA) — a margin-scored-untoothed leaf that
+# still carries a nonzero tooth measurement must not be overwritten with 0.
+# Set to 0 (or 1 for perimeter_ratio) before aggregating (Dana Royer, pers. comm.).
 dat <- dat %>%
   mutate(
-    tc_p            = ifelse(margin == 1, 0, tc_p),
-    tc_ip           = ifelse(margin == 1, 0, tc_ip),
-    tc_ba           = ifelse(margin == 1, 0, tc_ba),
-    ta_p            = ifelse(margin == 1, 0, ta_p),
-    ta_ip           = ifelse(margin == 1, 0, ta_ip),
-    ta_ba           = ifelse(margin == 1, 0, ta_ba),
-    avg_ta          = ifelse(margin == 1, 0, avg_ta),
-    perimeter_ratio = ifelse(margin == 1, 1, perimeter_ratio)
+    tc_p            = ifelse(margin == 1 & is.na(tc_p), 0, tc_p),
+    tc_ip           = ifelse(margin == 1 & is.na(tc_ip), 0, tc_ip),
+    tc_ba           = ifelse(margin == 1 & is.na(tc_ba), 0, tc_ba),
+    ta_p            = ifelse(margin == 1 & is.na(ta_p), 0, ta_p),
+    ta_ip           = ifelse(margin == 1 & is.na(ta_ip), 0, ta_ip),
+    ta_ba           = ifelse(margin == 1 & is.na(ta_ba), 0, ta_ba),
+    avg_ta          = ifelse(margin == 1 & is.na(avg_ta), 0, avg_ta),
+    perimeter_ratio = ifelse(margin == 1 & is.na(perimeter_ratio), 1, perimeter_ratio)
   )
 
 # Rename dilp output columns to pipeline convention

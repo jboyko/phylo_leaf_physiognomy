@@ -42,8 +42,11 @@ vars_tooth_0 <- c(
 fill_tooth_traits <- function(d) {
   untoothed    <- !is.na(d$margin.score) & d$margin.score == 1
   tooth_in_d   <- intersect(vars_tooth_0, names(d))
-  for (v in tooth_in_d) d[[v]][untoothed] <- 0
-  if ("perim.ratio" %in% names(d)) d[["perim.ratio"]][untoothed] <- 1
+  # Cell blank AND margin.score == 1 (CLAUDE.md "Tooth trait filling"); a
+  # margin-scored-untoothed leaf carrying a nonzero measurement is kept as-is.
+  for (v in tooth_in_d) d[[v]][untoothed & is.na(d[[v]])] <- 0
+  if ("perim.ratio" %in% names(d))
+    d[["perim.ratio"]][untoothed & is.na(d[["perim.ratio"]])] <- 1
   d
 }
 
