@@ -674,7 +674,7 @@ for (fold in seq_len(K_FOLDS)) {
     cv_results_so_far = cv_results
   )
   saveRDS(fold_out, sprintf("models/loso_cv_fold_%02d.rds", fold))
-  cat("  Saved models/loso_cv_fold_%02d.rds\n", fold)
+  cat(sprintf("  Saved models/loso_cv_fold_%02d.rds\n", fold))
 }
 
 # ==============================================================================
