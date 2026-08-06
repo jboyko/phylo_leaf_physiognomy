@@ -1,4 +1,4 @@
-setwd("/Users/jboyko/phylo_leaf_physiognomy")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 # Generates all files needed to update the pre-baked model objects and
 # hard-coded constants in the dilp package's dilp_pgls() function.

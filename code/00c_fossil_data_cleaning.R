@@ -4,22 +4,10 @@
 # data while preserving formal vs informal taxonomy for sensitivity analysis.
 # ==============================================================================
 
-if (!file.exists("README.md")) {
-  stop("Run this script from the phylo_leaf_physiognomy repository root.")
-}
-
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 source("code/fossil_taxonomy.R")
 
-if (!requireNamespace("dilp", quietly = TRUE)) {
-  dilp_source <- path.expand("~/dilp")
-  if (!dir.exists(dilp_source)) {
-    stop("Install the dilp package or place its source at ~/dilp.")
-  }
-  if (!requireNamespace("devtools", quietly = TRUE)) {
-    stop("The devtools package is required to load the local dilp source.")
-  }
-  devtools::load_all(dilp_source, quiet = TRUE)
-}
+pip_require_dilp()
 dilp_fn <- get("dilp", envir = asNamespace("dilp"))
 
 mean_or_na <- function(x) {

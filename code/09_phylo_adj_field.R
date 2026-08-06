@@ -14,7 +14,7 @@
 # the real Peppe fossil placements overlaid (genus/family/order MRCAs).
 # ==============================================================================
 
-setwd("/Users/jboyko/phylo_leaf_physiognomy")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(phytools)

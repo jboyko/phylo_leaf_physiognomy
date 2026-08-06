@@ -1,8 +1,8 @@
-setwd("/Users/jboyko/phylo_leaf_physiognomy")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(caret)
-library(dilp)
+pip_require_dilp()
 library(dplyr)
 library(tibble)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
