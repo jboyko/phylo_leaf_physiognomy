@@ -1,5 +1,5 @@
 # ==============================================================================
-# 07_phylo_adj_field.R
+# 09_phylo_adj_field.R
 # Visualize the PIP phylogenetic-adjustment field over `tre_pruned`.
 #
 # For every tip and internal node X of the pruned tree, compute the adjustment
@@ -10,8 +10,8 @@
 # where v_X[i] = depth of MRCA(X, training-tip i). No leave-one-out: a
 # hypothetical fossil is genuinely outside the training data.
 #
-# Output: separate trees for MAT and log(MAP), each rendered with and without
-# the real Peppe fossil placements overlaid (genus/family/order MRCAs).
+# Output: separate trees for MAT and log(MAP), rendered as fan phylogenies
+# with order-level bands around the perimeter.
 # ==============================================================================
 
 setwd("/Users/jboyko/phylo_leaf_physiognomy")
@@ -23,9 +23,8 @@ library(phytools)
 # 1. LOAD
 # ==============================================================================
 
-pip  <- readRDS("models/pip_components.rds")
-phy  <- pip$tree_pruned
-foss <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
+pip <- readRDS("models/pip_components.rds")
+phy <- pip$tree_pruned
 
 Ntip  <- length(phy$tip.label)
 Nnode <- phy$Nnode
@@ -73,68 +72,12 @@ cat("  log MAP adj range: [", round(min(adj_map), 3), ",",
     round(max(adj_map), 3), "]\n")
 
 # ==============================================================================
-# 3. FOSSIL PLACEMENT NODES ON tre_pruned
-# ==============================================================================
-# Match each unique fossil species to its genus/family/order MRCA on the pruned
-# training tree (no grafting, no edge length manipulation — we just need a
-# node ID to overlay).
-
-tip_genera <- sapply(strsplit(phy$tip.label, "_"), `[`, 1)
-name_tbl   <- pip$name_table_full
-
-# Use species grand-mean age (matches the per-species placement in 04_)
-foss_u <- aggregate(foss["age_ma"],
-                    by = list(species = foss$species,
-                              genus   = foss$genus,
-                              family  = foss$family,
-                              order   = foss$order),
-                    FUN = mean, na.rm = TRUE)
-h_tree <- max(node.depth.edgelength(phy))
-
-find_placement_node <- function(genus, family, order) {
-  genus_tips <- phy$tip.label[tip_genera == genus]
-  if (length(genus_tips) >= 2) return(getMRCA(phy, genus_tips))
-  if (length(genus_tips) == 1) return(which(phy$tip.label == genus_tips[1]))
-
-  if (nzchar(family) && family != "unknown") {
-    fam_genera <- unique(name_tbl$genus[name_tbl$family == family])
-    fam_tips   <- phy$tip.label[tip_genera %in% fam_genera]
-    if (length(fam_tips) >= 2) return(getMRCA(phy, fam_tips))
-    if (length(fam_tips) == 1) return(which(phy$tip.label == fam_tips[1]))
-  }
-
-  if (nzchar(order) && order != "unknown") {
-    ord_genera <- unique(name_tbl$genus[name_tbl$order == order])
-    ord_tips   <- phy$tip.label[tip_genera %in% ord_genera]
-    if (length(ord_tips) >= 2) return(getMRCA(phy, ord_tips))
-    if (length(ord_tips) == 1) return(which(phy$tip.label == ord_tips[1]))
-  }
-
-  Ntip + 1L  # root
-}
-
-foss_u$node <- mapply(find_placement_node,
-                      foss_u$genus, foss_u$family, foss_u$order)
-
-# Walk up the ancestor chain to the branch alive at fossil_time, return
-# (node_below, node_above) defining the spanning edge so we can interpolate y.
-spanning_edge <- function(node, fossil_time) {
-  repeat {
-    parent_idx <- which(phy$edge[, 2] == node)
-    if (length(parent_idx) == 0) return(c(node, node))  # at root
-    parent <- phy$edge[parent_idx, 1]
-    if (node.depth.edgelength(phy)[parent] <= fossil_time) return(c(node, parent))
-    node <- parent
-  }
-}
-
-node_depth_all <- node.depth.edgelength(phy)
-cat("Mapped", nrow(foss_u), "fossil species to placement nodes.\n")
-
-# ==============================================================================
-# 3b. ORDER-LEVEL MRCAs FOR LABELING
+# 3. ORDER-LEVEL MRCAs FOR LABELING
 # ==============================================================================
 # Parse genus from each tip label, look up order in name_table_full, take MRCA.
+
+name_tbl <- pip$name_table_full
+h_tree   <- max(node.depth.edgelength(phy))
 
 tip_genus_phy <- sapply(strsplit(phy$tip.label, "_"), `[`, 1)
 gen2order     <- setNames(name_tbl$order, name_tbl$genus)
@@ -234,11 +177,6 @@ render_field <- function(tips_v, node_v, file_base, title) {
   }
   cat("Wrote", pdf_path, "and", png_path, "\n")
 }
-
-# Unused now (kept in case fossil overlay is restored later)
-invisible(spanning_edge)
-invisible(foss_u)
-invisible(node_depth_all)
 
 render_field(tips_mat, node_mat,
              file_base = "fig9_phylo_adj_field_mat",
