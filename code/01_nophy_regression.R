@@ -42,15 +42,53 @@ cat("Predictors (", length(predictor_names), "):", paste(predictor_names, collap
 predictors <- dat[, predictor_names]
 
 # ==============================================================================
-# 3. PRE-IMPUTE ONCE BEFORE CARET
+# 2b. REPRODUCIBILITY / SAFETY HELPERS (issues #8, #14)
 # ==============================================================================
 
-# bagImpute inside each caret CV fold would repeat many times. Pre-imputing
-# once is much faster with negligible effect on CV estimates (imputation uses
-# predictor correlations only, not the response, so leakage is minimal).
-cat("Pre-imputing predictors...\n")
+SEED <- 42  # bagImpute (bagged trees) and caret's CV fold assignment are
+            # stochastic; seed before every such call for bit-reproducible
+            # imputed values and CV numbers (issue #8).
+
+# aggregate(..., na.rm = TRUE) upstream (00_) can leave NaN (not NA) when a
+# species/trait combination has zero observations. bagImpute's predict() is
+# not guaranteed to treat NaN as missing, so coerce NaN -> NA before any
+# imputation step (issue #14).
+nan_to_na <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.numeric(col)) col[is.nan(col)] <- NA
+    col
+  })
+  df
+}
+
+# Fail loudly rather than silently propagate a corrupted (non-finite) value
+# into a design matrix (issue #14).
+assert_finite <- function(x, label) {
+  m <- as.matrix(x)
+  if (any(!is.finite(m))) {
+    bad <- colnames(m)[colSums(!is.finite(m)) > 0]
+    stop(sprintf("%s: non-finite values remain after imputation in columns: %s",
+                 label, paste(bad, collapse = ", ")))
+  }
+}
+
+predictors <- nan_to_na(predictors)
+
+# ==============================================================================
+# 3. PRE-IMPUTE ONCE ON FULL DATA — SAVED FOR FOSSIL APPLICATION ONLY
+# ==============================================================================
+
+# This full-data imputer is saved to all_results$impute_model for use on new
+# fossil specimens in 04_ (no observed response there, so there is nothing to
+# leak). It is NOT used to fit or score the CV loop below — that would leak
+# held-out folds into the imputation model (issue #9). CV training in section
+# 4 refits bagImpute inside each fold via train(preProcess = ...) instead,
+# matching the leakage-free approach already used in 03_loso_cv.R.
+cat("Pre-imputing predictors (full-data fit for fossil application)...\n")
+set.seed(SEED)
 impute_preproc <- preProcess(predictors, method = "bagImpute")
 predictors_imp <- predict(impute_preproc, predictors)
+assert_finite(predictors_imp, "predictors_imp (01_, full-data impute)")
 
 # ==============================================================================
 # 4. FIT SPECIES-LEVEL LM — IMPUTE AND COMPLETE-CASE VARIANTS
@@ -73,19 +111,26 @@ for (cfg_name in names(sp_configs)) {
 
   for (target in target_vars) {
     if (cfg$impute) {
-      complete_rows <- !is.na(dat[[target]])
-      preds_fit     <- predictors_imp
+      # Imputation is fit inside each caret CV fold via train(preProcess = ...)
+      # so held-out folds cannot leak into the imputation model (issue #9).
+      # predictors_imp (fit on all data, section 3) is deliberately NOT used
+      # here — only for the final fossil-application model saved below.
+      complete_rows  <- !is.na(dat[[target]])
+      preds_fit      <- predictors
+      preproc_method <- c("bagImpute", "center", "scale")
     } else {
-      complete_rows <- complete.cases(predictors) & !is.na(dat[[target]])
-      preds_fit     <- predictors
+      complete_rows  <- complete.cases(predictors) & !is.na(dat[[target]])
+      preds_fit      <- predictors
+      preproc_method <- c("center", "scale")
     }
     cat("  Training LM for", target, "| N:", sum(complete_rows), "\n")
+    set.seed(SEED)  # seeds both per-fold bagImpute and CV fold assignment (issue #8)
     cfg_res[[target]] <- list(LM = train(
       x          = preds_fit[complete_rows, , drop = FALSE],
       y          = dat[[target]][complete_rows],
       method     = "lm",
       trControl  = ctrl,
-      preProcess = c("center", "scale")
+      preProcess = preproc_method
     ))
   }
 
@@ -163,27 +208,38 @@ for (cfg_name in names(site_configs)) {
                                na_pct_s[fossil_traits] < NA_THRESHOLD]
   cat("Predictors (", length(pnames), "):", paste(pnames, collapse = ", "), "\n")
 
-  preds <- d[, pnames, drop = FALSE]
+  preds <- nan_to_na(d[, pnames, drop = FALSE])
 
   if (cfg$impute) {
-    imp_obj   <- preProcess(preds, method = "bagImpute")
-    preds_fit <- predict(imp_obj, preds)
+    # Full-data imputer, saved for fossil application only (e.g. 04_'s
+    # site_mods$impute_model) — NOT used to fit or score the CV below, which
+    # refits bagImpute inside each fold via train(preProcess = ...) instead
+    # (issue #9).
+    set.seed(SEED)
+    imp_obj <- preProcess(preds, method = "bagImpute")
+    assert_finite(predict(imp_obj, preds), paste0("site impute_model (", cfg_name, ")"))
+    preproc_method <- c("bagImpute", "center", "scale")
   } else {
-    imp_obj   <- NULL
-    preds_fit <- preds
+    imp_obj        <- NULL
+    preproc_method <- c("center", "scale")
   }
 
   cfg_res <- list(impute_model = imp_obj, pred_names = pnames, desc = cfg$desc)
 
   for (target in target_vars) {
     cat("  Training LM for", target, "...\n")
-    complete_rows    <- complete.cases(preds_fit) & !is.na(d[[target]])
+    if (cfg$impute) {
+      complete_rows <- !is.na(d[[target]])
+    } else {
+      complete_rows <- complete.cases(preds) & !is.na(d[[target]])
+    }
+    set.seed(SEED)  # seeds both per-fold bagImpute and CV fold assignment (issue #8)
     cfg_res[[target]] <- list(LM = train(
-      x          = preds_fit[complete_rows, , drop = FALSE],
+      x          = preds[complete_rows, , drop = FALSE],
       y          = d[[target]][complete_rows],
       method     = "lm",
       trControl  = ctrl,
-      preProcess = c("center", "scale")
+      preProcess = preproc_method
     ))
   }
 
