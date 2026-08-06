@@ -39,6 +39,29 @@ vars_tooth_0 <- c(
 # HELPER FUNCTIONS
 # ==============================================================================
 
+# aggregate(..., na.rm = TRUE) below returns NaN (not NA) for a species/site
+# with zero non-missing observations of a trait. bagImpute's predict() is not
+# guaranteed to treat NaN as missing, so coerce NaN -> NA immediately after
+# every aggregate() call, before any imputation step (issue #14).
+nan_to_na <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.numeric(col)) col[is.nan(col)] <- NA
+    col
+  })
+  df
+}
+
+# Fail loudly rather than silently propagate a corrupted (non-finite) value
+# from training-side imputation into a design matrix (issue #14).
+assert_finite <- function(x, label) {
+  m <- as.matrix(x)
+  if (any(!is.finite(m))) {
+    bad <- colnames(m)[colSums(!is.finite(m)) > 0]
+    stop(sprintf("%s: non-finite values remain after imputation in columns: %s",
+                 label, paste(bad, collapse = ", ")))
+  }
+}
+
 fill_tooth_traits <- function(d) {
   untoothed    <- !is.na(d$margin.score) & d$margin.score == 1
   tooth_in_d   <- intersect(vars_tooth_0, names(d))
@@ -144,7 +167,7 @@ agg_species <- function(d_filled) {
   }
   dat_sp$log_map <- log(dat_sp$map)
   rownames(dat_sp) <- dat_sp$genusSpecies
-  dat_sp
+  nan_to_na(dat_sp)
 }
 
 # Aggregate morphotype means directly to site means (tooth-filled).
@@ -154,7 +177,7 @@ agg_site_direct <- function(d_filled) {
                                   FUN = mean, na.rm = TRUE)
   d_agg$log_map      <- log(d_agg$map)
   rownames(d_agg)    <- d_agg$Site
-  d_agg
+  nan_to_na(d_agg)
 }
 
 # With dilp data already at morphotype (species×site) level, this collapses
@@ -172,7 +195,7 @@ agg_site_peppe <- function(d_prefill) {
                                   FUN = mean, na.rm = TRUE)
   d_agg$log_map      <- log(d_agg$map)
   rownames(d_agg)    <- d_agg$Site
-  d_agg
+  nan_to_na(d_agg)
 }
 
 # ==============================================================================
@@ -261,6 +284,12 @@ model_fit_stats <- list()
 for (fold in seq_len(K_FOLDS)) {
 
   fold_start   <- proc.time()["elapsed"]
+
+  # Per-fold bagImpute calls below are stochastic (bagged trees); seed
+  # deterministically by fold so the whole LOSO run is bit-reproducible
+  # regardless of call order (issue #8).
+  set.seed(SEED + fold)
+
   held_sites   <- names(fold_assignment)[fold_assignment == fold]
   train_sites  <- names(fold_assignment)[fold_assignment != fold]
 
@@ -296,11 +325,13 @@ for (fold in seq_len(K_FOLDS)) {
   # --------------------------------------------------------------------------
 
   cat("  Fitting species-level imputation model...\n")
+  set.seed(SEED + fold)
   imp_sp_traits <- preProcess(dat_sp_train[, pred_names, drop = FALSE],
                                method = "bagImpute")
   dat_sp_imp_X  <- predict(imp_sp_traits,
                             dat_sp_train[, pred_names, drop = FALSE])
   rownames(dat_sp_imp_X) <- rownames(dat_sp_train)
+  assert_finite(dat_sp_imp_X, sprintf("species-level impute (fold %d)", fold))
 
   # --------------------------------------------------------------------------
   # 4c. Fit species-level LM
@@ -352,8 +383,10 @@ for (fold in seq_len(K_FOLDS)) {
     preds  <- d_site[, pnames, drop = FALSE]
 
     if (cfg$impute) {
+      set.seed(SEED + fold)
       imp_site  <- preProcess(preds, method = "bagImpute")
       preds_fit <- predict(imp_site, preds)
+      assert_finite(preds_fit, sprintf("site-level impute (%s, fold %d)", cfg_name, fold))
     } else {
       imp_site  <- NULL
       preds_fit <- preds
@@ -385,9 +418,11 @@ for (fold in seq_len(K_FOLDS)) {
       d_raw <- dat_sp_train[, c(target, pred_names), drop = FALSE]
 
       if (pgls_cfg == "impute") {
+        set.seed(SEED + fold)
         imp_full      <- preProcess(d_raw, method = "bagImpute")
         d_fit         <- predict(imp_full, d_raw)
         rownames(d_fit) <- rownames(d_raw)
+        assert_finite(d_fit, sprintf("PGLS impute (%s, %s, fold %d)", pgls_cfg, target, fold))
         sp_fit        <- rownames(d_fit)
         V_fit         <- V_train[sp_fit, sp_fit]
         # Ensure row order matches VCV
@@ -522,14 +557,22 @@ for (fold in seq_len(K_FOLDS)) {
                               by  = list(species = held_filled$genusSpecies),
                               FUN = mean, na.rm = TRUE)
     rownames(held_sp_agg) <- held_sp_agg$species
+    held_sp_agg <- nan_to_na(held_sp_agg)
     held_sp_names         <- held_sp_agg$species
 
-    # Apply species-level training imputation to held-out species
-    held_sp_imp <- tryCatch(
-      predict(imp_sp_traits,
-              held_sp_agg[, pred_names, drop = FALSE]),
-      error = function(e) NULL
-    )
+    # Apply species-level training imputation to held-out species. A
+    # non-finite result here (issue #14) is treated as a prediction failure
+    # for this site (not a hard stop), so one bad held-out species doesn't
+    # abort the whole LOSO run.
+    held_sp_imp <- tryCatch({
+      out <- predict(imp_sp_traits, held_sp_agg[, pred_names, drop = FALSE])
+      if (any(!is.finite(as.matrix(out)))) {
+        cat("  Non-finite imputed traits for held-out site", s, "- dropping\n")
+        NULL
+      } else {
+        out
+      }
+    }, error = function(e) NULL)
     if (!is.null(held_sp_imp)) rownames(held_sp_imp) <- held_sp_names
 
     # ---- Species-level LM predictions ----
