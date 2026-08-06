@@ -17,9 +17,9 @@ Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate, build scaff
 Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from April 2026 leaf data
 Rscript code/01_nophy_regression.R   # Fit non-phylogenetic models (species + site level)
 Rscript code/02_phy_regression.R     # Fit PGLS, save pip_components.rds
-Rscript code/03_loso_cv.R            # Leave-one-site-out cross-validation
+Rscript code/03_loso_cv.R            # 10-fold site-grouped cross-validation (see naming note below)
 Rscript code/04_fossil_predictions.R # Formal-only primary + informal sensitivity
-Rscript code/05_visualizations.R     # Figures from LOSO CV outputs
+Rscript code/05_visualizations.R     # Figures from 10-fold site-grouped CV outputs
 Rscript code/06_update_dilp_package.R # Regenerate dilp package model objects + constants
 ```
 
@@ -36,6 +36,8 @@ remotes::install_github("jboyko/dilp", ref = "b29be909355f7edb7809bf718f189b7a53
 ```
 
 Every script that needs it calls `pip_require_dilp()` (defined in `code/setup.R`), which errors out with the install command above if `dilp` is not on the library path. This replaces the previous three inconsistent loading styles (`library(dilp)`, `devtools::load_all("~/dilp")`, and a `requireNamespace()`/fallback combo).
+
+**Cross-validation naming note**: `03_loso_cv.R` (and `03b_loso_cv.R`) and their outputs are named `loso` for continuity, but the procedure is **10-fold cross-validation with sites as the grouping unit**, not leave-one-site-out. Sites are ranked by site-level MAT (or, for the LMA pipeline, site-mean log10 LMA) and dealt into 10 folds, so roughly 9 sites are held out per fold; whole sites are always held out together and every model is refit from scratch on the remaining sites. File names, columns, and log lines that reference "loso" describe this 10-fold site-grouped procedure, not true leave-one-site-out.
 
 **Lambda transformation gotcha**: `V_lam` must match the `lamTrans()` function used internally by `pglmEstLambda()` — off-diagonals multiplied by λ, diagonal left unchanged (`diag(V_lam) <- diag(phylomat)`). Do NOT use `diag(V_lam) <- diag(V_lam) + (1 - lambda)`, which adds a dimensionless nugget incompatible with the VCV scale and inconsistent with fitting.
 
@@ -84,7 +86,7 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 | Bonanza | 47.3 |
 
 ### Species-level vs site-level aggregation — key finding
-`04_fossil_predictions.R` compares LM and PIP at both species and site level. Under leave-one-site-out CV, **PIP at site level is the best performer for both MAT and MAP** and is the recommended model (impute variant) for fossil climate reconstruction. PGLS alone (without the PIP covariance correction) is substantially worse — the correction term drives the improvement. PIP acts as a regularization procedure, borrowing signal from phylogenetically close extant relatives. (An earlier claim that "LM site outperforms PIP" came from comparing against published DiLP estimates rather than a CV benchmark; the LOSO CV is the correct evaluation.)
+`04_fossil_predictions.R` compares LM and PIP at both species and site level. Under 10-fold site-grouped CV, **PIP at site level is the best performer for both MAT and MAP** and is the recommended model (impute variant) for fossil climate reconstruction. PGLS alone (without the PIP covariance correction) is substantially worse — the correction term drives the improvement. PIP acts as a regularization procedure, borrowing signal from phylogenetically close extant relatives. (An earlier claim that "LM site outperforms PIP" came from comparing against published DiLP estimates rather than a CV benchmark; the 10-fold site-grouped CV is the correct evaluation.)
 
 ## Conventions
 

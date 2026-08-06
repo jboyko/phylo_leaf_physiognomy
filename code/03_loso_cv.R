@@ -274,7 +274,8 @@ names(fold_assignment) <- all_sites
 cat("Fold sizes:", table(fold_assignment), "\n")
 
 # ==============================================================================
-# 4. LOSO CV LOOP
+# 4. 10-FOLD SITE-GROUPED CV LOOP
+# (files/columns keep the historical "loso" prefix; see CLAUDE.md naming note)
 # ==============================================================================
 
 cv_results      <- list()
@@ -717,7 +718,7 @@ for (fold in seq_len(K_FOLDS)) {
     cv_results_so_far = cv_results
   )
   saveRDS(fold_out, sprintf("models/loso_cv_fold_%02d.rds", fold))
-  cat("  Saved models/loso_cv_fold_%02d.rds\n", fold)
+  cat(sprintf("  Saved models/loso_cv_fold_%02d.rds\n", fold))
 }
 
 # ==============================================================================
@@ -742,7 +743,7 @@ cat("Results:", nrow(results_df), "sites\n")
 # Column naming convention: {method}_{train_level}_{pred_level}_{config}_{na}_{target}
 #   train_level: sp  = trained on species-level means
 #                site = trained on site-level means
-#   pred_level:  site = prediction aggregated to site (always, in this LOSO script)
+#   pred_level:  site = prediction aggregated to site (always, in this CV script)
 #   config:      impute/cc for sp-trained models; specimen/sp_zero/peppe + impute/cc for site LMs
 # Examples: lm_sp_site_impute_mat, lm_site_site_peppe_cc_log_map, pip_sp_site_cc_mat
 # Names are set directly in the loop so fold RDS files also carry the correct names.
@@ -774,7 +775,7 @@ rmse_rows      <- do.call(rbind, Filter(Negate(is.null), rmse_rows))
 rmse_rows      <- rmse_rows[order(rmse_rows$target, rmse_rows$rmse), ]
 rownames(rmse_rows) <- NULL
 
-cat("\nLOSO CV RMSE summary:\n")
+cat("\n10-fold site-grouped CV RMSE summary:\n")
 print(rmse_rows, row.names = FALSE)
 
 # ==============================================================================

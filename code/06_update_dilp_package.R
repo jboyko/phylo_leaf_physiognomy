@@ -90,8 +90,8 @@ cat("Copied tre_scaffold.tre\n")
 
 # ==============================================================================
 # 5. NEW RMSE CONSTANTS FOR HARD-CODED UNCERTAINTY COLUMNS
-#    Lines ~193-195 of dilp_pgls.R use literal RMSE values. Extract from
-#    LOSO CV results so they stay in sync with the pipeline.
+#    Lines ~193-195 of dilp_pgls.R use literal RMSE values. Extract from the
+#    10-fold site-grouped CV results so they stay in sync with the pipeline.
 # ==============================================================================
 
 rmse_mat_pip <- rmse$rmse[rmse$column == "pip_sp_site_impute_mat"]
