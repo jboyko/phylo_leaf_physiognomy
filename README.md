@@ -10,7 +10,7 @@ Leaf physiognomy — the relationship between leaf shape/size and climate — is
 
 ## Pipeline
 
-Run scripts in order. Each script sets `setwd()` to a hardcoded path — update line 1 of each file for your machine.
+Run scripts in order from the repository root. Each script sources `code/setup.R` as its first line, which locates the repository root automatically and creates the `models/`, `tables/`, `plots/` output directories — no per-machine path edits needed.
 
 ```r
 Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate to species, build scaffold tree
@@ -120,8 +120,14 @@ Other derived outputs (`data/data_species.csv`, `data/tre_pruned.tre`, `data/tre
 ```r
 install.packages(c("ape", "phytools", "caret", "glmnet", "ranger",
                    "pdp", "gridExtra", "ggplot2", "mvtnorm", "MASS",
-                   "rmarkdown", "kableExtra"))
+                   "rmarkdown", "kableExtra", "dplyr", "tibble"))
+
+# Pinned dilp fork — the CRAN release carries different regression
+# constants and will not reproduce these results:
+remotes::install_github("jboyko/dilp", ref = "b29be909355f7edb7809bf718f189b7a53b789d2")
 ```
+
+`code/Phylogenetically-Informed_Predictions_Source.R` also carries `library(caper)` / `library(geiger)` calls inherited from the original Freckleton (2015) source, but neither package is actually used in that file — both calls are commented out, so `caper` and `geiger` are not required.
 
 ## Key Source File
 

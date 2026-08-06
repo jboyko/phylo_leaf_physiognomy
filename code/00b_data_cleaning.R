@@ -1,11 +1,14 @@
-devtools::load_all("~/dilp")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
+
+pip_require_dilp()
 library(tidyverse)
 library(ape)
 library(phytools)
 
-setwd("/Users/jboyko/phylo_leaf_physiognomy")
-
-BUILD_PHYLOGENY <- FALSE
+# Matches 00_data_cleaning.R's default (issue #23): FALSE here skipped tree
+# building entirely, which left data/tre_lma_pruned.tre unwritten and broke
+# 02b_phy_regression.R / 03b_loso_cv.R on a fresh clone.
+BUILD_PHYLOGENY <- TRUE
 
 input_1 <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv", fileEncoding = "latin1") #or write in your file path
 input_2 <- read.csv("data/extra_calibration_data_for_LMA.csv", fileEncoding = "latin1")

@@ -1,4 +1,4 @@
-setwd("/Users/jboyko/phylo_leaf_physiognomy")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 # Set to TRUE to rebuild phylogenies (slow; only needed when tree or species
 # list changes). Set to FALSE to skip sections 4-8 and only regenerate data.
@@ -6,7 +6,7 @@ BUILD_PHYLOGENY <- TRUE
 
 library(ape)
 library(phytools)
-library(dilp)
+pip_require_dilp()
 library(dplyr)
 
 # ==============================================================================

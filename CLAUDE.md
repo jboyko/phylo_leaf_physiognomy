@@ -10,7 +10,7 @@ The extant species pipeline (scripts 00–03) is a calibration and validation be
 
 ## Running the Analysis
 
-Scripts must be run in order. Each sets `setwd()` to a hardcoded path — update line 1 when working on a new machine.
+Scripts must be run in order. Each sources `code/setup.R` as its first line, which locates the repository root automatically (by walking up from the working directory looking for `README.md` alongside a `code/` directory), `setwd()`s there, and creates the gitignored `models/`, `tables/`, `plots/` output directories. There is no hardcoded path to edit — run scripts with the working directory set anywhere inside the repo, e.g. `Rscript code/00_data_cleaning.R` from the repo root.
 
 ```r
 Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate, build scaffold tree
@@ -25,7 +25,17 @@ Rscript code/06_update_dilp_package.R # Regenerate dilp package model objects + 
 
 `code/Phylogenetically-Informed_Predictions_Source.R` is the PGLS library from Freckleton (2015), modified by Gardner et al. (2024).
 
-A parallel `*b*` / LMA pipeline (`00b`–`03b`, `04b_lma_*`, `05b_lma_*`) mirrors these steps to predict leaf mass per area instead of climate; it loads the `dilp` package via `devtools::load_all("~/dilp")` and uses its own calibration inputs.
+A parallel `*b*` / LMA pipeline (`00b`–`03b`, `04b_lma_*`, `05b_lma_*`) mirrors these steps to predict leaf mass per area instead of climate, and uses its own calibration inputs.
+
+### `dilp` dependency
+
+The pipeline depends on the unpublished fork `jboyko/dilp`, pinned to commit `b29be909355f7edb7809bf718f189b7a53b789d2` — the CRAN release of `dilp` carries different regression constants and will not reproduce these results. Install it with:
+
+```r
+remotes::install_github("jboyko/dilp", ref = "b29be909355f7edb7809bf718f189b7a53b789d2")
+```
+
+Every script that needs it calls `pip_require_dilp()` (defined in `code/setup.R`), which errors out with the install command above if `dilp` is not on the library path. This replaces the previous three inconsistent loading styles (`library(dilp)`, `devtools::load_all("~/dilp")`, and a `requireNamespace()`/fallback combo).
 
 **Lambda transformation gotcha**: `V_lam` must match the `lamTrans()` function used internally by `pglmEstLambda()` — off-diagonals multiplied by λ, diagonal left unchanged (`diag(V_lam) <- diag(phylomat)`). Do NOT use `diag(V_lam) <- diag(V_lam) + (1 - lambda)`, which adds a dimensionless nugget incompatible with the VCV scale and inconsistent with fitting.
 
@@ -84,4 +94,6 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 
 ## R Package Dependencies
 
-`ape`, `phytools`, `caret`, `glmnet`, `ranger`, `pdp`, `gridExtra`, `ggplot2`, `mvtnorm`, `MASS`, `rmarkdown`, `kableExtra`
+`ape`, `phytools`, `caret`, `glmnet`, `ranger`, `pdp`, `gridExtra`, `ggplot2`, `mvtnorm`, `MASS`, `rmarkdown`, `kableExtra`, `dplyr`, `tibble`, `tidyverse` (LMA pipeline), plus the pinned `dilp` fork described above.
+
+`code/Phylogenetically-Informed_Predictions_Source.R` and its self-validation counterpart also carry `library(caper)` / `library(geiger)` calls inherited from the original Freckleton (2015) source; neither package is actually used in that file (no `caper::`, `geiger::`, `comparative.data()`, `fitContinuous()`, or `treedata()` calls), so both `library()` calls are commented out rather than documented as required dependencies.

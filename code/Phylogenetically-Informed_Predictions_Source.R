@@ -6,8 +6,12 @@
 # Last updated 29/10/2024
 
 #Load packages
-library(caper)
-library(geiger)
+# caper and geiger were required by the original Freckleton (2015) source but
+# are unused in this file (no caper::, geiger::, comparative.data(),
+# fitContinuous(), or treedata() calls) — commented out rather than added as
+# undocumented dependencies (issue #20).
+# library(caper)
+# library(geiger)
 library(ape)
 library(mvtnorm)
 library(MASS)
