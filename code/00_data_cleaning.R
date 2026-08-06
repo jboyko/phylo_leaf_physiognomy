@@ -39,18 +39,20 @@ dat$map          <- dat$map_mm / 10   # mm -> cm (pipeline convention; CLAUDE.md
 # trait averages via na.rm = TRUE rather than pulled toward zero).
 dat_prefill <- dat
 
-# margin == 1 indicates untoothed; tooth trait absence is biologically real —
-# set to 0 (or 1 for perimeter_ratio) before aggregating.
+# margin == 1 indicates untoothed; tooth trait absence is biologically real
+# ONLY when the cell is also blank (NA) — a margin-scored-untoothed leaf that
+# still carries a nonzero tooth measurement must not be overwritten with 0.
+# Set to 0 (or 1 for perimeter_ratio) before aggregating (Dana Royer, pers. comm.).
 dat <- dat %>%
   mutate(
-    tc_p            = ifelse(margin == 1, 0, tc_p),
-    tc_ip           = ifelse(margin == 1, 0, tc_ip),
-    tc_ba           = ifelse(margin == 1, 0, tc_ba),
-    ta_p            = ifelse(margin == 1, 0, ta_p),
-    ta_ip           = ifelse(margin == 1, 0, ta_ip),
-    ta_ba           = ifelse(margin == 1, 0, ta_ba),
-    avg_ta          = ifelse(margin == 1, 0, avg_ta),
-    perimeter_ratio = ifelse(margin == 1, 1, perimeter_ratio)
+    tc_p            = ifelse(margin == 1 & is.na(tc_p), 0, tc_p),
+    tc_ip           = ifelse(margin == 1 & is.na(tc_ip), 0, tc_ip),
+    tc_ba           = ifelse(margin == 1 & is.na(tc_ba), 0, tc_ba),
+    ta_p            = ifelse(margin == 1 & is.na(ta_p), 0, ta_p),
+    ta_ip           = ifelse(margin == 1 & is.na(ta_ip), 0, ta_ip),
+    ta_ba           = ifelse(margin == 1 & is.na(ta_ba), 0, ta_ba),
+    avg_ta          = ifelse(margin == 1 & is.na(avg_ta), 0, avg_ta),
+    perimeter_ratio = ifelse(margin == 1 & is.na(perimeter_ratio), 1, perimeter_ratio)
   )
 
 # Rename dilp output columns to pipeline convention
@@ -95,6 +97,25 @@ dat_sp <- aggregate(dat[, agg_cols],
   FUN = mean, na.rm = TRUE)
 dat_sp <- dat_sp[!is.na(dat_sp$Order) & dat_sp$Order != "unknown", ]
 dat_sp <- dat_sp[grepl("[A-Za-z]", dat_sp$genusSpecies), ]
+# Collapse duplicate species names (same species with inconsistent Family/Order
+# across sites — a data quality issue in subsets). Mirrors 03_loso_cv.R's
+# agg_species() trait-averaging rule; currently a no-op on the full dataset but
+# keeps the two aggregation paths from silently drifting apart (issue #15).
+# Unlike 03_ (which doesn't need taxonomy after this point), the scaffold-tree
+# grafting below needs genus/Family/Order, so the first-listed values are kept
+# and a warning is raised naming the affected species.
+if (anyDuplicated(dat_sp$genusSpecies)) {
+  dup_species <- unique(dat_sp$genusSpecies[duplicated(dat_sp$genusSpecies)])
+  warning("Species with inconsistent Family/Order across sites, collapsed by ",
+          "averaging traits and taking the first-listed Family/Order: ",
+          paste(dup_species, collapse = ", "))
+  taxon_lookup <- dat_sp[!duplicated(dat_sp$genusSpecies),
+                        c("genusSpecies", "genus", "Family", "Order")]
+  dat_sp <- aggregate(dat_sp[, agg_cols],
+    by  = list(genusSpecies = dat_sp$genusSpecies),
+    FUN = mean, na.rm = TRUE)
+  dat_sp <- merge(dat_sp, taxon_lookup, by = "genusSpecies", sort = FALSE)
+}
 
 # ==============================================================================
 # 3b. AGGREGATE TO SITE LEVEL (three variants)

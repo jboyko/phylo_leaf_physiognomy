@@ -65,8 +65,11 @@ assert_finite <- function(x, label) {
 fill_tooth_traits <- function(d) {
   untoothed    <- !is.na(d$margin.score) & d$margin.score == 1
   tooth_in_d   <- intersect(vars_tooth_0, names(d))
-  for (v in tooth_in_d) d[[v]][untoothed] <- 0
-  if ("perim.ratio" %in% names(d)) d[["perim.ratio"]][untoothed] <- 1
+  # Cell blank AND margin.score == 1 (CLAUDE.md "Tooth trait filling"); a
+  # margin-scored-untoothed leaf carrying a nonzero measurement is kept as-is.
+  for (v in tooth_in_d) d[[v]][untoothed & is.na(d[[v]])] <- 0
+  if ("perim.ratio" %in% names(d))
+    d[["perim.ratio"]][untoothed & is.na(d[["perim.ratio"]])] <- 1
   d
 }
 
@@ -149,7 +152,11 @@ active_pred_names <- function(dat_sp, pnames) {
   present[na_pct < NA_THRESHOLD]
 }
 
-# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R section 3.
+# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R
+# section 3's trait-averaging rule (issue #15): same two-step aggregate +
+# duplicate-species collapse. Unlike 00_, genus/Family/Order are not restored
+# after the collapse — this function's output only ever feeds VCV/trait
+# lookups keyed by genusSpecies within a CV fold, never scaffold-tree grafting.
 agg_species <- function(d_filled) {
   dat_sp <- aggregate(d_filled[, agg_cols],
     by  = list(genusSpecies = d_filled$genusSpecies,
