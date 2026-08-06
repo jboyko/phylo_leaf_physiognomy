@@ -35,3 +35,6 @@ Rplots.pdf
 
 # Web assets accompanying saved article HTML (doc/pip.html renders from the web)
 doc/pip_files/
+
+# Agent worktrees
+.claude/worktrees/
