@@ -182,13 +182,13 @@ site_configs <- list(
     impute = FALSE,
     desc   = "species -> site (zero-fill), complete-case"
   ),
-  peppe_impute = list(
-    file   = "data/dat_site_peppe.csv",
+  untoothed_excl_impute = list(
+    file   = "data/dat_site_untoothed_excl.csv",
     impute = TRUE,
     desc   = "Peppe: species -> site (excl. untoothed), bagImpute"
   ),
-  peppe_cc = list(
-    file   = "data/dat_site_peppe.csv",
+  untoothed_excl_cc = list(
+    file   = "data/dat_site_untoothed_excl.csv",
     impute = FALSE,
     desc   = "Peppe: species -> site (excl. untoothed), complete-case"
   )

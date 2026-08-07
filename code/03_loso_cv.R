@@ -196,7 +196,7 @@ agg_site_sp_zero <- function(d_filled) {
 # Aggregate morphotype means → site without tooth-fill (Peppe 2011): untoothed
 # species have NA tooth traits and are excluded via na.rm = TRUE.
 # d_prefill is the morphotype data before tooth-trait filling.
-agg_site_peppe <- function(d_prefill) {
+agg_site_untoothed_excl <- function(d_prefill) {
   d_agg              <- aggregate(d_prefill[, agg_cols],
                                   by  = list(Site = d_prefill$Site),
                                   FUN = mean, na.rm = TRUE)
@@ -326,7 +326,7 @@ for (fold in seq_len(K_FOLDS)) {
   cat("  Aggregating site-level training data...\n")
   dat_site_direct_train <- agg_site_direct(train_filled)
   dat_site_sp0_train    <- agg_site_sp_zero(train_filled)
-  dat_site_peppe_train  <- agg_site_peppe(train_prefill)
+  dat_site_untoothed_excl_train  <- agg_site_untoothed_excl(train_prefill)
 
   # --------------------------------------------------------------------------
   # 4b. Species-level imputation (traits only)
@@ -378,8 +378,8 @@ for (fold in seq_len(K_FOLDS)) {
     specimen_cc     = list(dat = dat_site_direct_train, impute = FALSE),
     sp_zero_impute  = list(dat = dat_site_sp0_train,    impute = TRUE),
     sp_zero_cc      = list(dat = dat_site_sp0_train,    impute = FALSE),
-    peppe_impute    = list(dat = dat_site_peppe_train,  impute = TRUE),
-    peppe_cc        = list(dat = dat_site_peppe_train,  impute = FALSE)
+    untoothed_excl_impute    = list(dat = dat_site_untoothed_excl_train,  impute = TRUE),
+    untoothed_excl_cc        = list(dat = dat_site_untoothed_excl_train,  impute = FALSE)
   )
 
   cat("  Fitting site-level LM (6 configs)...\n")
@@ -607,7 +607,7 @@ for (fold in seq_len(K_FOLDS)) {
                                   error = function(e) NULL)
     held_site_sp0    <- tryCatch(agg_site_sp_zero(held_filled)[s, , drop = FALSE],
                                   error = function(e) NULL)
-    held_site_peppe  <- tryCatch(agg_site_peppe(held_prefill)[s, , drop = FALSE],
+    held_site_untoothed_excl  <- tryCatch(agg_site_untoothed_excl(held_prefill)[s, , drop = FALSE],
                                   error = function(e) NULL)
 
     held_data_map <- list(
@@ -615,8 +615,8 @@ for (fold in seq_len(K_FOLDS)) {
       specimen_cc     = held_site_direct,
       sp_zero_impute  = held_site_sp0,
       sp_zero_cc      = held_site_sp0,
-      peppe_impute    = held_site_peppe,
-      peppe_cc        = held_site_peppe
+      untoothed_excl_impute    = held_site_untoothed_excl,
+      untoothed_excl_cc        = held_site_untoothed_excl
     )
 
     for (cfg_name in names(site_lm)) {
@@ -751,8 +751,8 @@ cat("Results:", nrow(results_df), "sites\n")
 #   train_level: sp  = trained on species-level means
 #                site = trained on site-level means
 #   pred_level:  site = prediction aggregated to site (always, in this CV script)
-#   config:      impute/cc for sp-trained models; specimen/sp_zero/peppe + impute/cc for site LMs
-# Examples: lm_sp_site_impute_mat, lm_site_site_peppe_cc_log_map, pip_sp_site_cc_mat
+#   config:      impute/cc for sp-trained models; specimen/sp_zero/untoothed_excl + impute/cc for site LMs
+# Examples: lm_sp_site_impute_mat, lm_site_site_untoothed_excl_cc_log_map, pip_sp_site_cc_mat
 # Names are set directly in the loop so fold RDS files also carry the correct names.
 
 # ==============================================================================

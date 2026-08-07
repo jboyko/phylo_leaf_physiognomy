@@ -90,7 +90,7 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 
 **The recommended variant is target-dependent**: use **impute for MAT** and **complete-case for log(MAP)**. Measured RMSE (full run, 2026-08-06, 1740 species, 93 sites):
 
-| Target | PIP site impute | PIP site cc | best LM site (peppe impute) | PGLS alone (best) |
+| Target | PIP site impute | PIP site cc | best LM site (untoothed-excl, impute) | PGLS alone (best) |
 |---|---|---|---|---|
 | MAT (°C) | **3.414** | 3.707 | 3.722 | 5.854 |
 | log(MAP) | 0.525 | **0.508** | 0.583 | 0.628 |

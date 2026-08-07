@@ -14,8 +14,8 @@ fit     <- read.csv("tables/loso_cv_model_fit.csv", stringsAsFactors = FALSE)
 model_labels <- c(
   pip_sp_site_impute              = "PIP (impute)",
   pip_sp_site_cc                  = "PIP (CC)",
-  lm_site_site_peppe_impute       = "LM site, Peppe (impute)",
-  lm_site_site_peppe_cc           = "LM site, Peppe (CC)",
+  lm_site_site_untoothed_excl_impute       = "LM site, untoothed-excl (impute)",
+  lm_site_site_untoothed_excl_cc           = "LM site, untoothed-excl (CC)",
   lm_site_site_sp_zero_impute     = "LM site, sp+zero (impute)",
   lm_site_site_sp_zero_cc         = "LM site, sp+zero (CC)",
   lm_site_site_specimen_impute    = "LM site, specimen (impute)",
@@ -29,8 +29,8 @@ model_labels <- c(
 model_family <- c(
   pip_sp_site_impute              = "PIP",
   pip_sp_site_cc                  = "PIP",
-  lm_site_site_peppe_impute       = "LM site",
-  lm_site_site_peppe_cc           = "LM site",
+  lm_site_site_untoothed_excl_impute       = "LM site",
+  lm_site_site_untoothed_excl_cc           = "LM site",
   lm_site_site_sp_zero_impute     = "LM site",
   lm_site_site_sp_zero_cc         = "LM site",
   lm_site_site_specimen_impute    = "LM site",
@@ -91,7 +91,7 @@ message("Saved fig1_rmse_comparison")
 # ── 4. Figure 2: Observed vs. Predicted (impute only) ─────────────────────────
 focal_models <- c(
   "pip_sp_site_impute",
-  "lm_site_site_peppe_impute",
+  "lm_site_site_untoothed_excl_impute",
   "lm_sp_site_impute"
 )
 
@@ -227,7 +227,7 @@ message("Saved fig4_lambda")
 # ── 7. Table: Prediction diagnostics (slope, bias, RMSE decomposition) ────────
 all_impute_models <- c(
   "pip_sp_site_impute",
-  "lm_site_site_peppe_impute",
+  "lm_site_site_untoothed_excl_impute",
   "lm_site_site_sp_zero_impute",
   "lm_site_site_specimen_impute",
   "lm_sp_site_impute",

@@ -134,12 +134,16 @@ write.csv(dat_site, file = "data/dat_site_sp_zero.csv", row.names = FALSE)
 cat("Wrote data/dat_site_sp_zero.csv (", nrow(dat_site), "sites)\n")
 
 # Variant 3: morphotype → site without tooth-fill; untoothed species are
-# excluded from tooth trait site means via na.rm = TRUE. Matches Peppe et al. (2011).
-dat_site_peppe <- aggregate(dat_prefill[, agg_cols],
+# excluded from tooth trait site means via na.rm = TRUE. This mirrors the
+# AGGREGATION rule of Peppe et al. (2011) only. It is NOT the published Peppe
+# regression: the models fitted on this table use all 12 fossil traits with
+# coefficients refit on our sites, whereas the published DiLP MLR uses 3
+# predictors with fixed coefficients (and log-transformed ones for MAP).
+dat_site_untoothed_excl <- aggregate(dat_prefill[, agg_cols],
                             by  = list(Site = dat_prefill$Site),
                             FUN = mean, na.rm = TRUE)
-write.csv(dat_site_peppe, file = "data/dat_site_peppe.csv", row.names = FALSE)
-cat("Wrote data/dat_site_peppe.csv (", nrow(dat_site_peppe), "sites)\n")
+write.csv(dat_site_untoothed_excl, file = "data/dat_site_untoothed_excl.csv", row.names = FALSE)
+cat("Wrote data/dat_site_untoothed_excl.csv (", nrow(dat_site_untoothed_excl), "sites)\n")
 
 if (BUILD_PHYLOGENY) {
 
