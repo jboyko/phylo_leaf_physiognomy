@@ -86,7 +86,16 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 | Bonanza | 47.3 |
 
 ### Species-level vs site-level aggregation — key finding
-`04_fossil_predictions.R` compares LM and PIP at both species and site level. Under 10-fold site-grouped CV, **PIP at site level is the best performer for both MAT and MAP** and is the recommended model (impute variant) for fossil climate reconstruction. PGLS alone (without the PIP covariance correction) is substantially worse — the correction term drives the improvement. PIP acts as a regularization procedure, borrowing signal from phylogenetically close extant relatives. (An earlier claim that "LM site outperforms PIP" came from comparing against published DiLP estimates rather than a CV benchmark; the 10-fold site-grouped CV is the correct evaluation.)
+`04_fossil_predictions.R` compares LM and PIP at both species and site level. Under 10-fold site-grouped CV, **PIP at site level is the best performer for both MAT and MAP** — it takes the top two ranks for each target. PGLS alone (without the PIP covariance correction) is substantially worse — the correction term drives the improvement. PIP acts as a regularization procedure, borrowing signal from phylogenetically close extant relatives. (An earlier claim that "LM site outperforms PIP" came from comparing against published DiLP estimates rather than a CV benchmark; the 10-fold site-grouped CV is the correct evaluation.)
+
+**The recommended variant is target-dependent**: use **impute for MAT** and **complete-case for log(MAP)**. Measured RMSE (full run, 2026-08-06, 1740 species, 93 sites):
+
+| Target | PIP site impute | PIP site cc | best LM site (peppe impute) | PGLS alone (best) |
+|---|---|---|---|---|
+| MAT (°C) | **3.414** | 3.707 | 3.722 | 5.854 |
+| log(MAP) | 0.525 | **0.508** | 0.583 | 0.628 |
+
+Note that `specimen_*` and `sp_zero_*` site configs are identical by construction (see issue #10) and report identical RMSE; they are one model, not two.
 
 ## Conventions
 
