@@ -216,6 +216,34 @@ dilp_out    <- dilp(raw_leaf)
 dat_leaf    <- dilp_out$processed_leaf_data
 dat_morpho  <- dilp_out$processed_morphotype_data
 
+# ==============================================================================
+# PUBLISHED DiLP REFERENCE LINE (Peppe et al. 2011 MLR)
+# ==============================================================================
+# dilp_out$results carries the published multiple linear regressions applied
+# with FIXED published coefficients:
+#   MAT = 0.21*margin(%) + 42.3*fdr - 2.61*tc_ip - 16.0
+#   MAP = exp(0.298*ln_leaf_area + 0.279*ln_tc_ip - 2.72*ln_pr + 3.03)
+# Computed by dilp() itself, so the log transforms (ln_pr, ln_tc_ip are logged
+# at SPECIMEN level and averaged as logs), the margin percentage conversion,
+# and the site-level untoothed rule all follow the published protocol rather
+# than our pipeline's conventions.
+#
+# *** IN-SAMPLE CAVEAT ***
+# These coefficients were calibrated on the Peppe et al. (2011) dataset, which
+# is the same data we train on. Scoring this against our 93 calibration sites
+# is therefore IN-SAMPLE FOR DiLP -- it has a home-field advantage that every
+# cross-validated model here does not. Treat it as "what the standard published
+# method yields on these sites", not as a like-for-like CV competitor. It is
+# fold-invariant by construction (no refitting), so its RMSE is identical
+# regardless of the fold structure.
+#
+# MAP.MLR is in cm, matching the pipeline convention (CLAUDE.md "MAP units").
+# Verified numerically: log-RMSE against observed site MAP is 0.554 treating it
+# as cm vs 2.383 treating it as mm.
+dilp_pub_site <- dilp_out$results[, c("site", "MAT.MLR", "MAP.MLR")]
+dilp_pub_site <- dilp_pub_site[!duplicated(dilp_pub_site$site), ]
+cat("Published DiLP reference line available for", nrow(dilp_pub_site), "sites\n")
+
 # Re-attach taxonomy — mirrors 00_data_cleaning.R section 1
 dat_morpho <- subset(dat_morpho, select = -measurer_comments)
 taxonomy_lookup <- dat_leaf %>%
@@ -560,6 +588,21 @@ for (fold in seq_len(K_FOLDS)) {
       obs_log_map = obs_log_map
     )
 
+    # ---- Published DiLP reference line (Peppe et al. 2011 MLR) ----
+    # Fixed published coefficients, so this is fold-invariant: it is not refit
+    # on the training sites and does not use the held-out/training split at all.
+    # Included as a reference for "what the standard method gives", NOT as a
+    # like-for-like CV competitor -- see the in-sample caveat where
+    # dilp_pub_site is built.
+    dilp_row <- dilp_pub_site[dilp_pub_site$site == s, , drop = FALSE]
+    if (nrow(dilp_row) == 1) {
+      rec$dilp_pub_site_mat     <- as.numeric(dilp_row$MAT.MLR)
+      rec$dilp_pub_site_log_map <- log(as.numeric(dilp_row$MAP.MLR))
+    } else {
+      rec$dilp_pub_site_mat     <- NA
+      rec$dilp_pub_site_log_map <- NA
+    }
+
     # Within-site species means
     held_sp_agg <- aggregate(held_filled[, pred_names, drop = FALSE],
                               by  = list(species = held_filled$genusSpecies),
@@ -775,6 +818,10 @@ rmse_rows <- lapply(pred_cols, function(col) {
     target   = target,
     rmse     = rmse(obs[complete], pred[complete]),
     n_sites  = sum(complete),
+    # Published DiLP uses fixed coefficients calibrated on this same dataset,
+    # so its RMSE is in-sample and not comparable like-for-like with the
+    # cross-validated rows. Flagged here so the CSV carries the caveat.
+    evaluation = if (grepl("^dilp_pub_", col)) "in-sample (published coefs)" else "cross-validated",
     stringsAsFactors = FALSE
   )
 })
