@@ -85,16 +85,24 @@ set, and stores the components PIP needs at prediction time: β, λ, the
 
 **`03_loso_cv.R`** is the predictive benchmark. See the naming note below.
 
-**`04_fossil_predictions.R`** grafts each fossil species onto the scaffold tree
-at its genus, family or order MRCA, using the fossil's age to set the tip depth,
-and predicts under four methods:
+**`04_fossil_predictions.R`** uses one independent tip per fossil species × site
+occurrence for the primary `PIP+site` analysis, with the occurrence's site age
+setting its tip depth. Placement follows genus → family → order → root using
+only the original extant scaffold tips as taxonomic evidence. It predicts under
+four methods:
 
 | Method | Training data | Fossil input |
 | --- | --- | --- |
-| LM sp | extant species means | fossil species grand means, averaged to site |
+| LM sp (secondary) | extant species means | fossil species grand means, averaged to site |
 | LM site | extant site means | fossil site-mean traits, one prediction per site |
-| PIP sp | extant species (PGLS) | fossil species grand means, averaged to site |
-| PIP+site | extant species (PGLS) | site-specific species means, averaged to site |
+| PIP sp (secondary) | extant species (PGLS) | fossil species grand means and mean age, averaged to site |
+| PIP+site (primary) | extant species (PGLS) | species × site trait means and site age, averaged to site |
+
+The two PIP variants use independent grafted trees. Every `PIP+site` occurrence
+receives its own time-specific phylogenetic adjustment, even when its species
+label also appears at another site or genus, family, or order is the finest
+available identification. `04b_lma_fossil_predictions.R` applies the same rule
+to LMA occurrences with measured PW²/A.
 
 It runs two taxonomy scenarios. `formal_only` is primary and censors any rank
 reported in quotation marks; `include_informal` is a sensitivity analysis that

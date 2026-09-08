@@ -41,16 +41,18 @@ package via `devtools::load_all("~/dilp")` and uses its own calibration inputs
 
 **`02_phy_regression.R`** — Uses the same 12 predictor set as the LM (loaded from `nophy_models.rds`) — no ENet-based trait selection, ensuring fair comparison. Fits PGLS for MAT and log(MAP) via `pglmEstLambda()` in two variants: `impute` (bagImpute) and `cc` (complete-case, phylogeny pruned to complete species). All variants stored under `pip_components$configs`; backward-compatible top-level keys point to the `impute` variant. Saves `models/pip_components.rds`.
 
-**`04_fossil_predictions.R`** — Grafts each unique fossil species onto `tre_scaffold.tre` (one tip per species) and runs four prediction approaches under two taxonomy scenarios. The canonical `tables/fossil_site_comparison.csv` and `tables/fossil_predictions.csv` use formal taxonomy only. Scenario-specific predictions, placement logs, and `tables/fossil_taxonomy_sensitivity.csv` compare that primary interpretation with provisional inclusion of quoted taxonomy:
+**`04_fossil_predictions.R`** — Runs four prediction approaches under two taxonomy scenarios. The primary `PIP+site` analysis grafts one tip per fossil species × site occurrence, using that occurrence's site age, taxonomy, and trait means. The secondary `LM sp` and `PIP sp` comparators retain species grand means and are not the recommended fossil estimators. The canonical `tables/fossil_site_comparison.csv` and `tables/fossil_predictions.csv` use formal taxonomy only. Scenario-specific predictions, placement logs, and `tables/fossil_taxonomy_sensitivity.csv` compare that primary interpretation with provisional inclusion of quoted taxonomy:
 
 | Method | Training data | Fossil input | Aggregation |
 | ------ | ------------ | ------------ | ----------- |
-| LM sp | extant species means | fossil species grand means | average per site |
+| LM sp (secondary) | extant species means | fossil species grand means | average per site |
 | LM site | extant site means | fossil site-mean traits | direct (one per site) |
-| PIP sp | extant species (PGLS) | fossil species grand means | average per site |
-| PIP+site | extant species (PGLS) | site-specific species means | average per site |
+| PIP sp (secondary) | extant species (PGLS) | fossil species grand means and mean age | average per site |
+| PIP+site (primary) | extant species (PGLS) | species × site trait means and site age | average per site |
 
-PIP sp and PIP+site share the same phylogenetic adjustment (same tip placement); they differ only in the trait values used in the GLS term. The `PLACEMENT_FALLBACK` flag controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default) or `"node"`.
+`PIP sp` and `PIP+site` use independent grafted trees. Each `PIP+site` occurrence receives its own phylogenetic adjustment at its site's time depth, even when the same species label occurs at another site or the fossil is known only to genus, family, or order. Placement targets are resolved only from the original extant scaffold tips, so results do not depend on fossil input order. The `PLACEMENT_FALLBACK` flag controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default) or `"node"`.
+
+**`04b_lma_fossil_predictions.R`** follows the same occurrence-specific placement rule for LMA: PW²/A is averaged only within species × site, and every eligible occurrence is placed at its own site age. It writes `tables/lma_fossil_placement_log.csv` in addition to site- and occurrence-level predictions.
 
 **`03_loso_cv.R`** — 10-fold cross-validation, grouped by site, across all 12 model configurations. Sites are ranked by site MAT and dealt into 10 folds (roughly 9 sites held out per fold); each fold retrains all models from scratch on the remaining sites and predicts the held-out sites. Stricter than analytical LOOCV — entire sites are withheld and models are retrained each fold, which better mirrors the fossil prediction setting. It is **not** leave-one-site-out (that would be 93 folds, one per site) — see the naming note below. Saves per-fold model objects to `models/loso_cv_fold_XX.rds`. Outputs: `tables/loso_cv_rmse.csv`, `tables/loso_cv_site_predictions.csv`, `tables/loso_cv_model_coefs.csv` (per-fold coefficient estimates), `tables/loso_cv_model_fit.csv` (per-fold R², residual SE, lambda).
 

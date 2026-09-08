@@ -51,14 +51,17 @@ Dana Royer is the fossil leaf expert and domain collaborator. These decisions we
 ### Tooth trait filling
 For confirmed untoothed leaves (cell blank **AND** `margin.score == 1`), tooth trait NAs are biologically real zeros — set them explicitly **before** aggregating to species means in `00_data_cleaning.R`. Without this, tooth traits appear as ~67% NA and get excluded from all models. Tooth-count and tooth-area traits are set to 0; `perim.ratio` is set to 1 (untoothed leaves have a smooth perimeter). Both conditions must be met. Dana requested this for when the model is applied to fossil data.
 
-### Species-level analysis
-Modelling is based on species-level trait means (not site means), because phylogeny operates at the species level. Site-level predictions are derived afterward by aggregating species-level predictions within a site.
+### Species-level calibration; occurrence-level fossil prediction
+Extant model fitting is based on species-level trait means because phylogeny operates at the species level. Fossil prediction is different: traits are averaged only within a species × site occurrence, every occurrence is placed at its own site's age, and occurrence predictions are then averaged within a site. Never average fossil physiognomic traits or ages across sites for the primary analysis. The species-grand-mean LM/PIP variants remain secondary method comparators only.
 
 ### Climate targets
 MAT and log(MAP) are the primary targets. Other climate variables (coldest month temperature, growing degree days, etc.) covary with MAT/MAP and are not modelled separately.
 
 ### Fossil placement
 Fossils are commonly known only to family or order level, or may belong to extinct genera. Placement uses a genus → family → order MRCA fallback, with root as the final fallback. Fossil age sets the edge length so the tip sits at the correct time depth. When a fossil predates the crown age of its placement clade, the `PLACEMENT_FALLBACK` flag in `04_fossil_predictions.R` controls behaviour: `"ancestral_branch"` (default, preferred) walks up the tree to the branch alive at the fossil's age and splits it there; `"node"` attaches at the MRCA with a minimal edge.
+
+### Repeated fossil taxa across sites
+Dana Royer (pers. comm., August 2026) advised that each site occurrence must retain its own physiognomic traits and site age, including fossils identified only to genus, family, or order. The primary climate (`PIP+site`) and LMA fossil analyses therefore use one unique tip per species × site occurrence. A repeated species label does not imply a shared placement age or shared phylogenetic adjustment. Placement targets must be resolved only from the original extant scaffold tips; previously grafted fossils cannot become evidence for later placements, because that would make results depend on input order and could leak informal fossil labels into the formal-only scenario.
 
 ### Informal fossil taxonomy
 Dana's April 2026 fossil dataset marks informal order, family, and genus names with quotation marks. **Never use a quoted rank as phylogenetic evidence in the primary analysis.** `00c_fossil_data_cleaning.R` preserves the reported strings and rank-level informal flags while setting quoted placement ranks to `unknown`. `04_fossil_predictions.R` runs both `formal_only` (primary) and `include_informal` (sensitivity) scenarios and writes placement logs plus a site-level sensitivity table. The legacy output filenames always refer to the formal-only scenario.
