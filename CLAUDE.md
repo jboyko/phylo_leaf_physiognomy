@@ -51,17 +51,14 @@ Dana Royer is the fossil leaf expert and domain collaborator. These decisions we
 ### Tooth trait filling
 For confirmed untoothed leaves (cell blank **AND** `margin.score == 1`), tooth trait NAs are biologically real zeros — set them explicitly **before** aggregating to species means in `00_data_cleaning.R`. Without this, tooth traits appear as ~67% NA and get excluded from all models. Tooth-count and tooth-area traits are set to 0; `perim.ratio` is set to 1 (untoothed leaves have a smooth perimeter). Both conditions must be met. Dana requested this for when the model is applied to fossil data.
 
-### Species-level calibration; occurrence-level fossil prediction
-Extant model fitting is based on species-level trait means because phylogeny operates at the species level. Fossil prediction is different: traits are averaged only within a species × site occurrence, every occurrence is placed at its own site's age, and occurrence predictions are then averaged within a site. Never average fossil physiognomic traits or ages across sites for the primary analysis. The species-grand-mean LM/PIP variants remain secondary method comparators only.
+### Species-level analysis
+The current PGLS/PIP implementation fits species-level grand means and derives site estimates from within-site species predictions. Cross-site averaging during fitting is a modelling choice that loses within-species variation; it is not a universal requirement of phylogenetic methods. Some calibration labels pool unnamed genus-level records and remain subject to taxonomic review. Do not silently alter those identifiers.
 
 ### Climate targets
 MAT and log(MAP) are the primary targets. Other climate variables (coldest month temperature, growing degree days, etc.) covary with MAT/MAP and are not modelled separately.
 
 ### Fossil placement
 Fossils are commonly known only to family or order level, or may belong to extinct genera. Placement uses a genus → family → order MRCA fallback, with root as the final fallback. Fossil age sets the edge length so the tip sits at the correct time depth. When a fossil predates the crown age of its placement clade, the `PLACEMENT_FALLBACK` flag in `04_fossil_predictions.R` controls behaviour: `"ancestral_branch"` (default, preferred) walks up the tree to the branch alive at the fossil's age and splits it there; `"node"` attaches at the MRCA with a minimal edge.
-
-### Repeated fossil taxa across sites
-Dana Royer (pers. comm., August 2026) advised that each site occurrence must retain its own physiognomic traits and site age, including fossils identified only to genus, family, or order. The primary climate (`PIP+site`) and LMA fossil analyses therefore use one unique tip per species × site occurrence. A repeated species label does not imply a shared placement age or shared phylogenetic adjustment. Placement targets must be resolved only from the original extant scaffold tips; previously grafted fossils cannot become evidence for later placements, because that would make results depend on input order and could leak informal fossil labels into the formal-only scenario.
 
 ### Informal fossil taxonomy
 Dana's April 2026 fossil dataset marks informal order, family, and genus names with quotation marks. **Never use a quoted rank as phylogenetic evidence in the primary analysis.** `00c_fossil_data_cleaning.R` preserves the reported strings and rank-level informal flags while setting quoted placement ranks to `unknown`. `04_fossil_predictions.R` runs both `formal_only` (primary) and `include_informal` (sensitivity) scenarios and writes placement logs plus a site-level sensitivity table. The legacy output filenames always refer to the formal-only scenario.
@@ -91,16 +88,24 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 ### Species-level vs site-level aggregation — key finding
 `04_fossil_predictions.R` compares LM and PIP at both species and site level. Under 10-fold site-grouped CV, **PIP at site level is the best performer for both MAT and MAP** — it takes the top two ranks for each target. PGLS alone (without the PIP covariance correction) is substantially worse — the correction term drives the improvement. PIP acts as a regularization procedure, borrowing signal from phylogenetically close extant relatives. (An earlier claim that "LM site outperforms PIP" came from comparing against published DiLP estimates rather than a CV benchmark; the 10-fold site-grouped CV is the correct evaluation.)
 
-**The recommended variant is target-dependent**: use **impute for MAT** and **complete-case for log(MAP)**. Measured RMSE (full run, 2026-08-06, 1740 species, 93 sites):
+**The lowest-RMSE variant is target-dependent**: **impute for MAT** and **complete-case training for log(MAP)**. Dana's requested talk comparison uses impute for both targets. Measured RMSE (full CV run, 2026-09-07, 1740 operational taxon labels, 93 sites):
 
 | Target | PIP site impute | PIP site cc | best LM site (untoothed-excl, impute) | PGLS alone (best) |
 |---|---|---|---|---|
 | MAT (°C) | **3.414** | 3.707 | 3.722 | 5.854 |
 | log(MAP) | 0.525 | **0.508** | 0.583 | 0.628 |
 
+MAP validation now uses the same site estimator as fossil prediction: exponentiate species log predictions, average in cm, then log the site estimate for scoring. The older mean-of-log-predictions scores (0.525/0.508) describe a different estimator and are superseded. PIP/PGLS complete-case variants fit complete training rows but still impute missing held-out predictors.
+
 Note that `specimen_*` and `sp_zero_*` site configs are identical by construction (see issue #10) and report identical RMSE; they are one model, not two.
 
-## Conventions
+## Agent skills
+
+- Issue tracker: the existing GitHub origin, `jboyko/phylo_leaf_physiognomy`; see `docs/agents/issue-tracker.md`.
+- Triage vocabulary: see `docs/agents/triage-labels.md`. No remote labels are changed by local repair work.
+- Domain context: single research project, documented in this file and `doc/`; see `docs/agents/domain.md`.
+
+## Working conventions
 
 - Do not add Claude as a co-author in commit messages.
 - The `old/` directory contains prior implementations and should not be modified.

@@ -43,13 +43,11 @@ CV objects are large. Allow ~2 GB of free disk space.
 
 `dilp` is pinned deliberately. The CRAN release of the package carries different
 regression constants and will not reproduce these results. `setup.R` installs the
-pinned commit; `code/_setup.R` refuses to run if it is missing.
+pinned commit; the bootstrap checks that the package is installed. The pinned commit supplies raw preprocessing but does not contain the September revised `dilp_pgls()` function. Package-based climate predictions require the separately updated local source until that revision is published.
 
 ## Pipeline
 
-`code/_setup.R` is sourced by every script. It verifies the working directory,
-creates `models/`, `tables/` and `plots/`, and sets the RNG seed to 42 so the
-bagged-tree imputation and the CV fold assignment are reproducible.
+Climate scripts source `code/setup.R`, which locates the release root and creates output directories. Fitting and CV scripts set their random seeds explicitly. Legacy LMA and diagnostic scripts retain `code/_setup.R`.
 
 ### Climate pipeline
 
@@ -83,29 +81,27 @@ earlier elastic-net and random-forest comparisons are not part of this analysis.
 set, and stores the components PIP needs at prediction time: β, λ, the
 λ-transformed VCV, and the training residuals.
 
+Species-level training rows are operational labels. Named species are averaged
+across sites, whereas records without a species epithet are pooled under
+genus-level keys and can combine several sites or morphotypes. The current
+analysis retains these genus-only pools pending taxonomic review; changing the
+label convention requires rebuilding the calibration data and rerunning full CV.
+
 **`03_loso_cv.R`** is the predictive benchmark. See the naming note below.
 
-**`04_fossil_predictions.R`** uses one independent tip per fossil species × site
-occurrence for the primary `PIP+site` analysis, with the occurrence's site age
-setting its tip depth. Placement follows genus → family → order → root using
-only the original extant scaffold tips as taxonomic evidence. It predicts under
-four methods:
+**`04_fossil_predictions.R`** grafts each fossil occurrence onto the scaffold tree
+at its genus, family or order MRCA, using that occurrence's site age to set tip depth,
+and predicts under four methods:
 
 | Method | Training data | Fossil input |
 | --- | --- | --- |
-| LM sp (secondary) | extant species means | fossil species grand means, averaged to site |
+| LM sp | extant species means | fossil species grand means, averaged to site |
 | LM site | extant site means | fossil site-mean traits, one prediction per site |
-| PIP sp (secondary) | extant species (PGLS) | fossil species grand means and mean age, averaged to site |
-| PIP+site (primary) | extant species (PGLS) | species × site trait means and site age, averaged to site |
-
-The two PIP variants use independent grafted trees. Every `PIP+site` occurrence
-receives its own time-specific phylogenetic adjustment, even when its species
-label also appears at another site or genus, family, or order is the finest
-available identification. `04b_lma_fossil_predictions.R` applies the same rule
-to LMA occurrences with measured PW²/A.
+| PIP sp | extant species (PGLS) | fossil species grand means, averaged to site |
+| PIP+site | extant species (PGLS) | site-specific species means, averaged to site |
 
 It runs two taxonomy scenarios. `formal_only` is primary and censors any rank
-reported in quotation marks; `include_informal` is a sensitivity analysis that
+reported in quotation marks from placement evidence; `include_informal` is a sensitivity analysis that
 takes the quoted name at face value. The unsuffixed output files
 (`tables/fossil_predictions.csv`, `tables/fossil_site_comparison.csv`) always
 hold the formal-only results.
@@ -142,11 +138,11 @@ checkout with `DILP_SYSDATA=/path/to/dilp/R/sysdata.rda`.
 
 `03_loso_cv.R` and its outputs are named `loso` for continuity, but the procedure
 is **10-fold cross-validation with sites as the grouping unit**, not
-leave-one-site-out. The 93 calibration sites are ranked by site MAT and dealt into
+leave-one-site-out. The 93 calibration sites are ranked by site MAT and assigned round-robin to
 10 folds, so roughly 9 sites are held out per fold. Whole sites are always held
 out together and every model is refitted from scratch on the remaining sites, so
 no specimen from a held-out site informs its own prediction. Figure titles
-produced by `05_visualizations.R` carry the same `LOSO` label.
+produced by `05_visualizations.R` say "10-fold site-grouped CV". Species-level MAP predictions are averaged in cm and then logged for evaluation, matching the fossil site estimator.
 
 ## Model configurations
 
@@ -157,9 +153,9 @@ site-level values.
 | Key | Description |
 | --- | --- |
 | `lm_sp_site` | OLS on species grand means; species predictions averaged to site |
-| `lm_site_specimen` | OLS on site means from direct specimen averaging |
-| `lm_site_sp_zero` | OLS on site means via specimens → species-within-site → site |
-| `lm_site_peppe` | As `sp_zero` but without tooth zero-filling, matching Peppe et al. (2011) |
+| `lm_site_specimen` | OLS on site means from `dilp` morphotype averages; identical to `sp_zero` in current data |
+| `lm_site_sp_zero` | OLS on site means from current `dilp` morphotype averages; identical to `specimen` in current data |
+| `lm_site_untoothed_excl` | As `sp_zero` but without tooth zero-filling; distinct from fixed published DiLP coefficients |
 | `pgls_sp_site` | GLS on species means with the phylogenetic VCV; prediction is Xβ only |
 | `pip_sp_site` | Same fit as PGLS, plus the prediction-time correction ŷ = Xβ + C·K·ε |
 
@@ -168,8 +164,7 @@ Column names follow
 `pip_sp_site_impute_mat`.
 
 PGLS and PIP share identical coefficients; they differ only in whether the
-covariance correction is applied at prediction time. Any performance difference
-between them is therefore attributable to that correction alone.
+covariance correction is applied at prediction time. Their comparison isolates that correction. Comparisons with site-level LM also differ in fitting and aggregation, so they are practical baselines rather than strict phylogeny ablations.
 
 ## Fossil-measurable trait set
 
@@ -271,3 +266,6 @@ Lowe, A. J. et al. (2024) Digital leaf physiognomy. Methods implemented in the
 
 Gardner, E. E., Baker, J., Venditti, C. and Organ, C. (2024)
 Phylogenetically-informed predictions.
+
+
+The climate code and shared placement/aggregation tests are synchronized with the September 2026 analysis. `test_fossil_placement.R` requires the generated scaffold and PIP model; `test_dilp_parity.R` additionally requires the updated local dilp source or its installed build. LMA has not received the occurrence-placement changes in this climate update.

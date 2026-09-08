@@ -67,8 +67,7 @@ cat("LM predictions done\n")
 # ==============================================================================
 
 tree                 <- read.tree("data/tre_lma_pruned.tre")
-h                    <- max(nodeHeights(tree))
-reference_tip_labels <- tree$tip.label
+scaffold_tip_labels  <- tree$tip.label
 name_tbl             <- read.csv("data/name_table_full.csv", stringsAsFactors = FALSE)
 placement_rows       <- vector("list", nrow(foss_site))
 
@@ -81,8 +80,7 @@ for (j in seq_len(nrow(foss_site))) {
     family = foss_site$family[j],
     order = foss_site$order[j],
     name_table = name_tbl,
-    reference_tip_labels = reference_tip_labels,
-    tree_height = h,
+    scaffold_tip_labels = scaffold_tip_labels,
     placement_fallback = PLACEMENT_FALLBACK
   )
   tree <- result$tree

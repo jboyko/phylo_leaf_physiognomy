@@ -9,9 +9,8 @@
 #  PIP sp   : PIP using fossil species grand means, averaged to site
 #  PIP+site : PIP using site-specific fossil species means, averaged to site
 #
-# PIP sp uses one grand-mean species tip as a secondary comparator. PIP+site,
-# the primary fossil model, uses one independently placed tip per site
-# occurrence, with that occurrence's traits and site age.
+# PIP sp uses species grand-mean ages and traits; PIP+site uses each
+# occurrence's own age and traits, so their phylogenetic adjustments can differ.
 #
 # Requires:
 #   models/pip_components.rds   -- output of 02_phy_regression.R
@@ -50,6 +49,14 @@ pip       <- readRDS("models/pip_components.rds")
 nophy     <- readRDS("models/nophy_models.rds")
 site_mods <- readRDS("models/site_models.rds")
 foss_base <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
+
+# Dana's requested non-phylogenetic comparison is the species-to-site,
+# zero-fill, bag-imputed LM.  Select it explicitly instead of relying on the
+# backwards-compatible specimen-impute alias.
+site_lm_config <- site_mods$configs$sp_zero_impute
+if (is.null(site_lm_config)) {
+  stop("models/site_models.rds lacks the required sp_zero_impute site LM")
+}
 
 cat("Loaded", nrow(foss_base), "fossil species-site rows\n")
 
@@ -112,6 +119,9 @@ sp_lm <- merge(sp_site_map,
                by = "species")
 site_lm_sp <- aggregate(cbind(mat_lm_sp, map_lm_sp) ~ site + age_ma,
                          data = sp_lm, FUN = mean)
+# MAP is the geometric mean of occurrence predictions; MAT remains arithmetic.
+site_lm_sp$map_lm_sp <- exp(aggregate(log(map_lm_sp) ~ site + age_ma,
+  data = sp_lm, FUN = mean)[[3]])
 
 cat("LM species-level predictions done\n")
 
@@ -119,12 +129,12 @@ cat("LM species-level predictions done\n")
 # 4. LM SITE-LEVEL
 # ==============================================================================
 
-pred_names_site <- site_mods$pred_names
-foss_site_imp   <- predict(site_mods$impute_model,
+pred_names_site <- site_lm_config$pred_names
+foss_site_imp   <- predict(site_lm_config$impute_model,
                            newdata = foss_site_means[, pred_names_site])
 
-site_lm_mat <- predict(site_mods$mat$LM,     newdata = foss_site_imp)
-site_lm_map <- predict(site_mods$log_map$LM, newdata = foss_site_imp)
+site_lm_mat <- predict(site_lm_config$mat$LM,     newdata = foss_site_imp)
+site_lm_map <- predict(site_lm_config$log_map$LM, newdata = foss_site_imp)
 
 site_lm_site <- data.frame(
   site        = foss_site_means$site,
@@ -155,36 +165,31 @@ cat("LM site-level predictions done\n")
 #      branch (issue #11) -- each site occurrence gets its own phylogenetic
 #      adjustment computed from its own time depth.
 #
-# Placement failures (which should be rare, since a root fallback normally
-# succeeds) are explicitly logged and counted. The secondary PIP-sp comparator
-# may drop a failed grand-mean tip with a warning; the primary PIP+site analysis
-# stops rather than silently changing a site's species composition.
+# Placement failures (which should be rare, since a root fallback always
+# succeeds) are caught rather than allowed to error out or vanish, then
+# explicitly logged, counted, and excluded downstream (issue #13).
 
-tree_base            <- read.tree("data/tre_scaffold.tre")
-h                    <- max(nodeHeights(tree_base))
-name_tbl             <- pip$name_table_full
-reference_tip_labels <- tree_base$tip.label
+tree <- read.tree("data/tre_scaffold.tre")
+# This snapshot is the only permitted taxonomic anchor set.  `tree` grows in
+# both passes below, but an earlier fossil must not affect a later placement.
+scaffold_tip_labels <- tree$tip.label
+name_tbl <- pip$name_table_full
 
 # --- 5a. Species grand-mean tips (used by "PIP sp") ------------------------
 placement_rows_sp <- vector("list", nrow(foss_sp))
-tree_sp <- tree_base
 for (j in seq_len(nrow(foss_sp))) {
   res <- graft_fossil_tip(
-    tree_sp, foss_sp$species[j], foss_sp$age_ma[j],
+    tree, scaffold_tip_labels, foss_sp$species[j], foss_sp$age_ma[j],
     foss_sp$genus[j], foss_sp$family[j], foss_sp$order[j],
-    name_table = name_tbl,
-    reference_tip_labels = reference_tip_labels,
-    tree_height = h,
-    placement_fallback = PLACEMENT_FALLBACK
+    placement_fallback = PLACEMENT_FALLBACK, name_table = name_tbl
   )
-  tree_sp <- res$tree
+  tree <- res$tree
   placement_rows_sp[[j]] <- data.frame(
     taxonomy_scenario = taxonomy_scenario,
     tip_scope = "species_grand_mean",
     species = foss_sp$species[j],
     fossil_name = NA_character_,
     site = NA_character_,
-    age_ma = foss_sp$age_ma[j],
     placed = res$placed,
     placement_level = res$placement_level,
     placement_target = res$placement_target,
@@ -205,24 +210,19 @@ foss_sp <- foss_sp[foss_sp$species %in% placed_sp, ]
 
 # --- 5b. Site-occurrence tips (used by "PIP+site", the recommended model) --
 placement_rows_site <- vector("list", nrow(foss))
-tree_occ <- tree_base
 for (j in seq_len(nrow(foss))) {
   res <- graft_fossil_tip(
-    tree_occ, foss$fossil_name[j], foss$age_ma[j],
+    tree, scaffold_tip_labels, foss$fossil_name[j], foss$age_ma[j],
     foss$genus[j], foss$family[j], foss$order[j],
-    name_table = name_tbl,
-    reference_tip_labels = reference_tip_labels,
-    tree_height = h,
-    placement_fallback = PLACEMENT_FALLBACK
+    placement_fallback = PLACEMENT_FALLBACK, name_table = name_tbl
   )
-  tree_occ <- res$tree
+  tree <- res$tree
   placement_rows_site[[j]] <- data.frame(
     taxonomy_scenario = taxonomy_scenario,
     tip_scope = "site_occurrence",
     species = foss$species[j],
     fossil_name = foss$fossil_name[j],
     site = foss$site[j],
-    age_ma = foss$age_ma[j],
     placed = res$placed,
     placement_level = res$placement_level,
     placement_target = res$placement_target,
@@ -237,12 +237,13 @@ dropped_occ <- setdiff(foss$fossil_name, placed_occ)
 cat("PIP+site: placed", length(placed_occ), "/", nrow(foss), "fossil species-site rows on tree\n")
 if (length(dropped_occ) > 0) {
   dropped_rows <- foss[foss$fossil_name %in% dropped_occ, c("fossil_name", "species", "site")]
-  stop(
-    "Primary PIP+site placement failed for ", length(dropped_occ),
-    " fossil species-site occurrence(s): ",
-    paste(dropped_rows$fossil_name, collapse = ", ")
-  )
+  warning("Dropping ", length(dropped_occ), " fossil species-site occurrences ",
+          "that failed phylogenetic placement (PIP+site): ",
+          paste(dropped_rows$fossil_name, collapse = ", "))
+  cat("  Dropped species-site rows (sites affected):",
+      paste(unique(dropped_rows$site), collapse = ", "), "\n")
 }
+foss <- foss[foss$fossil_name %in% placed_occ, ]
 
 placement_log <- rbind(do.call(rbind, placement_rows_sp),
                        do.call(rbind, placement_rows_site))
@@ -255,10 +256,8 @@ idx_extant  <- rownames(pip$dat_imputed_mat)
 idx_fossil_sp  <- foss_sp$species     # species grand-mean tips (PIP sp)
 idx_fossil_occ <- foss$fossil_name    # site-occurrence tips (PIP+site, issue #11)
 
-tree_small_sp  <- keep.tip(tree_sp, c(idx_extant, idx_fossil_sp))
-tree_small_occ <- keep.tip(tree_occ, c(idx_extant, idx_fossil_occ))
-phylomat_sp    <- vcv(tree_small_sp)
-phylomat_occ   <- vcv(tree_small_occ)
+tree_small     <- keep.tip(tree, c(idx_extant, idx_fossil_sp, idx_fossil_occ))
+phylomat_small <- vcv(tree_small)
 
 V_inv_mat <- solve(pip$V_lam_mat)
 V_inv_map <- solve(pip$V_lam_map)
@@ -266,9 +265,9 @@ V_inv_map <- solve(pip$V_lam_map)
 resid_ord_mat <- pip$resid_mat[idx_extant]
 resid_ord_map <- pip$resid_map[idx_extant]
 
-compute_phylo_adj <- function(phylomat, idx_fossil) {
-  V_cross_mat <- phylomat[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_mat
-  V_cross_map <- phylomat[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_map
+compute_phylo_adj <- function(idx_fossil) {
+  V_cross_mat <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_mat
+  V_cross_map <- phylomat_small[idx_extant, idx_fossil, drop = FALSE] * pip$lambda_map
   adj_mat <- as.numeric(t(V_cross_mat) %*% V_inv_mat %*% resid_ord_mat)
   adj_map <- as.numeric(t(V_cross_map) %*% V_inv_map %*% resid_ord_map)
   names(adj_mat) <- idx_fossil
@@ -277,14 +276,14 @@ compute_phylo_adj <- function(phylomat, idx_fossil) {
 }
 
 # Species-level adjustment for "PIP sp" (grand-mean tip placement)
-phylo_adj_sp  <- compute_phylo_adj(phylomat_sp, idx_fossil_sp)
+phylo_adj_sp  <- compute_phylo_adj(idx_fossil_sp)
 phylo_adj_mat <- phylo_adj_sp$mat
 phylo_adj_map <- phylo_adj_sp$map
 
 # Site-occurrence adjustment for "PIP+site" — computed from each occurrence's
 # own tip placement rather than reusing the grand-mean-age species adjustment
 # (issue #11).
-phylo_adj_occ     <- compute_phylo_adj(phylomat_occ, idx_fossil_occ)
+phylo_adj_occ     <- compute_phylo_adj(idx_fossil_occ)
 phylo_adj_site_mat <- phylo_adj_occ$mat
 phylo_adj_site_map <- phylo_adj_occ$map
 
@@ -335,6 +334,9 @@ sp_pip <- merge(sp_site_map,
                 by = "species")
 site_pip_sp <- aggregate(cbind(mat_pip_sp, map_pip_sp) ~ site + age_ma,
                           data = sp_pip, FUN = mean)
+# MAP is the geometric mean of occurrence predictions; MAT remains arithmetic.
+site_pip_sp$map_pip_sp <- exp(aggregate(log(map_pip_sp) ~ site + age_ma,
+  data = sp_pip, FUN = mean)[[3]])
 
 cat("PIP species-level predictions done\n")
 
@@ -342,8 +344,8 @@ cat("PIP species-level predictions done\n")
 # 10. PIP+SITE PREDICTIONS
 # ==============================================================================
 
-# For each species-site row, use site-specific trait values and the
-# occurrence-specific phylogenetic adjustment.
+# For each species-site row, use site-specific traits and the phylogenetic
+# adjustment from that occurrence's own placement.
 
 site_sp_mat_raw <- pad_cols(foss, trait_cols_mat)
 site_sp_map_raw <- pad_cols(foss, trait_cols_map)
@@ -370,6 +372,9 @@ foss$map_pip_site <- exp(yhat_site_map)
 
 site_pip_site <- aggregate(cbind(mat_pip_site, map_pip_site) ~ site + age_ma,
                             data = foss, FUN = mean)
+# MAP is the geometric mean of occurrence predictions; MAT remains arithmetic.
+site_pip_site$map_pip_site <- exp(aggregate(log(map_pip_site) ~ site + age_ma,
+  data = foss, FUN = mean)[[3]])
 
 # Also save per-species PIP+site predictions
 results_per_species <- foss[, c(

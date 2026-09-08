@@ -1,130 +1,131 @@
-# Shared helpers for time-aware fossil-tip placement.
+# Shared fossil placement helpers.
 #
-# Placement targets are always resolved from the original extant scaffold tips.
-# Fossils grafted earlier in a loop must never become evidence for the placement
-# of a later fossil: doing so makes results depend on input row order and can
-# leak informal fossil labels back into a formal-only taxonomy scenario.
+# `scaffold_tip_labels` is deliberately an immutable snapshot of the extant
+# scaffold.  Fossils already grafted into `tree` must never become taxonomic
+# evidence for later fossil placements.
 
-fossil_tip_genera <- function(tip_labels) {
-  vapply(strsplit(tip_labels, "_", fixed = TRUE), `[`, character(1), 1L)
-}
-
-fossil_target_node <- function(tree, tips) {
-  tips <- intersect(tips, tree$tip.label)
-  if (length(tips) >= 2L) return(ape::getMRCA(tree, tips))
-  if (length(tips) == 1L) return(match(tips, tree$tip.label))
-  NULL
-}
-
-resolve_fossil_target <- function(tree, genus, family, order, name_table,
-                                  reference_tip_labels) {
-  reference_tips <- intersect(reference_tip_labels, tree$tip.label)
-  reference_genera <- fossil_tip_genera(reference_tips)
-
-  if (is_known_taxon(genus)) {
-    genus_tips <- reference_tips[reference_genera == genus]
-    target <- fossil_target_node(tree, genus_tips)
-    if (!is.null(target)) {
-      return(list(node = target, level = "genus", target = genus))
-    }
-  }
-
-  if (is_known_taxon(family)) {
-    family_genera <- unique(name_table$genus[name_table$family == family])
-    family_tips <- reference_tips[reference_genera %in% family_genera]
-    target <- fossil_target_node(tree, family_tips)
-    if (!is.null(target)) {
-      return(list(node = target, level = "family", target = family))
-    }
-  }
-
-  if (is_known_taxon(order)) {
-    order_genera <- unique(name_table$genus[name_table$order == order])
-    order_tips <- reference_tips[reference_genera %in% order_genera]
-    target <- fossil_target_node(tree, order_tips)
-    if (!is.null(target)) {
-      return(list(node = target, level = "order", target = order))
-    }
-  }
-
+fossil_placement_failure <- function(tree, message) {
   list(
-    node = ape::Ntip(tree) + 1L,
-    level = "root",
-    target = "root"
+    tree = tree,
+    placed = FALSE,
+    placement_level = NA_character_,
+    placement_target = NA_character_,
+    age_fallback = NA_character_,
+    error = message
   )
 }
 
-graft_fossil_tip <- function(tree, tip_label, age_ma, genus, family, order,
-                             name_table, reference_tip_labels,
-                             tree_height = max(phytools::nodeHeights(tree)),
-                             placement_fallback = "ancestral_branch") {
+graft_fossil_tip <- function(tree, scaffold_tip_labels, tip_label, age_ma,
+                             genus, family, order,
+                             placement_fallback = "ancestral_branch",
+                             name_table) {
+  if (!is.character(scaffold_tip_labels) || !length(scaffold_tip_labels)) {
+    return(fossil_placement_failure(tree, "scaffold_tip_labels must be non-empty"))
+  }
+  if (!all(c("genus", "family", "order") %in% names(name_table))) {
+    return(fossil_placement_failure(
+      tree, "name_table must contain genus, family, and order columns"
+    ))
+  }
+  if (length(tip_label) != 1L || is.na(tip_label) || !nzchar(tip_label)) {
+    return(fossil_placement_failure(tree, "tip_label must be one non-empty string"))
+  }
+  if (length(age_ma) != 1L || !is.finite(age_ma) || age_ma < 0) {
+    return(fossil_placement_failure(tree, "age_ma must be one finite, non-negative value"))
+  }
+  if (!placement_fallback %in% c("ancestral_branch", "node")) {
+    return(fossil_placement_failure(
+      tree, "placement_fallback must be 'ancestral_branch' or 'node'"
+    ))
+  }
   if (tip_label %in% tree$tip.label) {
     return(list(
-      tree = tree,
-      placed = TRUE,
-      placement_level = "existing_tip",
-      placement_target = tip_label,
-      age_fallback = "none",
-      error = NA_character_
+      tree = tree, placed = TRUE, placement_level = "existing_tip",
+      placement_target = tip_label, age_fallback = "none", error = NA_character_
     ))
   }
 
-  tryCatch({
-    if (!is.finite(age_ma)) stop("age_ma must be finite")
+  # Restrict every taxonomic lookup to the original scaffold.  `tree` grows
+  # after each call, but this candidate set does not.
+  anchor_tips <- intersect(scaffold_tip_labels, tree$tip.label)
+  if (!length(anchor_tips)) {
+    return(fossil_placement_failure(tree, "no scaffold tips remain in tree"))
+  }
+  tip_genera <- sub("_.*$", "", anchor_tips)
 
-    resolved <- resolve_fossil_target(
-      tree, genus, family, order, name_table, reference_tip_labels
-    )
-    target_node <- resolved$node
-    placement_level <- resolved$level
-    placement_target <- resolved$target
-    age_fallback <- "none"
+  known <- function(x) {
+    length(x) == 1L && !is.na(x) && nzchar(x) && x != "unknown"
+  }
+  target_node <- NULL
+  placement_level <- "root"
+  placement_target <- "root"
+  age_fallback <- "none"
 
-    if (placement_level == "root") {
-      warning("No taxonomy match for '", tip_label, "'. Placing at root.")
+  lookup_target <- function(candidate_tips) {
+    candidate_tips <- intersect(anchor_tips, candidate_tips)
+    if (length(candidate_tips) >= 2L) return(ape::getMRCA(tree, candidate_tips))
+    if (length(candidate_tips) == 1L) return(match(candidate_tips, tree$tip.label))
+    NULL
+  }
+
+  if (known(genus)) {
+    target_node <- lookup_target(anchor_tips[tip_genera == genus])
+    if (!is.null(target_node)) {
+      placement_level <- "genus"
+      placement_target <- genus
     }
+  }
+  if (is.null(target_node) && known(family)) {
+    family_genera <- unique(name_table$genus[name_table$family == family])
+    target_node <- lookup_target(anchor_tips[tip_genera %in% family_genera])
+    if (!is.null(target_node)) {
+      placement_level <- "family"
+      placement_target <- family
+    }
+  }
+  if (is.null(target_node) && known(order)) {
+    order_genera <- unique(name_table$genus[name_table$order == order])
+    target_node <- lookup_target(anchor_tips[tip_genera %in% order_genera])
+    if (!is.null(target_node)) {
+      placement_level <- "order"
+      placement_target <- order
+    }
+  }
+  if (is.null(target_node)) target_node <- length(tree$tip.label) + 1L
 
+  tree_before <- tree
+  tryCatch({
+    tree_height <- max(phytools::nodeHeights(tree))
     fossil_height <- tree_height - age_ma
     node_height <- phytools::nodeheight(tree, target_node)
-    terminal_length <- fossil_height - node_height
-    tolerance <- sqrt(.Machine$double.eps) * max(1, tree_height)
+    edge_length <- fossil_height - node_height
 
-    if (terminal_length >= -tolerance) {
+    if (edge_length >= 0) {
       tree <- phytools::bind.tip(
-        tree,
-        tip.label = tip_label,
-        where = target_node,
-        edge.length = max(terminal_length, 0)
+        tree, tip.label = tip_label, where = target_node, edge.length = edge_length
       )
     } else if (placement_fallback == "ancestral_branch") {
       age_fallback <- "ancestral_branch"
       node <- target_node
       found <- FALSE
-
       repeat {
         edge_idx <- which(tree$edge[, 2] == node)
-        if (length(edge_idx) == 0L) break
-
+        if (!length(edge_idx)) break
         parent_node <- tree$edge[edge_idx, 1]
         parent_height <- phytools::nodeheight(tree, parent_node)
-        child_height <- phytools::nodeheight(tree, node)
-        branch_length <- tree$edge.length[edge_idx]
-
-        spans_fossil <-
-          parent_height <= fossil_height + tolerance &&
-          child_height >= fossil_height - tolerance
-
-        if (spans_fossil) {
-          position <- child_height - fossil_height
-          if (position < -tolerance || position > branch_length + tolerance) {
-            stop("computed fossil position falls outside the spanning branch")
+        if (parent_height <= fossil_height) {
+          # bind.tip expects a position along this exact parent edge.  Permit
+          # only machine-scale roundoff at an endpoint; a material mismatch
+          # signals a broken time geometry and must not be silently altered.
+          edge_limit <- tree$edge.length[edge_idx[1]]
+          position <- phytools::nodeheight(tree, node) - fossil_height
+          tolerance <- sqrt(.Machine$double.eps) * max(1, abs(edge_limit))
+          if (position < -tolerance || position > edge_limit + tolerance) {
+            stop("computed fossil position lies outside its parent edge")
           }
-          position <- min(max(position, 0), branch_length)
+          position <- max(0, min(position, edge_limit))
           tree <- phytools::bind.tip(
-            tree,
-            tip.label = tip_label,
-            where = node,
-            position = position,
+            tree, tip.label = tip_label, where = node, position = position,
             edge.length = 0
           )
           found <- TRUE
@@ -132,47 +133,28 @@ graft_fossil_tip <- function(tree, tip_label, age_ma, genus, family, order,
         }
         node <- parent_node
       }
-
       if (!found) {
-        warning("No spanning branch for '", tip_label, "'. Placing at root.")
-        placement_level <- "root"
-        placement_target <- "root"
-        age_fallback <- "root"
-        tree <- phytools::bind.tip(
-          tree,
-          tip.label = tip_label,
-          where = ape::Ntip(tree) + 1L,
-          edge.length = 0.001
+        stop(
+          "fossil age predates the scaffold root; no branch exists at its age"
         )
       }
-    } else if (placement_fallback == "node") {
+    } else {
       age_fallback <- "node"
       tree <- phytools::bind.tip(
-        tree,
-        tip.label = tip_label,
-        where = target_node,
-        edge.length = 0.001
+        tree, tip.label = tip_label, where = target_node, edge.length = 0.001
       )
-    } else {
-      stop("Unknown placement_fallback: ", placement_fallback)
     }
-
+    placed_tip <- match(tip_label, tree$tip.label)
+    placed_height <- phytools::nodeheight(tree, placed_tip)
+    tolerance <- sqrt(.Machine$double.eps) * max(1, abs(fossil_height))
+    if (age_fallback %in% c("none", "ancestral_branch") &&
+        abs(placed_height - fossil_height) > tolerance) {
+      stop("grafted tip depth does not match scaffold height minus fossil age")
+    }
     list(
-      tree = tree,
-      placed = TRUE,
-      placement_level = placement_level,
-      placement_target = placement_target,
-      age_fallback = age_fallback,
+      tree = tree, placed = TRUE, placement_level = placement_level,
+      placement_target = placement_target, age_fallback = age_fallback,
       error = NA_character_
     )
-  }, error = function(error) {
-    list(
-      tree = tree,
-      placed = FALSE,
-      placement_level = NA_character_,
-      placement_target = NA_character_,
-      age_fallback = NA_character_,
-      error = conditionMessage(error)
-    )
-  })
+  }, error = function(e) fossil_placement_failure(tree_before, conditionMessage(e)))
 }

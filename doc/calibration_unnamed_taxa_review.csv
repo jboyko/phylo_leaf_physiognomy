@@ -1,0 +1,214 @@
+training_label,n_sites,n_site_morphotypes,sites
+Actinidia_,1,1,Nagakubo
+Adinandra_,1,1,Robinson Falls
+Aidia_,1,1,Tanjung Tuan
+Alangium_,1,1,Pasoh
+Alibertia_,1,1,Gorgona
+Allocasuarina_,1,1,West Head
+Alnus_,5,5,"Bandon, OR | Clearwater, WA | Placerville, CA | Red Fleet, UT | Wolf Creek, CO"
+Amelanchier_,5,5,"Hood River, OR | Red Fleet, UT | Republic, WA | Three Lynx, OR | Wolf Creek, CO"
+Amorpha_,1,1,"Big Hammock, GA"
+Annona_,1,1,Ducke
+Antidesma_,1,2,Robinson Falls
+Apeiba_,1,1,Gorgona
+Aporosa_,1,1,Pasoh
+Arbutus_,5,5,"North Bend, OR | Placerville, CA | Portal, AZ | Powers, OR | Santa Cruz, CA"
+Arceuthobium_,1,1,"Portal, AZ"
+Arctostaphylos_,6,6,"Bandon, OR | Government Camp, OR | North Bend, OR | Placerville, CA | Portal, AZ | Powers, OR"
+Ardisia_,2,3,Gorgona | Pasoh
+Aristolochia_,1,1,Gorgona
+Artemisia_,1,1,"Red Fleet, UT"
+Aspidosperma_,1,1,Ducke
+Atriplex_,1,1,San Bartolo
+Avicennia_,1,1,Empalme
+Azalea_,1,1,"Government Camp, OR"
+Baccharis_,9,12,"Bandon, OR | Cape Blanco, OR | Childs, AZ | Half Moon Bay, CA | North Bend, OR | Placerville, CA | Portal, AZ | Powers, OR | Santa Cruz, CA"
+Baeckea_,1,1,Margaret River
+Balanops_,1,1,Keka
+Bauhinia_,1,2,Gorgona
+Betula_,2,2,"Red Fleet, UT | Republic, WA"
+Bonamia_,1,1,Chamela
+Brackenridgea_,1,1,Keka
+Brickellia_,1,1,"Childs, AZ"
+Bridelia_,1,1,Kepong
+Brosimum_,1,1,Gorgona
+Buckinghamia_,1,1,Noah Creek
+Bursera_,5,9,"Cabo San Lucas, Baja Mexico | Chamela | Empalme | Nuri, Sonora | San Bartolo"
+Caesalpinia_,2,2,Chamela | Noah Creek
+Callicarpa_,3,3,Nagakubo | Yakusugi (260m) | Yakusugi (800m)
+Calophyllum_,1,1,Seqaqa
+Canthium_,1,1,Robinson Falls
+Cardiospermum_,4,4,"Alamos | Empalme | Nuri, Sonora | San Bartolo"
+Carya_,2,2,CT-River | CT-Swamp
+Casearia_,1,1,Pasoh
+Castanopsis_,1,1,"Three Lynx, OR"
+Ceanothus_,8,10,"Bandon, OR | Half Moon Bay, CA | Parkdale, OR | Placerville, CA | Portal, AZ | Powers, OR | Santa Cruz, CA | Three Lynx, OR"
+Ceiba_,2,2,"Alamos | Nuri, Sonora"
+Celtis_,2,3,"Childs, AZ | Nuri, Sonora"
+Cercocarpus_,2,2,"Childs, AZ | Red Fleet, UT"
+Chimaphila_,1,1,"Government Camp, OR"
+Chomelia_,1,2,Gorgona
+Chrysophyllum_,1,1,Barro Colorado Island
+Cinnamomum_,1,1,Robinson Falls
+Cissus_,1,1,Chamela
+Clematis_,3,3,"Parque El Rey | Red Fleet, UT | Republic, WA"
+Clethra_,1,1,"Pee Dee, SC"
+Clusia_,2,2,Barro Colorado Island | Gorgona
+Condylocarpon_,1,1,Ducke
+Cordia_,2,2,"Alamos | Nuri, Sonora"
+Cornus_,7,7,"Half Moon Bay, CA | Hood River, OR | Parkdale, OR | Red Fleet, UT | Republic, WA | Santa Cruz, CA | Three Lynx, OR"
+Corylus_,5,5,"Hood River, OR | North Bend, OR | Parkdale, OR | Powers, OR | Three Lynx, OR"
+Crataegus_,6,7,"Allegheny National Forest, PA | Big Hammock, GA | Dilcher's Woods upland, FL | Harvard Forest, MA | Pee Dee, SC | Republic, WA"
+Cremastosperma_,1,1,Barro Colorado Island
+Croton_,1,2,Chamela
+Dalbergia_,1,1,Ducke
+Diospyros_,3,4,Ducke | Pasoh | Tanjung Tuan
+Dipterocarpus_,1,1,Pasoh
+Doryphora_,1,1,Noah Creek
+Drypetes_,1,1,Pasoh
+Duguetia_,1,5,Ducke
+Dysoxylum_,1,1,Seqaqa
+Elaeagnus_,2,2,Nagakubo | Yakusugi (260m)
+Encelia_,1,1,Empalme
+Endiandra_,1,2,Keka
+Endlicheria_,2,2,Ducke | Yasuni-valley bottom
+Erythroxylum_,2,2,Chamela | Gorgona
+Eucalyptus_,1,2,Margaret River
+Eugenia_,2,3,"Gorgona | Panther Wildlife Refuge, FL"
+Euodia_,1,1,Nagakubo
+Euonymus_,2,2,"Chuzenji-ko | Suganuma, Honshu"
+Eurya_,1,1,Robinson Falls
+Fagraea_,1,1,Noah Creek
+Fallugia_,1,1,"Portal, AZ"
+Fendlera_,1,1,"Red Fleet, UT"
+Ficus_,1,1,Robinson Falls
+Fouquieria_,3,4,"Cabo San Lucas, Baja Mexico | Empalme | San Bartolo"
+Fraxinus_,6,8,"Childs, AZ | Chuzenji-ko | IES, NY | Placerville, CA | Portal, AZ | Powers, OR"
+Garcinia_,3,3,Keka | Pasoh | Tanjung Tuan
+Garrya_,2,2,"Cape Blanco, OR | Portal, AZ"
+Gastrolobium_,1,1,Margaret River
+Gaultheria_,6,6,"Bandon, OR | Cape Blanco, OR | Clearwater, WA | Ketchikan | North Bend, OR | Three Lynx, OR"
+Glycosmis_,1,1,Pasoh
+Gomphandra_,1,1,Noah Creek
+Gonocaryum_,1,1,Kepong
+Gordonia_,1,1,"Archbold, FL"
+Gouania_,2,2,"Alamos | Nuri, Sonora"
+Guapira_,1,2,Chamela
+Guarea_,1,1,Barro Colorado Island
+Guatteria_,1,1,Ducke
+Halesia_,1,1,"Pee Dee, SC"
+Helicostylis_,1,1,Gorgona
+Heliocarpus_,2,2,"Alamos | Nuri, Sonora"
+Henriettella_,1,1,Ducke
+Holodiscus_,8,8,"Bandon, OR | Cape Blanco, OR | Half Moon Bay, CA | Hood River, OR | North Bend, OR | Parkdale, OR | Powers, OR | Three Lynx, OR"
+Hydrangea_,1,1,Yakusugi (800m)
+Hyptis_,1,1,"Childs, AZ"
+Inga_,3,3,Barro Colorado Island | Ducke | Gorgona
+Iryanthera_,1,1,Gorgona
+Jacquinia_,1,1,Empalme
+Jatropha_,1,1,San Bartolo
+Juglans_,2,2,"Placerville, CA | Portal, AZ"
+Karwinskia_,3,3,"Alamos | Cabo San Lucas, Baja Mexico | Nuri, Sonora"
+Lasianthaea_,1,1,Chamela
+Lasianthus_,1,2,Tanjung Tuan
+Lasiopetalum_,1,1,Margaret River
+Lecythis_,1,1,Ducke
+Ledum_,2,2,Homer | Talkeetna
+Licania_,2,4,Ducke | Gorgona
+Licaria_,1,2,Ducke
+Ligustrum_,1,1,Nagakubo
+Linnaea_,4,4,"Government Camp, OR | Homer | Ketchikan | Talkeetna"
+Lithocarpus_,1,1,"Powers, OR"
+Litsea_,1,1,Robinson Falls
+Lonchocarpus_,1,4,Chamela
+Lonicera_,6,6,"Bandon, OR | Hood River, OR | Parkdale, OR | Portal, AZ | Powers, OR | Santa Cruz, CA"
+Lupinus_,1,1,"Half Moon Bay, CA"
+Lysiloma_,1,1,Chamela
+Macrolobium_,1,1,Ducke
+Mahonia_,8,9,"Bandon, OR | Cape Blanco, OR | Childs, AZ | Hood River, OR | Parkdale, OR | Republic, WA | Three Lynx, OR | Wolf Creek, CO"
+Malus_,8,8,"Cape Blanco, OR | Clearwater, WA | Hood River, OR | Ketchikan | Nestucca River, OR | Parkdale, OR | Portal, AZ | Three Lynx, OR"
+Manihot_,1,1,Chamela
+Mastixiodendron_,1,1,Seqaqa
+Maytenus_,1,1,Gorgona
+Melicope_,1,1,Robinson Falls
+Memecylon_,1,1,Tanjung Tuan
+Menziesia_,3,3,Homer | Ketchikan | Talkeetna
+Miconia_,2,5,Ducke | Gorgona
+Mouriri_,1,1,Ducke
+Myrceugenia_,1,1,Los Queles
+Myrica_,3,5,"Gorgona | North Bend, OR | Talkeetna"
+Myristica_,1,1,Seqaqa
+Ocotea_,1,1,Ducke
+Oemleria_,5,5,"Clearwater, WA | Half Moon Bay, CA | Powers, OR | Santa Cruz, CA | Three Lynx, OR"
+Oplopanax_,1,1,Ketchikan
+Orites_,1,1,Noah Creek
+Otoba_,1,1,Gorgona
+Parinari_,1,1,Keka
+Parkinsonia_,1,2,Empalme
+Parkinsonia__Cercidium__,1,1,"Childs, AZ"
+Paullinia_,1,1,Barro Colorado Island
+Paypayrola_,1,1,Ducke
+Peperomia_,1,1,Gorgona
+Persea_,1,1,"Archbold, FL"
+Persoonia_,1,1,Margaret River
+Philadelphus_,3,3,"Hood River, OR | Parkdale, OR | Powers, OR"
+Photinia_,1,1,"Placerville, CA"
+Physocarpus_,9,10,"Bandon, OR | Cape Blanco, OR | Hood River, OR | Nestucca River, OR | North Bend, OR | Parkdale, OR | Powers, OR | Republic, WA | Three Lynx, OR"
+Pimelea_,1,1,Margaret River
+Pithecellobium_,1,2,Chamela
+Platanus_,2,2,"Childs, AZ | Portal, AZ"
+Populus_,4,4,"Childs, AZ | Homer | Portal, AZ | Red Fleet, UT"
+Potentilla_,1,1,"Wolf Creek, CO"
+Pourouma_,1,1,Barro Colorado Island
+Pouteria_,1,3,Ducke
+Prestonia_,1,1,Ducke
+Prosopis_,4,4,"Alamos | Childs, AZ | Empalme | Portal, AZ"
+Proustia_,1,1,Los Ruiles
+Prunus_,4,5,"Chuzenji-ko | Placerville, CA | Portal, AZ | Robinson Falls"
+Psychotria_,3,3,Ducke | Gorgona | Keka
+Quararibea_,1,1,Ducke
+Quercus_,3,6,"Childs, AZ | Placerville, CA | Portal, AZ"
+Quiina_,2,2,Ducke | Gorgona
+Randia_,1,1,Seqaqa
+Rhamnus_,12,13,"Bandon, OR | Cape Blanco, OR | Clearwater, WA | Half Moon Bay, CA | Hood River, OR | North Bend, OR | Parkdale, OR | Placerville, CA | Portal, AZ | Powers, OR | Santa Cruz, CA | Three Lynx, OR"
+Rhododendron_,6,7,"Bandon, OR | Cape Blanco, OR | Chuzenji-ko | Cockaponset Forest, CT | Government Camp, OR | North Bend, OR"
+Rhus_,5,6,"Nagakubo | Placerville, CA | Portal, AZ | Red Fleet, UT | Santa Cruz, CA"
+Ribes_,10,16,"Clearwater, WA | Government Camp, OR | Half Moon Bay, CA | Homer | Hood River, OR | Red Fleet, UT | Republic, WA | Santa Cruz, CA | Talkeetna | Wolf Creek, CO"
+Rinorea_,1,2,Ducke
+Robinia_,2,2,"IES, NY | Portal, AZ"
+Rollinia_,1,1,Ducke
+Rosa_,12,14,"Government Camp, OR | Half Moon Bay, CA | Hood River, OR | Parkdale, OR | Placerville, CA | Powers, OR | Red Fleet, UT | Republic, WA | Santa Cruz, CA | Talkeetna | Three Lynx, OR | Wolf Creek, CO"
+Rubus_,16,21,"Bandon, OR | Clearwater, WA | Government Camp, OR | Half Moon Bay, CA | Homer | Nestucca River, OR | North Bend, OR | Republic, WA | Suganuma, Honshu | Talkeetna | Wolf Creek, CO | Yakasugi (1350m) | Yakusugi (1080m) | Yakusugi (260m) | Yakusugi (800m) | York, PA"
+Salix_,20,55,"Bandon, OR | Cape Blanco, OR | Childs, AZ | Clearwater, WA | Government Camp, OR | Homer | Hood River, OR | Nestucca River, OR | North Bend, OR | Parkdale, OR | Placerville, CA | Portal, AZ | Powers, OR | Red Fleet, UT | Republic, WA | Santa Cruz, CA | Suganuma, Honshu | Talkeetna | Three Lynx, OR | Wolf Creek, CO"
+Sambucus_,16,17,"Bandon, OR | Cape Blanco, OR | Clearwater, WA | Government Camp, OR | Half Moon Bay, CA | Homer | Hood River, OR | Ketchikan | Nestucca River, OR | North Bend, OR | Parkdale, OR | Powers, OR | Republic, WA | Santa Cruz, CA | Talkeetna | Wolf Creek, CO"
+Sapindus_,1,1,"Portal, AZ"
+Saurauia_,1,1,Robinson Falls
+Scaevola_,1,1,Seqaqa
+Securidaca_,1,1,Ducke
+Senna_,1,1,Los Ruiles
+Shepherdia_,1,1,"Red Fleet, UT"
+Simmondsia_,2,2,"Childs, AZ | Empalme"
+Siparuna_,1,1,Yasuni-upper slope
+Sorbus_,4,4,"Clearwater, WA | Government Camp, OR | Talkeetna | Yakusugi (1080m)"
+Souroubea_,1,1,Gorgona
+Spiraea_,7,9,"Homer | Hood River, OR | Parkdale, OR | Pee Dee, SC | Republic, WA | Talkeetna | Three Lynx, OR"
+Sterculia_,2,2,Alamos | Barro Colorado Island
+Strychnos_,2,2,Barro Colorado Island | Gorgona
+Swartzia_,1,3,Ducke
+Symphoricarpos_,10,12,"Duke Forest, NC | Hood River, OR | Nestucca River, OR | Parkdale, OR | Placerville, CA | Portal, AZ | Powers, OR | Republic, WA | Three Lynx, OR | Wolf Creek, CO"
+Syzygium_,7,9,Barro Colorado Island | Keka | Kepong | Pasoh | Robinson Falls | Seqaqa | Tanjung Tuan
+Talisia_,1,1,Ducke
+Tapirira_,1,1,Ducke
+Tapura_,1,1,Ducke
+Tecoma_,1,1,San Bartolo
+Terminalia_,1,1,Ducke
+Toxicodendron_,4,4,"Half Moon Bay, CA | Portal, AZ | Powers, OR | Santa Cruz, CA"
+Turnera_,1,1,Barro Colorado Island
+Ulmus_,1,1,CT-Swamp
+Umbellularia_,4,4,"Half Moon Bay, CA | North Bend, OR | Powers, OR | Santa Cruz, CA"
+Urophyllum_,1,1,Tanjung Tuan
+Vaccinium_,12,27,"Bandon, OR | Cape Blanco, OR | Clearwater, WA | Government Camp, OR | Homer | Huyck Preserve, NY | Nestucca River, OR | North Bend, OR | Pee Dee, SC | Powers, OR | Talkeetna | Yakusugi (1080m)"
+Viburnum_,5,5,"Government Camp, OR | Hood River, OR | Huyck Preserve, NY | Talkeetna | Yakasugi (1350m)"
+Vismia_,1,1,Ducke
+Vitis_,5,6,"Alamos | Childs, AZ | Nuri, Sonora | Placerville, CA | Portal, AZ"
+Ximenia_,1,1,Chamela
