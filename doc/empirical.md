@@ -20,9 +20,9 @@ The climate predictions can be reproduced using the updated local `dilp_pgls()` 
 
 ## Results
 
-All 361 fossil occurrences were retained in the formal-only climate analysis. PIP MAT estimates range from 14.1 °C at Republic to 21.6 °C at Cerrejon, and MAP estimates from 148 to 220 cm at the same sites. The practical non-phylogenetic comparison uses LM site sp+zero with imputation. Both methods use imputation for MAT and MAP.
+All 361 fossil occurrences were retained in the formal-only climate analysis. PIP MAT estimates range from 14.1 °C at Republic to 21.6 °C at Cerrejon, and MAP estimates from 146 to 216 cm at the same sites. The practical non-phylogenetic comparison uses LM site sp+zero with imputation. Both methods use imputation for MAT and MAP.
 
-**Table 6.** Site-level climate estimates for 11 fossil floras. PIP uses occurrence-specific traits and ages with formal-only taxonomy; LM is the site sp+zero imputed baseline. n is the number of species-site occurrences contributing to each PIP estimate. MAP values are geometric means in cm.
+**Table 6.** Site-level climate estimates for 11 fossil floras. PIP uses occurrence-specific traits and ages with formal-only taxonomy; LM is the site sp+zero imputed baseline. n is the number of species-site occurrences contributing to each PIP estimate. PIP MAP values are geometric means in cm; LM predicts directly at site level.
 
 | Site | Age (Ma) | MAT PIP (°C) | MAT LM (°C) | MAP PIP (cm) | MAP LM (cm) | n |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -47,16 +47,16 @@ PIP LMA estimates ranged from 74.7 g m⁻² at Williston Basin III (59.75 Ma) to
 
 | Site | Age (Ma) | LMA PIP (g m⁻²) | LMA LM (g m⁻²) | n |
 | --- | --- | --- | --- | --- |
-| Fox Hills | 66.5 | 89.1 | 86.9 | 153 |
-| Williston Basin I | 64.8 | 96.8 | 93.0 | 168 |
-| Williston Basin II | 63.5 | 80.5 | 79.2 | 161 |
-| Palacio de los Loros PL1 | 61.7 | 79.3 | 79.7 | 168 |
-| Palacio de los Loros PL2 | 61.7 | 95.2 | 100.3 | 161 |
-| Williston Basin III | 59.8 | 74.7 | 73.2 | 160 |
-| Cerrejon | 58.0 | 90.7 | 94.9 | 216 |
-| Hubble Bubble | 55.8 | 92.8 | 99.3 | 166 |
-| Laguna del Hunco | 51.9 | 98.1 | 100.3 | 168 |
-| Republic | 49.4 | 83.4 | 87.2 | 146 |
-| Bonanza | 47.3 | 124.6 | 133.2 | 149 |
+| Fox Hills | 66.5 | 89.1 | 86.9 | 16 |
+| Williston Basin I | 64.8 | 96.8 | 93.0 | 11 |
+| Williston Basin II | 63.5 | 80.5 | 79.2 | 13 |
+| Palacio de los Loros PL1 | 61.7 | 79.3 | 79.7 | 22 |
+| Palacio de los Loros PL2 | 61.7 | 95.2 | 100.3 | 4 |
+| Williston Basin III | 59.8 | 74.7 | 73.2 | 13 |
+| Cerrejon | 58.0 | 90.7 | 94.9 | 24 |
+| Hubble Bubble | 55.8 | 92.8 | 99.3 | 12 |
+| Laguna del Hunco | 51.9 | 98.1 | 100.3 | 71 |
+| Republic | 49.4 | 83.4 | 87.2 | 17 |
+| Bonanza | 47.3 | 124.6 | 133.2 | 16 |
 
 The cross-validation RMSE for LMA is 0.130 log₁₀ g m⁻², corresponding to a multiplicative uncertainty of approximately ×1.35 on the linear scale. As with the climate estimates, sites with few contributing species carry additional uncertainty; Palacio de los Loros PL2 (n = 4) should be interpreted with particular caution.

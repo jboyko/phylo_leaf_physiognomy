@@ -95,7 +95,7 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 | MAT (°C) | **3.414** | 3.707 | 3.722 | 5.854 |
 | log(MAP) | 0.525 | **0.508** | 0.583 | 0.628 |
 
-MAP validation now uses the same site estimator as fossil prediction: exponentiate species log predictions, average in cm, then log the site estimate for scoring. The older mean-of-log-predictions scores (0.525/0.508) describe a different estimator and are superseded. PIP/PGLS complete-case variants fit complete training rows but still impute missing held-out predictors.
+MAP validation and fossil prediction use geometric site means: average species log predictions, then exponentiate for MAP in cm. On September 8 this was selected over arithmetic averaging because both log-scale and original-scale held-out RMSE were lower; the selected PIP impute/CC scores are 0.525/0.508. PIP/PGLS complete-case variants fit complete training rows but still impute missing held-out predictors.
 
 Note that `specimen_*` and `sp_zero_*` site configs are identical by construction (see issue #10) and report identical RMSE; they are one model, not two.
 
