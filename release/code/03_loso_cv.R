@@ -1,13 +1,16 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(caret)
-library(dilp)
+pip_require_dilp()
 library(dplyr)
 library(tibble)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
+source("code/site_prediction.R")
 
+# ==============================================================================
 # CONSTANTS
+# ==============================================================================
 
 K_FOLDS      <- 10
 NA_THRESHOLD <- 0.40
@@ -33,13 +36,41 @@ vars_tooth_0 <- c(
   "tooth.area.blade.area.ratio", "teeth.blade.area.ratio"
 )
 
+# ==============================================================================
 # HELPER FUNCTIONS
+# ==============================================================================
+
+# aggregate(..., na.rm = TRUE) below returns NaN (not NA) for a species/site
+# with zero non-missing observations of a trait. bagImpute's predict() is not
+# guaranteed to treat NaN as missing, so coerce NaN -> NA immediately after
+# every aggregate() call, before any imputation step (issue #14).
+nan_to_na <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.numeric(col)) col[is.nan(col)] <- NA
+    col
+  })
+  df
+}
+
+# Fail loudly rather than silently propagate a corrupted (non-finite) value
+# from training-side imputation into a design matrix (issue #14).
+assert_finite <- function(x, label) {
+  m <- as.matrix(x)
+  if (any(!is.finite(m))) {
+    bad <- colnames(m)[colSums(!is.finite(m)) > 0]
+    stop(sprintf("%s: non-finite values remain after imputation in columns: %s",
+                 label, paste(bad, collapse = ", ")))
+  }
+}
 
 fill_tooth_traits <- function(d) {
   untoothed    <- !is.na(d$margin.score) & d$margin.score == 1
   tooth_in_d   <- intersect(vars_tooth_0, names(d))
-  for (v in tooth_in_d) d[[v]][untoothed] <- 0
-  if ("perim.ratio" %in% names(d)) d[["perim.ratio"]][untoothed] <- 1
+  # Cell blank AND margin.score == 1 (CLAUDE.md "Tooth trait filling"); a
+  # margin-scored-untoothed leaf carrying a nonzero measurement is kept as-is.
+  for (v in tooth_in_d) d[[v]][untoothed & is.na(d[[v]])] <- 0
+  if ("perim.ratio" %in% names(d))
+    d[["perim.ratio"]][untoothed & is.na(d[["perim.ratio"]])] <- 1
   d
 }
 
@@ -70,8 +101,9 @@ summarise_lm <- function(fit, method, train_level, pred_level, config, na_handli
   list(coefs = coef_df, fit_stats = fit_df)
 }
 
-# Coefficient table and fit summary from a pgls_res entry. PGLS and PIP share
-# the same fit, so it is captured once; R² comes from stored y_fit and epsilon.
+# Extract coefficient table and fit summary from a pgls_res entry.
+# PGLS and PIP share the same fit; this captures it once under the given method label.
+# R² is computed from stored y_fit and epsilon. SEs are attempted from pgls_fit$coefficients.
 summarise_pgls <- function(pc, method, config, na_handling, target, fold) {
   if (is.null(pc)) return(list(coefs = NULL, fit_stats = NULL))
   meta <- data.frame(method = method, train_level = "sp", pred_level = "site",
@@ -121,7 +153,11 @@ active_pred_names <- function(dat_sp, pnames) {
   present[na_pct < NA_THRESHOLD]
 }
 
-# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R section 3.
+# Aggregate morphotype means to species-level means. Mirrors 00_data_cleaning.R
+# section 3's trait-averaging rule (issue #15): same two-step aggregate +
+# duplicate-species collapse. Unlike 00_, genus/Family/Order are not restored
+# after the collapse — this function's output only ever feeds VCV/trait
+# lookups keyed by genusSpecies within a CV fold, never scaffold-tree grafting.
 agg_species <- function(d_filled) {
   dat_sp <- aggregate(d_filled[, agg_cols],
     by  = list(genusSpecies = d_filled$genusSpecies,
@@ -139,7 +175,7 @@ agg_species <- function(d_filled) {
   }
   dat_sp$log_map <- log(dat_sp$map)
   rownames(dat_sp) <- dat_sp$genusSpecies
-  dat_sp
+  nan_to_na(dat_sp)
 }
 
 # Aggregate morphotype means directly to site means (tooth-filled).
@@ -149,7 +185,7 @@ agg_site_direct <- function(d_filled) {
                                   FUN = mean, na.rm = TRUE)
   d_agg$log_map      <- log(d_agg$map)
   rownames(d_agg)    <- d_agg$Site
-  d_agg
+  nan_to_na(d_agg)
 }
 
 # With dilp data already at morphotype (species×site) level, this collapses
@@ -158,18 +194,21 @@ agg_site_sp_zero <- function(d_filled) {
   agg_site_direct(d_filled)
 }
 
-# Morphotype means → site without tooth-fill (Peppe et al. 2011): untoothed
-# species keep NA tooth traits and drop out via na.rm = TRUE.
-agg_site_peppe <- function(d_prefill) {
+# Aggregate morphotype means → site without tooth-fill (Peppe 2011): untoothed
+# species have NA tooth traits and are excluded via na.rm = TRUE.
+# d_prefill is the morphotype data before tooth-trait filling.
+agg_site_untoothed_excl <- function(d_prefill) {
   d_agg              <- aggregate(d_prefill[, agg_cols],
                                   by  = list(Site = d_prefill$Site),
                                   FUN = mean, na.rm = TRUE)
   d_agg$log_map      <- log(d_agg$map)
   rownames(d_agg)    <- d_agg$Site
-  d_agg
+  nan_to_na(d_agg)
 }
 
+# ==============================================================================
 # 1. LOAD RAW DATA
+# ==============================================================================
 
 cat("Loading raw data via dilp...\n")
 raw_leaf    <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
@@ -177,6 +216,34 @@ raw_leaf    <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
 dilp_out    <- dilp(raw_leaf)
 dat_leaf    <- dilp_out$processed_leaf_data
 dat_morpho  <- dilp_out$processed_morphotype_data
+
+# ==============================================================================
+# PUBLISHED DiLP REFERENCE LINE (Peppe et al. 2011 MLR)
+# ==============================================================================
+# dilp_out$results carries the published multiple linear regressions applied
+# with FIXED published coefficients:
+#   MAT = 0.21*margin(%) + 42.3*fdr - 2.61*tc_ip - 16.0
+#   MAP = exp(0.298*ln_leaf_area + 0.279*ln_tc_ip - 2.72*ln_pr + 3.03)
+# Computed by dilp() itself, so the log transforms (ln_pr, ln_tc_ip are logged
+# at SPECIMEN level and averaged as logs), the margin percentage conversion,
+# and the site-level untoothed rule all follow the published protocol rather
+# than our pipeline's conventions.
+#
+# *** IN-SAMPLE CAVEAT ***
+# These coefficients were calibrated on the Peppe et al. (2011) dataset, which
+# is the same data we train on. Scoring this against our 93 calibration sites
+# is therefore IN-SAMPLE FOR DiLP -- it has a home-field advantage that every
+# cross-validated model here does not. Treat it as "what the standard published
+# method yields on these sites", not as a like-for-like CV competitor. It is
+# fold-invariant by construction (no refitting), so its RMSE is identical
+# regardless of the fold structure.
+#
+# MAP.MLR is in cm, matching the pipeline convention (CLAUDE.md "MAP units").
+# Verified numerically: log-RMSE against observed site MAP is 0.554 treating it
+# as cm vs 2.383 treating it as mm.
+dilp_pub_site <- dilp_out$results[, c("site", "MAT.MLR", "MAP.MLR")]
+dilp_pub_site <- dilp_pub_site[!duplicated(dilp_pub_site$site), ]
+cat("Published DiLP reference line available for", nrow(dilp_pub_site), "sites\n")
 
 # Re-attach taxonomy — mirrors 00_data_cleaning.R section 1
 dat_morpho <- subset(dat_morpho, select = -measurer_comments)
@@ -187,7 +254,7 @@ dat_morpho <- dat_morpho %>%
   left_join(taxonomy_lookup, by = c("site", "morphotype"))
 
 dat_morpho$genusSpecies <- gsub("[() ]", "_", paste(dat_morpho$genus, dat_morpho$species, sep = "_"))
-dat_morpho$map          <- dat_morpho$map_mm / 10   # mm -> cm
+dat_morpho$map          <- dat_morpho$map_mm / 10   # mm -> cm (pipeline convention; CLAUDE.md §8)
 
 # Rename dilp columns to pipeline convention — mirrors 00_data_cleaning.R section 2
 rename_pipeline <- function(df) {
@@ -219,7 +286,9 @@ rownames(dat_site_obs) <- dat_site_obs$Site
 all_sites <- unique(raw_dat$Site)
 cat("Total sites:", length(all_sites), "\n")
 
+# ==============================================================================
 # 2. PRE-COMPUTE FULL VCV (once, before the CV loop)
+# ==============================================================================
 
 cat("Pre-computing full VCV from tre_pruned.tre...\n")
 full_phy              <- read.tree("data/tre_pruned.tre")
@@ -227,7 +296,9 @@ full_vcv              <- vcv(full_phy)
 diag(full_vcv)        <- diag(full_vcv) + 1e-6
 cat("Full VCV:", nrow(full_vcv), "x", ncol(full_vcv), "\n")
 
+# ==============================================================================
 # 3. ASSIGN CV FOLDS (stratified by site MAT, snake-pattern)
+# ==============================================================================
 
 set.seed(SEED)
 site_mat_order        <- dat_site_obs[all_sites, "mat"]
@@ -238,7 +309,10 @@ names(fold_assignment) <- all_sites
 
 cat("Fold sizes:", table(fold_assignment), "\n")
 
-# 4. LOSO CV LOOP
+# ==============================================================================
+# 4. 10-FOLD SITE-GROUPED CV LOOP
+# (files/columns keep the historical "loso" prefix; see CLAUDE.md naming note)
+# ==============================================================================
 
 cv_results      <- list()
 model_coefs     <- list()
@@ -247,6 +321,12 @@ model_fit_stats <- list()
 for (fold in seq_len(K_FOLDS)) {
 
   fold_start   <- proc.time()["elapsed"]
+
+  # Per-fold bagImpute calls below are stochastic (bagged trees); seed
+  # deterministically by fold so the whole LOSO run is bit-reproducible
+  # regardless of call order (issue #8).
+  set.seed(SEED + fold)
+
   held_sites   <- names(fold_assignment)[fold_assignment == fold]
   train_sites  <- names(fold_assignment)[fold_assignment != fold]
 
@@ -275,18 +355,20 @@ for (fold in seq_len(K_FOLDS)) {
   cat("  Aggregating site-level training data...\n")
   dat_site_direct_train <- agg_site_direct(train_filled)
   dat_site_sp0_train    <- agg_site_sp_zero(train_filled)
-  dat_site_peppe_train  <- agg_site_peppe(train_prefill)
+  dat_site_untoothed_excl_train  <- agg_site_untoothed_excl(train_prefill)
 
   # --------------------------------------------------------------------------
   # 4b. Species-level imputation (traits only)
   # --------------------------------------------------------------------------
 
   cat("  Fitting species-level imputation model...\n")
+  set.seed(SEED + fold)
   imp_sp_traits <- preProcess(dat_sp_train[, pred_names, drop = FALSE],
                                method = "bagImpute")
   dat_sp_imp_X  <- predict(imp_sp_traits,
                             dat_sp_train[, pred_names, drop = FALSE])
   rownames(dat_sp_imp_X) <- rownames(dat_sp_train)
+  assert_finite(dat_sp_imp_X, sprintf("species-level impute (fold %d)", fold))
 
   # --------------------------------------------------------------------------
   # 4c. Fit species-level LM
@@ -325,8 +407,8 @@ for (fold in seq_len(K_FOLDS)) {
     specimen_cc     = list(dat = dat_site_direct_train, impute = FALSE),
     sp_zero_impute  = list(dat = dat_site_sp0_train,    impute = TRUE),
     sp_zero_cc      = list(dat = dat_site_sp0_train,    impute = FALSE),
-    peppe_impute    = list(dat = dat_site_peppe_train,  impute = TRUE),
-    peppe_cc        = list(dat = dat_site_peppe_train,  impute = FALSE)
+    untoothed_excl_impute    = list(dat = dat_site_untoothed_excl_train,  impute = TRUE),
+    untoothed_excl_cc        = list(dat = dat_site_untoothed_excl_train,  impute = FALSE)
   )
 
   cat("  Fitting site-level LM (6 configs)...\n")
@@ -338,8 +420,10 @@ for (fold in seq_len(K_FOLDS)) {
     preds  <- d_site[, pnames, drop = FALSE]
 
     if (cfg$impute) {
+      set.seed(SEED + fold)
       imp_site  <- preProcess(preds, method = "bagImpute")
       preds_fit <- predict(imp_site, preds)
+      assert_finite(preds_fit, sprintf("site-level impute (%s, fold %d)", cfg_name, fold))
     } else {
       imp_site  <- NULL
       preds_fit <- preds
@@ -371,9 +455,11 @@ for (fold in seq_len(K_FOLDS)) {
       d_raw <- dat_sp_train[, c(target, pred_names), drop = FALSE]
 
       if (pgls_cfg == "impute") {
+        set.seed(SEED + fold)
         imp_full      <- preProcess(d_raw, method = "bagImpute")
         d_fit         <- predict(imp_full, d_raw)
         rownames(d_fit) <- rownames(d_raw)
+        assert_finite(d_fit, sprintf("PGLS impute (%s, %s, fold %d)", pgls_cfg, target, fold))
         sp_fit        <- rownames(d_fit)
         V_fit         <- V_train[sp_fit, sp_fit]
         # Ensure row order matches VCV
@@ -503,19 +589,42 @@ for (fold in seq_len(K_FOLDS)) {
       obs_log_map = obs_log_map
     )
 
+    # ---- Published DiLP reference line (Peppe et al. 2011 MLR) ----
+    # Fixed published coefficients, so this is fold-invariant: it is not refit
+    # on the training sites and does not use the held-out/training split at all.
+    # Included as a reference for "what the standard method gives", NOT as a
+    # like-for-like CV competitor -- see the in-sample caveat where
+    # dilp_pub_site is built.
+    dilp_row <- dilp_pub_site[dilp_pub_site$site == s, , drop = FALSE]
+    if (nrow(dilp_row) == 1) {
+      rec$dilp_pub_site_mat     <- as.numeric(dilp_row$MAT.MLR)
+      rec$dilp_pub_site_log_map <- log(as.numeric(dilp_row$MAP.MLR))
+    } else {
+      rec$dilp_pub_site_mat     <- NA
+      rec$dilp_pub_site_log_map <- NA
+    }
+
     # Within-site species means
     held_sp_agg <- aggregate(held_filled[, pred_names, drop = FALSE],
                               by  = list(species = held_filled$genusSpecies),
                               FUN = mean, na.rm = TRUE)
     rownames(held_sp_agg) <- held_sp_agg$species
+    held_sp_agg <- nan_to_na(held_sp_agg)
     held_sp_names         <- held_sp_agg$species
 
-    # Apply species-level training imputation to held-out species
-    held_sp_imp <- tryCatch(
-      predict(imp_sp_traits,
-              held_sp_agg[, pred_names, drop = FALSE]),
-      error = function(e) NULL
-    )
+    # Apply species-level training imputation to held-out species. A
+    # non-finite result here (issue #14) is treated as a prediction failure
+    # for this site (not a hard stop), so one bad held-out species doesn't
+    # abort the whole LOSO run.
+    held_sp_imp <- tryCatch({
+      out <- predict(imp_sp_traits, held_sp_agg[, pred_names, drop = FALSE])
+      if (any(!is.finite(as.matrix(out)))) {
+        cat("  Non-finite imputed traits for held-out site", s, "- dropping\n")
+        NULL
+      } else {
+        out
+      }
+    }, error = function(e) NULL)
     if (!is.null(held_sp_imp)) rownames(held_sp_imp) <- held_sp_names
 
     # ---- Species-level LM predictions ----
@@ -533,7 +642,7 @@ for (fold in seq_len(K_FOLDS)) {
           }
         }, error = function(e) NULL)
 
-        rec[[col_name]] <- if (!is.null(pred_vals)) mean(pred_vals, na.rm = TRUE) else NA
+        rec[[col_name]] <- if (!is.null(pred_vals)) site_prediction(pred_vals, target) else NA
       }
     }
 
@@ -542,7 +651,7 @@ for (fold in seq_len(K_FOLDS)) {
                                   error = function(e) NULL)
     held_site_sp0    <- tryCatch(agg_site_sp_zero(held_filled)[s, , drop = FALSE],
                                   error = function(e) NULL)
-    held_site_peppe  <- tryCatch(agg_site_peppe(held_prefill)[s, , drop = FALSE],
+    held_site_untoothed_excl  <- tryCatch(agg_site_untoothed_excl(held_prefill)[s, , drop = FALSE],
                                   error = function(e) NULL)
 
     held_data_map <- list(
@@ -550,8 +659,8 @@ for (fold in seq_len(K_FOLDS)) {
       specimen_cc     = held_site_direct,
       sp_zero_impute  = held_site_sp0,
       sp_zero_cc      = held_site_sp0,
-      peppe_impute    = held_site_peppe,
-      peppe_cc        = held_site_peppe
+      untoothed_excl_impute    = held_site_untoothed_excl,
+      untoothed_excl_cc        = held_site_untoothed_excl
     )
 
     for (cfg_name in names(site_lm)) {
@@ -619,7 +728,7 @@ for (fold in seq_len(K_FOLDS)) {
         if (is.null(y_pgls)) { rec[[col_pgls]] <- NA; rec[[col_pip]] <- NA; next }
         names(y_pgls) <- held_sp_in_X
 
-        rec[[col_pgls]] <- mean(y_pgls, na.rm = TRUE)
+        rec[[col_pgls]] <- site_prediction(y_pgls, target)
 
         # PIP correction: covariance between held-out species and training species
         y_pip <- y_pgls
@@ -635,7 +744,7 @@ for (fold in seq_len(K_FOLDS)) {
             cat("  PIP correction failed for site", s, ":", conditionMessage(e), "\n")
           })
         }
-        rec[[col_pip]] <- mean(y_pip, na.rm = TRUE)
+        rec[[col_pip]] <- site_prediction(y_pip, target)
       }
     }
 
@@ -663,7 +772,9 @@ for (fold in seq_len(K_FOLDS)) {
   cat(sprintf("  Saved models/loso_cv_fold_%02d.rds\n", fold))
 }
 
+# ==============================================================================
 # 5. COMPILE RESULTS INTO DATA FRAME
+# ==============================================================================
 
 cat("\nCompiling results...\n")
 
@@ -680,10 +791,17 @@ results_df$site <- sapply(cv_results, `[[`, "site")
 
 cat("Results:", nrow(results_df), "sites\n")
 
-# Column names follow {method}_{train_level}_{pred_level}_{config}_{na}_{target},
-# e.g. lm_sp_site_impute_mat, lm_site_site_peppe_cc_log_map, pip_sp_site_cc_mat.
+# Column naming convention: {method}_{train_level}_{pred_level}_{config}_{na}_{target}
+#   train_level: sp  = trained on species-level means
+#                site = trained on site-level means
+#   pred_level:  site = prediction aggregated to site (always, in this CV script)
+#   config:      impute/cc for sp-trained models; specimen/sp_zero/untoothed_excl + impute/cc for site LMs
+# Examples: lm_sp_site_impute_mat, lm_site_site_untoothed_excl_cc_log_map, pip_sp_site_cc_mat
+# Names are set directly in the loop so fold RDS files also carry the correct names.
 
+# ==============================================================================
 # 6. RMSE TABLE
+# ==============================================================================
 
 rmse <- function(obs, pred) sqrt(mean((obs - pred)^2, na.rm = TRUE))
 
@@ -701,6 +819,10 @@ rmse_rows <- lapply(pred_cols, function(col) {
     target   = target,
     rmse     = rmse(obs[complete], pred[complete]),
     n_sites  = sum(complete),
+    # Published DiLP uses fixed coefficients calibrated on this same dataset,
+    # so its RMSE is in-sample and not comparable like-for-like with the
+    # cross-validated rows. Flagged here so the CSV carries the caveat.
+    evaluation = if (grepl("^dilp_pub_", col)) "in-sample (published coefs)" else "cross-validated",
     stringsAsFactors = FALSE
   )
 })
@@ -708,10 +830,12 @@ rmse_rows      <- do.call(rbind, Filter(Negate(is.null), rmse_rows))
 rmse_rows      <- rmse_rows[order(rmse_rows$target, rmse_rows$rmse), ]
 rownames(rmse_rows) <- NULL
 
-cat("\nLOSO CV RMSE summary:\n")
+cat("\n10-fold site-grouped CV RMSE summary:\n")
 print(rmse_rows, row.names = FALSE)
 
+# ==============================================================================
 # 7. WRITE OUTPUTS
+# ==============================================================================
 
 model_coefs_df     <- do.call(rbind, Filter(Negate(is.null), model_coefs))
 model_fit_stats_df <- do.call(rbind, Filter(Negate(is.null), model_fit_stats))

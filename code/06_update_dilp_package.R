@@ -47,6 +47,11 @@ rename_to_dilp <- function(beta_vec) {
 pgls_beta_mat <- rename_to_dilp(pip$beta_mat)
 pgls_beta_map <- rename_to_dilp(pip$beta_map)
 
+# Fossils have no response variable, so retain the traits-only imputers fitted
+# during calibration. The MAT and MAP fitters are intentionally separate.
+pgls_impute_model_mat_traits <- pip$impute_model_mat_traits
+pgls_impute_model_map_traits <- pip$impute_model_map_traits
+
 cat("pgls_beta_mat predictors:", paste(names(pgls_beta_mat), collapse = ", "), "\n")
 cat("pgls_beta_map predictors:", paste(names(pgls_beta_map), collapse = ", "), "\n\n")
 
@@ -96,6 +101,13 @@ cat("Copied tre_scaffold.tre\n")
 
 rmse_mat_pip <- rmse$rmse[rmse$column == "pip_sp_site_impute_mat"]
 rmse_map_pip <- rmse$rmse[rmse$column == "pip_sp_site_impute_log_map"]
+if (length(rmse_mat_pip) != 1L || length(rmse_map_pip) != 1L ||
+    !is.finite(rmse_mat_pip) || !is.finite(rmse_map_pip)) {
+  stop("Could not find one finite impute PIP MAT and log(MAP) RMSE in ",
+       "tables/loso_cv_rmse.csv. Regenerate final CV outputs before staging dilp.")
+}
+pgls_rmse_mat <- unname(rmse_mat_pip)
+pgls_rmse_log_map <- unname(rmse_map_pip)
 
 cat("\nNew RMSE constants:\n")
 cat("  MAT RMSE (pgls_Ke_mat) :", round(rmse_mat_pip, 4), "\n")
@@ -108,7 +120,7 @@ cat("  log(MAP) RMSE          :", round(rmse_map_pip, 4), "\n")
 #    Then copy that file to R/sysdata.rda in the dilp package.
 # ==============================================================================
 
-DILP_SYSDATA <- "../dilp/R/sysdata.rda"   # adjust if dilp lives elsewhere
+DILP_SYSDATA <- Sys.getenv("DILP_SYSDATA", "../dilp/R/sysdata.rda")
 
 if (!file.exists(DILP_SYSDATA)) {
   warning("Could not find ", DILP_SYSDATA,
@@ -122,6 +134,14 @@ if (!file.exists(DILP_SYSDATA)) {
   sysdata_env$pgls_beta_map <- pgls_beta_map
   sysdata_env$pgls_Ke_mat   <- pgls_Ke_mat
   sysdata_env$pgls_Ke_map   <- pgls_Ke_map
+  sysdata_env$pgls_lambda_mat <- pip$lambda_mat
+  sysdata_env$pgls_lambda_map <- pip$lambda_map
+  sysdata_env$pgls_name_table <- pip$name_table_full
+  sysdata_env$pgls_pred_names <- unname(pipeline_to_dilp[pip$pred_names])
+  sysdata_env$pgls_impute_model_mat_traits <- pgls_impute_model_mat_traits
+  sysdata_env$pgls_impute_model_map_traits <- pgls_impute_model_map_traits
+  sysdata_env$pgls_rmse_mat <- pgls_rmse_mat
+  sysdata_env$pgls_rmse_log_map <- pgls_rmse_log_map
 
   save(list = ls(sysdata_env), envir = sysdata_env,
        file = "dilp_update/sysdata.rda", compress = "xz")
@@ -142,16 +162,9 @@ cat("
 
 2. Copy dilp_update/tre_scaffold.tre  ->  inst/extdata/tre_scaffold.tre.
 
-3. In dilp_pgls() (~line 193) change the hard-coded RMSE constants:
-     results$MAT.PIP.error       <- 3.64
-     results$MAP.PIP.error.plus  <- exp(log_map_pip + 0.54) - results$MAP.PIP
-     results$MAP.PIP.error.minus <- results$MAP.PIP - exp(log_map_pip - 0.54)
-   To:
-")
-cat(sprintf("     results$MAT.PIP.error       <- %.4f\n", rmse_mat_pip))
-cat(sprintf("     results$MAP.PIP.error.plus  <- exp(log_map_pip + %.4f) - results$MAP.PIP\n", rmse_map_pip))
-cat(sprintf("     results$MAP.PIP.error.minus <- results$MAP.PIP - exp(log_map_pip - %.4f)\n", rmse_map_pip))
-cat("
+3. Copy the current dilp_pgls.R implementation and its shared placement helper
+   into the package R/ directory.
+
 4. devtools::document() && devtools::check()
 ")
 cat(rep("=", 70), "\n", sep = "")

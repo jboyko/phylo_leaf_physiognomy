@@ -6,6 +6,7 @@ pip_require_dilp()
 library(dplyr)
 library(tibble)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
+source("code/site_prediction.R")
 
 # ==============================================================================
 # CONSTANTS
@@ -641,7 +642,7 @@ for (fold in seq_len(K_FOLDS)) {
           }
         }, error = function(e) NULL)
 
-        rec[[col_name]] <- if (!is.null(pred_vals)) mean(pred_vals, na.rm = TRUE) else NA
+        rec[[col_name]] <- if (!is.null(pred_vals)) site_prediction(pred_vals, target) else NA
       }
     }
 
@@ -727,7 +728,7 @@ for (fold in seq_len(K_FOLDS)) {
         if (is.null(y_pgls)) { rec[[col_pgls]] <- NA; rec[[col_pip]] <- NA; next }
         names(y_pgls) <- held_sp_in_X
 
-        rec[[col_pgls]] <- mean(y_pgls, na.rm = TRUE)
+        rec[[col_pgls]] <- site_prediction(y_pgls, target)
 
         # PIP correction: covariance between held-out species and training species
         y_pip <- y_pgls
@@ -743,7 +744,7 @@ for (fold in seq_len(K_FOLDS)) {
             cat("  PIP correction failed for site", s, ":", conditionMessage(e), "\n")
           })
         }
-        rec[[col_pip]] <- mean(y_pip, na.rm = TRUE)
+        rec[[col_pip]] <- site_prediction(y_pip, target)
       }
     }
 

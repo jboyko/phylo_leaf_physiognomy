@@ -8,54 +8,55 @@ Leaf morphological measurements were taken from 11 late Cretaceous through early
 
 ### Phylogenetic placement
 
-Each fossil species was grafted onto the angiosperm scaffold tree (described in Part 1) using a genus-then-family-then-order fallback hierarchy. Placement proceeded as follows. If one or more extant tips with a matching genus were present in the scaffold, the fossil was attached at the most recent common ancestor (MRCA) of those tips. If no genus match was found, the MRCA of tips belonging to the same family was used. If no family match was found, the MRCA of tips belonging to the same order was used. If no order match was found, the fossil was attached at the root with a warning. The edge length assigned to each graft was chosen so that the fossil tip falls at the correct time depth, computed from the calibrated scaffold tree height minus the fossil's age in Ma. When a fossil predates the crown age of its placement clade, the code walks up the tree to find the branch that was alive at the fossil's age and splits that branch, attaching the fossil with a zero-length terminal edge. This ancestral branch approach ensures that no fossil is placed at a node younger than itself.
+Each fossil occurrence was grafted onto the angiosperm scaffold tree (described in Part 1) using a genus-then-family-then-order fallback hierarchy and that occurrence's site age. The formal-only analysis is primary: a genus, family, or order reported in quotation marks is treated as informal and is not used as placement evidence. A separate sensitivity scenario provisionally includes those quoted ranks. If two or more extant scaffold tips match the highest available formal rank, their MRCA is the placement target; a single matching tip defines the target branch; otherwise the next formal rank is used, with the root as the final fallback. The edge length is chosen so that the fossil tip falls at its correct time depth. When a fossil predates the crown age of its placement clade, the code walks up the tree to find a branch alive at the fossil's age and splits that branch. This ancestral-branch approach ensures that no fossil is placed at a node younger than itself.
 
 ### PIP prediction
 
-After placement, the phylogenetic variance-covariance matrix was computed for the combined set of extant training species and fossil species using `vcv()` applied to the pruned tree. The cross-covariance block $V_{cross}$ between the $n$ training species and the $m$ fossil species was extracted and scaled by Pagel's $\lambda$ estimated during PGLS fitting. The phylogenetic adjustment $V_{cross}^T V_{inv} e$ was computed as described in Part 1, with $V_{inv}$ and $e$ taken from the fitted PGLS components stored during model training. The trait-based component $X\beta$ was computed using site-specific trait means for each fossil species, so that species appearing at more than one site contribute a distinct $X\beta$ value for each site while sharing the same phylogenetic adjustment. Missing trait values were filled by bagged-tree imputation before constructing the design matrix. Predictions on the log(MAP) scale were exponentiated before site averaging. Site-level MAT and MAP estimates are the mean of species-level predictions within each site.
+After placement, the phylogenetic variance-covariance matrix was computed for the combined set of extant training species and fossil occurrences using `vcv()` applied to the pruned tree. The cross-covariance block $V_{cross}$ between the $n$ training species and the $m$ fossil occurrences was extracted and scaled by Pagel's $\lambda$ estimated during PGLS fitting. The phylogenetic adjustment $V_{cross}^T V_{inv} e$ was computed as described in Part 1, with $V_{inv}$ and $e$ taken from the fitted PGLS components stored during model training. The trait-based component $X\beta$ was computed using site-specific trait means for each fossil occurrence. Each occurrence is also placed at its own age, so both its cross-covariance and phylogenetic adjustment can differ when the same label occurs at more than one site or age. Missing trait values were filled by bagged-tree imputation before constructing the design matrix. Predictions on the log(MAP) scale were averaged within each site and then exponentiated, giving geometric site means. Site-level MAT estimates remain arithmetic means of the occurrence-level predictions.
 
-LMA predictions followed the same PIP framework using a separate model fitted to the extant LMA calibration dataset. The single predictor is log₁₀(PW²/A) (Dana Royer pers. comm.). For each fossil species with a valid PW²/A measurement, the design matrix $X$ contains an intercept column and a column of log₁₀(PW²/A) values aggregated to within-site species means. No imputation was applied; species without PW²/A measurements were excluded. The phylogenetic adjustment used the same grafted tree and cross-covariance procedure described above, with $V_{cross}$, $V_{inv}$, and $e$ drawn from the LMA model components. Predictions on the log₁₀(LMA) scale were back-transformed as $10^{\hat{y}}$ before site averaging.
+LMA predictions followed the same PIP framework using a separate model fitted to the extant LMA calibration dataset. The single predictor is log₁₀(PW²/A) (Dana Royer pers. comm.). For each fossil species with a valid PW²/A measurement, the design matrix $X$ contains an intercept column and a column of log₁₀(PW²/A) values aggregated to within-site species means. No imputation was applied; species without PW²/A measurements were excluded. The separate LMA pipeline used species-level fossil placement at mean occurrence ages, with $V_{cross}$, $V_{inv}$, and $e$ drawn from its own fitted components. The occurrence-specific climate placement update described above has not been applied to these LMA results. Predictions on the log₁₀(LMA) scale were back-transformed as $10^{\hat{y}}$ before site averaging.
 
-These analyses can be reproduced using the `dilp_pgls()` function in the dilp R package. The function accepts a specimen-level data frame with the standard DiLP trait columns plus the species, genus, family, order, and age_ma fields, and returns site-level and species-level predictions together with a placement log recording how each fossil species was grafted onto the scaffold phylogeny.
+The climate predictions can be reproduced using the updated local `dilp_pgls()` implementation; the previously pinned public commit does not contain these changes. The function accepts a specimen-level data frame with the standard DiLP trait columns plus the species, genus, family, order, and age_ma fields, and returns site-level and species-level predictions together with a placement log recording how each fossil species was grafted onto the scaffold phylogeny.
 
 ## Results
 
-PIP MAT estimates ranged from 14.2 °C at Republic (49.4 Ma) to 22.1 °C at Cerrejon (58.0 Ma). MAP estimates ranged from 151 cm at Republic and Bonanza to 225 cm at Cerrejon. The number of species contributing to each site average ranged from 6 at Palacio de los Loros PL2 to 118 at Laguna del Hunco. Site-level predictions are given in Table 4.
+All 361 fossil occurrences were retained in the formal-only climate analysis. PIP MAT estimates range from 14.1 °C at Republic to 21.6 °C at Cerrejon, and MAP estimates from 148 to 220 cm at the same sites. The practical non-phylogenetic comparison uses LM site sp+zero with imputation. Both methods use imputation for MAT and MAP.
 
-**Table 4.** PIP site-level paleoclimate estimates for 11 fossil sites from Peppe et al. (2011). MAT is in °C. MAP is in cm. n is the number of fossil species contributing to the site mean.
+**Table 6.** Site-level climate estimates for 11 fossil floras. PIP uses occurrence-specific traits and ages with formal-only taxonomy; LM is the site sp+zero imputed baseline. n is the number of species-site occurrences contributing to each PIP estimate. MAP values are geometric means in cm.
 
-| Site | Age (Ma) | MAT (°C) | MAP (cm) | n |
-| --- | --- | --- | --- | --- |
-| Fox Hills | 66.5 | 16.2 | 156 | 25 |
-| Williston Basin I | 64.8 | 17.1 | 172 | 20 |
-| Williston Basin II | 63.5 | 16.2 | 166 | 23 |
-| Palacio de los Loros PL1 | 61.7 | 17.0 | 165 | 26 |
-| Palacio de los Loros PL2 | 61.7 | 18.1 | 159 | 6 |
-| Williston Basin III | 59.8 | 16.3 | 163 | 18 |
-| Cerrejon | 58.0 | 22.1 | 225 | 45 |
-| Hubble Bubble | 55.8 | 19.8 | 170 | 16 |
-| Laguna del Hunco | 51.9 | 16.8 | 170 | 118 |
-| Republic | 49.4 | 14.2 | 151 | 39 |
-| Bonanza | 47.3 | 17.0 | 151 | 25 |
+| Site | Age (Ma) | MAT PIP (°C) | MAT LM (°C) | MAP PIP (cm) | MAP LM (cm) | n |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fox Hills | 66.5 | 16.3 | 18.1 | 153 | 83 | 24 |
+| Williston Basin I | 64.75 | 17.5 | 14.6 | 168 | 138 | 20 |
+| Williston Basin II | 63.5 | 16.7 | 13.8 | 161 | 102 | 23 |
+| Palacio de los Loros PL1 | 61.7 | 17.1 | 12.9 | 168 | 118 | 24 |
+| Palacio de los Loros PL2 | 61.7 | 18.2 | 17.6 | 161 | 83 | 6 |
+| Williston Basin III | 59.75 | 16.6 | 16.1 | 160 | 106 | 18 |
+| Cerrejon | 58 | 21.6 | 25.9 | 216 | 288 | 45 |
+| Hubble Bubble | 55.8 | 19.2 | 17.8 | 166 | 96 | 16 |
+| Laguna del Hunco | 51.9 | 16.7 | 11.0 | 168 | 139 | 119 |
+| Republic | 49.4 | 14.1 | 8.6 | 146 | 67 | 41 |
+| Bonanza | 47.3 | 17.1 | 10.3 | 149 | 116 | 25 |
 
-The cross-validation RMSE from Part 3 provides the relevant uncertainty benchmark for these estimates. PIP MAT predictions carry an expected error of approximately 3.4 °C (RMSE across 93 held-out modern sites). log(MAP) RMSE of 0.52 log cm corresponds to a multiplicative uncertainty of roughly a factor of 1.7 on the linear precipitation scale, so MAP estimates should be treated as order-of-magnitude reconstructions. Sites with few contributing species, particularly Palacio de los Loros PL2 (n = 6), carry additional uncertainty because the site mean is based on a small sample of species-level predictions.
+Cross-validation RMSE is 3.414 °C for imputed PIP MAT and 0.525 for ln(MAP), the latter corresponding to a multiplicative error scale of approximately ×1.69. These are calibration error benchmarks, not fossil-specific confidence intervals, and do not include taxonomic-placement or age uncertainty. Under primary formal-only placement, 193 of the 361 occurrences attach at the root, 99 at family, 49 at genus, and 20 at order level. Provisionally including quoted taxonomic ranks changes rounded site PIP estimates by at most 0.5 °C and 4 cm MAP, both at Cerrejon. The sensitivity results do not resolve the validity of the provisional taxonomic assignments.
 
-PIP LMA estimates ranged from 74.7 g m⁻² at Williston Basin III (59.75 Ma) to 124.6 g m⁻² at Bonanza (47.3 Ma). LM and PIP estimates were closely aligned across all sites, with differences of 10 g m⁻² or less except at Hubble Bubble and Bonanza. The number of species contributing to each site LMA average ranged from 4 at Palacio de los Loros PL2 to 71 at Laguna del Hunco. Site-level LMA predictions are given in Table 5.
 
-**Table 5.** PIP and LM site-level LMA estimates for 11 fossil sites from Peppe et al. (2011). LMA is in g m⁻². n is the number of fossil species with PW²/A measurements contributing to the site mean.
+PIP LMA estimates ranged from 74.7 g m⁻² at Williston Basin III (59.75 Ma) to 124.6 g m⁻² at Bonanza (47.3 Ma). LM and PIP estimates were closely aligned across all sites, with differences of 10 g m⁻² or less except at Hubble Bubble and Bonanza. The number of species contributing to each site LMA average ranged from 4 at Palacio de los Loros PL2 to 71 at Laguna del Hunco. Site-level LMA predictions are given in Table 7.
+
+**Table 7.** PIP and LM site-level LMA estimates for 11 fossil sites from Peppe et al. (2011). LMA is in g m⁻². n is the number of fossil species with PW²/A measurements contributing to the site mean.
 
 | Site | Age (Ma) | LMA PIP (g m⁻²) | LMA LM (g m⁻²) | n |
 | --- | --- | --- | --- | --- |
-| Fox Hills | 66.5 | 89.1 | 86.9 | 16 |
-| Williston Basin I | 64.8 | 96.8 | 93.0 | 11 |
-| Williston Basin II | 63.5 | 80.5 | 79.2 | 13 |
-| Palacio de los Loros PL1 | 61.7 | 79.3 | 79.7 | 22 |
-| Palacio de los Loros PL2 | 61.7 | 95.2 | 100.3 | 4 |
-| Williston Basin III | 59.8 | 74.7 | 73.2 | 13 |
-| Cerrejon | 58.0 | 90.7 | 94.9 | 24 |
-| Hubble Bubble | 55.8 | 92.8 | 99.3 | 12 |
-| Laguna del Hunco | 51.9 | 98.1 | 100.3 | 71 |
-| Republic | 49.4 | 83.4 | 87.2 | 17 |
-| Bonanza | 47.3 | 124.6 | 133.2 | 16 |
+| Fox Hills | 66.5 | 89.1 | 86.9 | 153 |
+| Williston Basin I | 64.8 | 96.8 | 93.0 | 168 |
+| Williston Basin II | 63.5 | 80.5 | 79.2 | 161 |
+| Palacio de los Loros PL1 | 61.7 | 79.3 | 79.7 | 168 |
+| Palacio de los Loros PL2 | 61.7 | 95.2 | 100.3 | 161 |
+| Williston Basin III | 59.8 | 74.7 | 73.2 | 160 |
+| Cerrejon | 58.0 | 90.7 | 94.9 | 216 |
+| Hubble Bubble | 55.8 | 92.8 | 99.3 | 166 |
+| Laguna del Hunco | 51.9 | 98.1 | 100.3 | 168 |
+| Republic | 49.4 | 83.4 | 87.2 | 146 |
+| Bonanza | 47.3 | 124.6 | 133.2 | 149 |
 
 The cross-validation RMSE for LMA is 0.130 log₁₀ g m⁻², corresponding to a multiplicative uncertainty of approximately ×1.35 on the linear scale. As with the climate estimates, sites with few contributing species carry additional uncertainty; Palacio de los Loros PL2 (n = 4) should be interpreted with particular caution.

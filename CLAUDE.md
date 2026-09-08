@@ -52,7 +52,7 @@ Dana Royer is the fossil leaf expert and domain collaborator. These decisions we
 For confirmed untoothed leaves (cell blank **AND** `margin.score == 1`), tooth trait NAs are biologically real zeros — set them explicitly **before** aggregating to species means in `00_data_cleaning.R`. Without this, tooth traits appear as ~67% NA and get excluded from all models. Tooth-count and tooth-area traits are set to 0; `perim.ratio` is set to 1 (untoothed leaves have a smooth perimeter). Both conditions must be met. Dana requested this for when the model is applied to fossil data.
 
 ### Species-level analysis
-Modelling is based on species-level trait means (not site means), because phylogeny operates at the species level. Site-level predictions are derived afterward by aggregating species-level predictions within a site.
+The current PGLS/PIP implementation fits species-level grand means and derives site estimates from within-site species predictions. Cross-site averaging during fitting is a modelling choice that loses within-species variation; it is not a universal requirement of phylogenetic methods. Some calibration labels pool unnamed genus-level records and remain subject to taxonomic review. Do not silently alter those identifiers.
 
 ### Climate targets
 MAT and log(MAP) are the primary targets. Other climate variables (coldest month temperature, growing degree days, etc.) covary with MAT/MAP and are not modelled separately.
@@ -88,16 +88,24 @@ Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoi
 ### Species-level vs site-level aggregation — key finding
 `04_fossil_predictions.R` compares LM and PIP at both species and site level. Under 10-fold site-grouped CV, **PIP at site level is the best performer for both MAT and MAP** — it takes the top two ranks for each target. PGLS alone (without the PIP covariance correction) is substantially worse — the correction term drives the improvement. PIP acts as a regularization procedure, borrowing signal from phylogenetically close extant relatives. (An earlier claim that "LM site outperforms PIP" came from comparing against published DiLP estimates rather than a CV benchmark; the 10-fold site-grouped CV is the correct evaluation.)
 
-**The recommended variant is target-dependent**: use **impute for MAT** and **complete-case for log(MAP)**. Measured RMSE (full run, 2026-08-06, 1740 species, 93 sites):
+**The lowest-RMSE variant is target-dependent**: **impute for MAT** and **complete-case training for log(MAP)**. Dana's requested talk comparison uses impute for both targets. Measured RMSE (full CV run, 2026-09-07, 1740 operational taxon labels, 93 sites):
 
 | Target | PIP site impute | PIP site cc | best LM site (untoothed-excl, impute) | PGLS alone (best) |
 |---|---|---|---|---|
 | MAT (°C) | **3.414** | 3.707 | 3.722 | 5.854 |
 | log(MAP) | 0.525 | **0.508** | 0.583 | 0.628 |
 
+MAP validation now uses the same site estimator as fossil prediction: exponentiate species log predictions, average in cm, then log the site estimate for scoring. The older mean-of-log-predictions scores (0.525/0.508) describe a different estimator and are superseded. PIP/PGLS complete-case variants fit complete training rows but still impute missing held-out predictors.
+
 Note that `specimen_*` and `sp_zero_*` site configs are identical by construction (see issue #10) and report identical RMSE; they are one model, not two.
 
-## Conventions
+## Agent skills
+
+- Issue tracker: the existing GitHub origin, `jboyko/phylo_leaf_physiognomy`; see `docs/agents/issue-tracker.md`.
+- Triage vocabulary: see `docs/agents/triage-labels.md`. No remote labels are changed by local repair work.
+- Domain context: single research project, documented in this file and `doc/`; see `docs/agents/domain.md`.
+
+## Working conventions
 
 - Do not add Claude as a co-author in commit messages.
 - The `old/` directory contains prior implementations and should not be modified.

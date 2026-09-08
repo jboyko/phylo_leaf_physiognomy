@@ -1,10 +1,13 @@
-source("code/_setup.R")
+# ==============================================================================
+# 00c_fossil_data_cleaning.R
+# Build species-by-site fossil traits from Dana Royer's April 2026 leaf-level
+# data while preserving formal vs informal taxonomy for sensitivity analysis.
+# ==============================================================================
 
-# Build species-by-site fossil traits from the April 2026 leaf-level data,
-# preserving formal vs informal taxonomy for the sensitivity analysis.
-
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 source("code/fossil_taxonomy.R")
 
+pip_require_dilp()
 dilp_fn <- get("dilp", envir = asNamespace("dilp"))
 
 mean_or_na <- function(x) {

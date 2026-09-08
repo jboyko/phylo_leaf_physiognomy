@@ -1,4 +1,4 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ggplot2)
 library(dplyr)
@@ -14,8 +14,9 @@ fit     <- read.csv("tables/loso_cv_model_fit.csv", stringsAsFactors = FALSE)
 model_labels <- c(
   pip_sp_site_impute              = "PIP (impute)",
   pip_sp_site_cc                  = "PIP (CC)",
-  lm_site_site_peppe_impute       = "LM site, Peppe (impute)",
-  lm_site_site_peppe_cc           = "LM site, Peppe (CC)",
+  dilp_pub_site                   = "Published DiLP (in-sample)",
+  lm_site_site_untoothed_excl_impute       = "LM site, untoothed-excl (impute)",
+  lm_site_site_untoothed_excl_cc           = "LM site, untoothed-excl (CC)",
   lm_site_site_sp_zero_impute     = "LM site, sp+zero (impute)",
   lm_site_site_sp_zero_cc         = "LM site, sp+zero (CC)",
   lm_site_site_specimen_impute    = "LM site, specimen (impute)",
@@ -29,8 +30,9 @@ model_labels <- c(
 model_family <- c(
   pip_sp_site_impute              = "PIP",
   pip_sp_site_cc                  = "PIP",
-  lm_site_site_peppe_impute       = "LM site",
-  lm_site_site_peppe_cc           = "LM site",
+  dilp_pub_site                   = "Published DiLP",
+  lm_site_site_untoothed_excl_impute       = "LM site",
+  lm_site_site_untoothed_excl_cc           = "LM site",
   lm_site_site_sp_zero_impute     = "LM site",
   lm_site_site_sp_zero_cc         = "LM site",
   lm_site_site_specimen_impute    = "LM site",
@@ -45,7 +47,8 @@ family_colours <- c(
   PIP        = "#1b7837",
   "LM site"  = "#4393c3",
   "LM species" = "#d6604d",
-  PGLS       = "#9970ab"
+  PGLS       = "#9970ab",
+  "Published DiLP" = "#7f7f7f"
 )
 
 # ── 3. Figure 1: RMSE dot plot ────────────────────────────────────────────────
@@ -72,9 +75,14 @@ p1 <- ggplot(rmse, aes(x = rmse, y = label, colour = family)) +
   facet_wrap(~ target_lab, scales = "free_x") +
   scale_colour_manual(values = family_colours, name = "Model family") +
   labs(
-    title = "LOSO-CV RMSE across model configurations",
+    title = "10-fold site-grouped CV RMSE across model configurations",
     x     = "RMSE",
-    y     = NULL
+    y     = NULL,
+    # Published DiLP uses Peppe et al. (2011) coefficients calibrated on this
+    # same dataset, so its RMSE is in-sample and not a like-for-like CV score.
+    caption = paste("Published DiLP is scored in-sample (fixed published",
+                    "coefficients calibrated on these sites); all other rows",
+                    "are cross-validated.")
   ) +
   theme_bw(base_size = 12) +
   theme(
@@ -91,8 +99,9 @@ message("Saved fig1_rmse_comparison")
 # ── 4. Figure 2: Observed vs. Predicted (impute only) ─────────────────────────
 focal_models <- c(
   "pip_sp_site_impute",
-  "lm_site_site_peppe_impute",
-  "lm_sp_site_impute"
+  "lm_site_site_untoothed_excl_impute",
+  "lm_sp_site_impute",
+  "dilp_pub_site"
 )
 
 preds_long <- preds |>
@@ -113,8 +122,10 @@ preds_long <- preds |>
     family     = model_family[model_key]
   )
 
-# geom_blank anchors at (lo, lo) and (hi, hi) per target so free scales still
-# share one range across all MAT panels and one across all log(MAP) panels.
+# Force consistent axes within each variable column across model rows.
+# geom_blank points at (lo, lo) and (hi, hi) per target × model combination
+# make facet_grid(scales = "free") lock all MAT panels to the same range and
+# all log(MAP) panels to their own shared range.
 axis_lims <- preds_long |>
   group_by(target_lab) |>
   summarise(lo = min(c(observed, predicted), na.rm = TRUE),
@@ -136,7 +147,7 @@ p2 <- ggplot(preds_long, aes(x = observed, y = predicted, colour = family)) +
   scale_colour_manual(values = family_colours, name = "Model family") +
   scale_fill_manual(values = family_colours, guide = "none") +
   labs(
-    title = "Observed vs. predicted - LOSO-CV site-level predictions",
+    title = "Observed vs. predicted - 10-fold site-grouped CV site-level predictions",
     x     = "Observed",
     y     = "Predicted"
   ) +
@@ -152,7 +163,7 @@ ggsave("plots/fig2_obs_vs_pred.pdf", p2, width = 8, height = 8)
 ggsave("plots/fig2_obs_vs_pred.png", p2, width = 8, height = 8, dpi = 150)
 message("Saved fig2_obs_vs_pred")
 
-# ── 5. Figure 3: Coefficient stability across LOSO folds (LM species impute) ──
+# ── 5. Figure 3: Coefficient stability across CV folds (LM species impute) ──
 coef_lm_sp <- coefs |>
   filter(
     method      == "LM",
@@ -179,7 +190,7 @@ p3 <- ggplot(coef_lm_sp, aes(x = estimate, y = predictor)) +
   scale_fill_manual(values = c("MAT (°C)" = "#d6604d", "log(MAP) (log cm)" = "#4393c3"),
                     name = NULL) +
   labs(
-    title = "Coefficient stability across LOSO folds - LM species (impute)",
+    title = "Coefficient stability across CV folds - LM species (impute)",
     x     = "Coefficient estimate",
     y     = NULL
   ) +
@@ -208,7 +219,7 @@ p4 <- ggplot(lambda_df, aes(x = na_label, y = lambda, fill = target_lab)) +
                     name = NULL) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(
-    title = "Pagel's lambda across LOSO folds - PGLS models",
+    title = "Pagel's lambda across CV folds - PGLS models",
     x     = NULL,
     y     = expression(paste("Pagel's ", lambda))
   ) +
@@ -225,11 +236,12 @@ message("Saved fig4_lambda")
 # ── 7. Table: Prediction diagnostics (slope, bias, RMSE decomposition) ────────
 all_impute_models <- c(
   "pip_sp_site_impute",
-  "lm_site_site_peppe_impute",
+  "lm_site_site_untoothed_excl_impute",
   "lm_site_site_sp_zero_impute",
   "lm_site_site_specimen_impute",
   "lm_sp_site_impute",
-  "pgls_sp_site_impute"
+  "pgls_sp_site_impute",
+  "dilp_pub_site"
 )
 
 diag_table <- preds |>

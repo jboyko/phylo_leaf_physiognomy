@@ -1,5 +1,10 @@
-# Quoted order/family/genus names are informal (D. Royer, pers. comm., April 2026).
-# `formal_only` censors each quoted rank; `include_informal` uses it provisionally.
+# Shared fossil taxonomy rules.
+#
+# Dana Royer (email, April 2026) specified that order, family, or genus names
+# inside quotation marks are informal and must not be used for phylogenetic
+# placement. The primary `formal_only` scenario censors each quoted rank. The
+# `include_informal` sensitivity scenario removes the quote marks and treats the
+# reported name provisionally as a placement hypothesis.
 
 taxonomy_ranks <- c("genus", "family", "order")
 

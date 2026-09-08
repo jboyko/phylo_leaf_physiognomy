@@ -1,25 +1,29 @@
 # Original code provided by RP Freckleton, 2015
-# Used in: Franks, Peter J., et al. "Megacycles of atmospheric carbon dioxide concentration correlate with fossil plant genome size." 
+# Used in: Franks, Peter J., et al. "Megacycles of atmospheric carbon dioxide concentration correlate with fossil plant genome size."
     # Philosophical Transactions of the Royal Society B: Biological Sciences 367.1588 (2012): 556-564.
 # Modified and annotated for use in Gardner, Baker, Venditti and Organ (2024) Phylogenetically-Informed Predictions
-# This version calculates standard errors around each prediction. 
+# This version calculates standard errors around each prediction.
 # Last updated 29/10/2024
 
 #Load packages
-library(caper)
-library(geiger)
+# caper and geiger were required by the original Freckleton (2015) source but
+# are unused in this file (no caper::, geiger::, comparative.data(),
+# fitContinuous(), or treedata() calls) — commented out rather than added as
+# undocumented dependencies (issue #20).
+# library(caper)
+# library(geiger)
 library(ape)
 library(mvtnorm)
 library(MASS)
 
 
 # This fits a GLM, correcting for phylogeny, with the option
-# of setting the value of lambda, the index of phylogenetic 
+# of setting the value of lambda, the index of phylogenetic
 # dependence (default is 1.0)
 pglm <- function(formula, data, phylomat, lambda = 1.0, ...) {
 
 	prune <- function(dat, Vmat) {
-	
+
 		# Makes sure data and matrix are in the same order
 		nms <- row.names(dat)
 		if(length(nms) == 0) stop("Need to supply row names for the data")
@@ -29,13 +33,13 @@ pglm <- function(formula, data, phylomat, lambda = 1.0, ...) {
 		if(length(Vnms) == 0) stop("Need to supply row names for the Variance matrix")
 		idx <- sort(Vnms, index.return = TRUE)$ix
 		Vmat <- Vmat[idx, idx]
-		
+
 		nms <- sort(nms)
 		Vn <- sort(row.names(Vmat))
 		idx <- which(nms != Vn)
 
 		if(length(idx) > 0) stop("Error, taxon names do not match")
-		
+
 		complete <- complete.cases(dat)
 		idx <- which(complete == TRUE)
 		Vmat <- Vmat[idx, idx]
@@ -43,14 +47,14 @@ pglm <- function(formula, data, phylomat, lambda = 1.0, ...) {
 
 		return(list(dat = dat , Vmat = Vmat))
 		}
-	
+
 	Dfun <- function(Cmat) {
 		iCmat <- solve(Cmat,  tol = .Machine$double.eps)
 		svdCmat <- La.svd(iCmat)
 		D <- svdCmat$u %*% diag(sqrt( svdCmat$d )) %*% t(svdCmat$v)
 		return( t(D) )
 		}
-			
+
 	lamTrans <- function(Vmat, lambda) {
 		V1 <- Vmat
 		diag(V1) <- 0
@@ -58,17 +62,17 @@ pglm <- function(formula, data, phylomat, lambda = 1.0, ...) {
 		Vmat <- V1 * lambda + V2
 		return(Vmat)
 		}
-			
+
 	resVar <- function(y, Vmat, p) {
 		iV <- solve(Vmat, tol = .Machine$double.eps)
 		e <- y - p
 		s2 <- crossprod(e, iV %*% e)
 		if( s2 < 0) { cat("ERROR -- negative variance\n")
 			s2 <- s2 * -1}
-		n <- length(y) 
+		n <- length(y)
 		return( s2 / (n- nx) )
 		}
-		
+
 	# Estimates the GLS parameters for given data
 	get.coeffs <- function(Y, V, X) {
 		iV <- solve(V, tol = .Machine$double.eps)
@@ -83,11 +87,11 @@ pglm <- function(formula, data, phylomat, lambda = 1.0, ...) {
 		iV <- solve(V, tol = .Machine$double.eps)
 		e <- y - x %*% mu
 		s2 <- crossprod(e, iV %*% e)
-		n <- length(y) 
+		n <- length(y)
 		k <- length(x[1,])
 		return( s2 / (n- k) )
 		}
-	
+
 	# Full ML estimation for given x and V
 	log.likelihood <- function(y, x, V) {
 		mu <- get.coeffs(y, V, x)
@@ -95,93 +99,93 @@ pglm <- function(formula, data, phylomat, lambda = 1.0, ...) {
 		n <- length(x[,1])
 		logDetV <- determinant(Vmat, logarithm = TRUE)$modulus[1]
 		ll <- -n / 2.0 * log( 2 * pi) - n / 2.0 * log(s2) - logDetV / 2.0 - (n - 1)/2.0
-		ypred <- x%*%mu	
+		ypred <- x%*%mu
 		return( list(ll = ll, mu = mu, s2 = s2) )
 		}
-		
-		
+
+
 	null.var <- function(y, V) {
 		X <- matrix(1, nrow = length(y))
 		mu <- get.coeffs(y, V, X)
 		return(est.var(y, V, X, mu))
 		}
 
-	
+
 	Vmat <- as.matrix(phylomat)
-	
+
 	Vmat <- lamTrans(phylomat, lambda)
-	
+
 	prune.dat <- prune(data, Vmat)
 	Vmat <- prune.dat$Vmat
 	data <- prune.dat$dat
 	nm <- names(data)
-	
 
-		
-	
+
+
+
 	n <- length(data[,1])
-	
-	
-	
+
+
+
 	# Get the design matrix
 	m <- model.frame(formula, data)
 	y <- m[,1]
 	x <- model.matrix(formula, m)
 	k <- length(x[1,])
-	
+
 	namey <- names(m)[1]
-	
+
 	ll <- log.likelihood(y, x, Vmat)
-	
-	log.lik <- ll$ll	
+
+	log.lik <- ll$ll
 
 	aic <- -2 * log.lik + 2 * k
 	aicc <- -2 * log.lik + 2 * k + ((2*k*(k+1))/(n-k-1))
-	
+
 	coeffs <- ll$mu
 	coeffs <- data.frame(t(coeffs))
 	names(coeffs) <- colnames(x)
 	varNames = names(m)
 
-	
-	pred <- x %*% ll$mu 
-	
+
+	pred <- x %*% ll$mu
+
 	res <- y - pred
-	
+
 	pres <- NULL
-	
+
 	fm <- list(coef = coeffs, aic = aic, log.lik = log.lik)
-	
+
 	logDetV <- determinant(Vmat, logarithm = TRUE)$modulus[1]
- 	
+
 	logLikY <- -n / 2.0 * log( 2 * pi) - n / 2.0 * log( (n - k) * ll$s2 / n) - logDetV / 2.0  - n / 2.0
-	
+
 	RMS <- ll$s2
 	RSSQ <- ll$s2 * (n - k)
 	NMS <- RMS
 	NSSQ <- RSSQ
-	
+
 	if(k > 0) {
 		NMS <- null.var(y, Vmat)
 		NSSQ <- NMS * (n - 1)
 		}
 
-	# Bits for parameter errors	
-	errMat <- t(x)%*% solve(Vmat) %*% x  
-	errMat <- solve(errMat) * RMS[1] 
+	# Bits for parameter errors
+	errMat <- t(x)%*% solve(Vmat) %*% x
+	errMat <- solve(errMat) * RMS[1]
 	sterr <- diag(errMat)
 	sterr <- sqrt(sterr)
-	
-	
-	ret <- list(model = fm, formula = formula, logLikY = logLikY, RMS = RMS, NMS = NMS, NSSQ = NSSQ[1], RSSQ = RSSQ[1], 
+
+
+	ret <- list(model = fm, formula = formula, logLikY = logLikY, RMS = RMS, NMS = NMS, NSSQ = NSSQ[1], RSSQ = RSSQ[1],
 	aic = aic, aicc = aicc, n = n, k = k, sterr = sterr, vcv = errMat, fitted = pred, residuals = res, phyres = pres, x = x, data = data,  varNames = varNames, y = y, V = Vmat, lambda = lambda, L0 = NULL, L1 = NULL, LamOptimised = FALSE, namey = namey)
 	class(ret) <- "pglm"
 	return(ret)
-	
+
 	}
 
 # This returns the coefficients from the model
-coef.pglm <- function(obj) { ret <- obj$model$coef 
+coef.pglm <- function(obj) { ret <- obj$model$coef
 							return(ret) }
 
 # This returns the residuals from the model
@@ -189,43 +193,43 @@ residuals.pglm <- function(obj, phylo = FALSE) { ret <- NULL
 				if(phylo == FALSE){ret <- obj$res} else {ret <- obj$phyres}
 								return(ret) }
 
-								
-# This returns the fitted values							
+
+# This returns the fitted values
 fitted.pglm <- function(obj){ ret <- obj$fitted
 								return(ret) }
 # This predicts for given x
 predict.pglm <- function(obj, x) { mu <- as.matrix(coef(obj) )
 									ret <- cbind(1, x) %*% t(mu)
 									return(ret) }
-									
+
 # This returns the AIC
 AIC.pglm <- function(obj) { ret <- obj$aic
 							return(ret[1]) }
-							
+
 # This returns the AICc
 AICc.pglm <- function(obj) { ret <- obj$aicc
 							return(ret[1]) }
-							
+
 # This returns the value of lambda at which the pglm was evaluated
 lambda.pglm <- function(obj) { ret <- obj$lambda
 								return(ret[1])}
-							
-# Very rough function for displaying a pglm output							
+
+# Very rough function for displaying a pglm output
 summary.pglm <- function(obj) {
-		
+
 		testLambda <- function(pobj) {
-			
+
 			lrt0 <- 2 * (pobj$logLikY - pobj$L0)
 			lrt1 <- 2 * (pobj$logLikY - pobj$L1)
-			
+
 			p0 <- 1 - pchisq(lrt0, 1)
 			p1 <- 1 - pchisq(lrt1, 1)
-			
+
 			cat("     Test of Lambda = 0: chisq = ", lrt0, " P = ", p0, "\n")
 			cat("     Test of Lambda = 1: chisq = ", lrt1, " P = ", p1, "\n")
 			}
-			
-	
+
+
 	cat("\n\n--------------------------------------------------------\n")
 	cat("Summary of Generalised Least Squares, correcting for \n")
 	cat("Phylogeny:\n\n")
@@ -241,9 +245,9 @@ summary.pglm <- function(obj) {
 	cat("Residual Mean Square = ", obj$RSSQ, "\n\n")
 	cat("Raw R^2 = ", (obj$NSSQ - obj$RSSQ) / obj$NSSQ, "\n")
 	cat("Adjusted R^2 = ", (obj$NMS - obj$RMS) / obj$NMS, "\n")
-	
+
 	Fstat <- ((obj$NSSQ - obj$RSSQ) / obj$RMS) / (obj$k - 1)
-	
+
 	cat("F statistic = ",  ((obj$NSSQ - obj$RSSQ) / obj$RMS) / (obj$k - 1), " ")
 	cat("P model = ", pf(Fstat, obj$k - 1, obj$n - obj$k,  ncp=0, lower.tail = FALSE, log.p = FALSE), "\n\n")
 	cat("Summary of coefficients:\n\n")
@@ -256,12 +260,12 @@ summary.pglm <- function(obj) {
 		nm <- names(coeffs)[i]
 		se <- errs[i]
 		Tstat <- est / se
-		storet<-c(storet,Tstat)	
+		storet<-c(storet,Tstat)
 		Pval <- 2 * ( 1 - pt( abs(Tstat), obj$n - obj$k) )
 		cat(nm,"\t")
 		cat(est, "\t", se, "\t", Tstat, "\t", Pval, "\n")
 		}
-	
+
 	cat("\n\n--------------------------------------------------------\n")
 	}
 
@@ -290,18 +294,18 @@ plot.pglm <- function(obj) {
 # log-likelihood. Also returned are the logLikelihoods at Lambda = 0
 # and Lambda = 1.0
 pglmEstLambda <- function(formula, data, phylomat, plotit = FALSE,  ...) {
-	
+
 	ll.fun <- function(lam) {
 		pg <- pglm(formula, data, phylomat, lam)
 		ll <- pg$logLikY
 		return( ll )
 		}
-	
+
 	oL <- optimize( ll.fun, interval = c(0,1), maximum = TRUE )
 	L1 <- ll.fun(1)
 	L0 <- ll.fun(0)
 	fm <- pglm(formula, data, phylomat, oL$maximum)
-	
+
 	if(plotit == TRUE) {
 		lambda <- seq(0, 1, by = 0.01)
 		logLikelihood <- sapply(lambda, ll.fun)
@@ -315,8 +319,8 @@ pglmEstLambda <- function(formula, data, phylomat, plotit = FALSE,  ...) {
 		if(lambda[maxlikelambda]<=0.99){
 		upperlamb<-lambda[maxlikelambda+which(abs(logLikelihood[maxlikelambda:length(lambda)]-sigdiff)==min(abs(logLikelihood[maxlikelambda:length(lambda)]-sigdiff)))]}
 		}
-		
-	
+
+
 	fm$L1 <- L1
 	fm$L0 <- L0
 	fm$LamOptimised <- TRUE
@@ -336,18 +340,18 @@ order.V <- function(Vmat) {
 	return(Vmat)
 	}
 
-order.D <- function(dat) {	
+order.D <- function(dat) {
 	nms <- rownames(dat)
 	snms <- sort(nms, index.return = TRUE)
 	dat <- dat[snms$ix,]
-	
+
 	return(dat)
 	}
 
 sortVec <- function(data) {
 	nms <- names(data)
 	snms <- sort( nms, index.return = TRUE)
-	sdata <- data[snms$ix] 
+	sdata <- data[snms$ix]
 	names(sdata)  <- snms$x
 	return(sdata)
 }
@@ -359,66 +363,66 @@ sortVec <- function(data) {
 # Calculate standard errors around each prediction
 
 pglmPredictMissing <- function(formula, data, phylomat) {
-	
-	
+
+
 	data <- order.D( data )
-	
+
 	phylomat <- order.V( phylomat )
-	
-	
+
+
 	model <- pglm( formula, data, phylomat)
-	
+
 	modVars <- all.vars(formula)
 	depVar <- modVars[1]
-	
-	
+
+
 	m <- model.frame(formula, data, na.action = NULL)
-	
+
 	X <- model.matrix(formula, m)
-	
+
 	iy <- which( colnames(data) == depVar )
-	
+
 	missY <- is.na(data[,iy] )
-	
+
 	names(missY) <- rownames(data)
-	
+
 	idx.miss <- which( missY == TRUE )
-	
-	
+
+
 	res <- residuals(model)
 
-	
+
 	X <- X[idx.miss, ,drop =F]
-	
+
 	coefs <- t( as.matrix( coef(model) ) )
-	
- 	
+
+
 	W <- weights.p( phylomat, missY)
- 	
- 	
+
+
 	preds <- X %*% coefs  + W$W %*% res
- 	
+
 	rownames(preds) <- names(missY)[idx.miss]
-	
+
 	vars <- W$V * model$RMS
 	names(vars) <- names(missY)[idx.miss]
-	
+
 	# for each predicted taxon, calculate standard error around prediction
 	seYh <- data.frame(row.names = rownames(X))
 
 	for(u in 1:length(rownames(X))){
-	  
+
 	  seYh$seYh[u] <- t(X[u,]) %*% model$vcv %*% X[u,]
-	  
+
 	}
-	
+
 	# added seYh to output
-	return( list(preds = preds, vars = vars, seYh = seYh, modsum = model, resids = res, LL = model$logLikY, 
-		R2 = (model$NSSQ - model$RSSQ) / model$NSSQ, adjR2 = (model$NMS-model$RMS)/model$NMS, 
+	return( list(preds = preds, vars = vars, seYh = seYh, modsum = model, resids = res, LL = model$logLikY,
+		R2 = (model$NSSQ - model$RSSQ) / model$NSSQ, adjR2 = (model$NMS-model$RMS)/model$NMS,
 			F =  ((model$NSSQ - model$RSSQ) / model$RMS) / (model$k - 1)))
-	
-	
-	
+
+
+
 	}
 
 # -----------------------------------------------
@@ -432,15 +436,15 @@ predictPGLMestLambda <- function( formula, data, phylomat, lambda = 'ML') {
 		Vmat <- V1 * lambda + V2
 		return(Vmat)
 		}
-		
+
 	if(lambda == 'ML')
 	mod <- pglmEstLambda( formula, data, phylomat) else
-	mod <- pglm( formula, data, phylomat, lambda) 
-	
+	mod <- pglm( formula, data, phylomat, lambda)
+
 	Vmat <- lamTrans(phylomat, mod$lambda)
 	pred <- pglmPredictMissing( formula, data, Vmat)
 	return(pred)
-	
+
 	}
 
 
@@ -456,7 +460,7 @@ weights.p <- function( Vmat, miss) {
 	Vmiss <-  Vmiss[,miss == FALSE]
 	Vincl <- Vmat[miss==FALSE, miss == FALSE]
 	W <- Vmiss %*% solve( Vincl )
-		
+
 	Vmissing <- diag( Vmat) [miss == TRUE]
 	if( is.null( dim(Vmiss) ) == TRUE )  Vmiss <- matrix( Vmiss, nrow = 1)
 	V <- diag( Vmissing - Vmiss %*% solve( Vincl) %*% t(Vmiss)	)

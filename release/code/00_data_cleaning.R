@@ -1,4 +1,4 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 # Set to TRUE to rebuild phylogenies (slow; only needed when tree or species
 # list changes). Set to FALSE to skip sections 4-8 and only regenerate data.
@@ -6,10 +6,12 @@ BUILD_PHYLOGENY <- TRUE
 
 library(ape)
 library(phytools)
-library(dilp)
+pip_require_dilp()
 library(dplyr)
 
+# ==============================================================================
 # 1. LOAD AND PROCESS SPECIMEN-LEVEL DATA VIA DILP
+# ==============================================================================
 
 raw      <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
                      fileEncoding = "latin1")
@@ -27,26 +29,30 @@ dat <- dat %>%
   left_join(taxonomy_lookup, by = c("site", "morphotype"))
 
 dat$genusSpecies <- gsub("[() ]", "_", paste(dat$genus, dat$species, sep = "_"))
-dat$map          <- dat$map_mm / 10   # mm -> cm
+dat$map          <- dat$map_mm / 10   # mm -> cm (pipeline convention; CLAUDE.md §8)
 
+# ==============================================================================
 # 2. FILL TOOTH TRAITS FOR UNTOOTHED LEAVES (Dana Royer, pers. comm.)
+# ==============================================================================
 
 # Save pre-fill copy for Peppe-style aggregation (untoothed excluded from tooth
 # trait averages via na.rm = TRUE rather than pulled toward zero).
 dat_prefill <- dat
 
-# margin == 1 indicates untoothed; tooth trait absence is biologically real —
-# set to 0 (or 1 for perimeter_ratio) before aggregating.
+# margin == 1 indicates untoothed; tooth trait absence is biologically real
+# ONLY when the cell is also blank (NA) — a margin-scored-untoothed leaf that
+# still carries a nonzero tooth measurement must not be overwritten with 0.
+# Set to 0 (or 1 for perimeter_ratio) before aggregating (Dana Royer, pers. comm.).
 dat <- dat %>%
   mutate(
-    tc_p            = ifelse(margin == 1, 0, tc_p),
-    tc_ip           = ifelse(margin == 1, 0, tc_ip),
-    tc_ba           = ifelse(margin == 1, 0, tc_ba),
-    ta_p            = ifelse(margin == 1, 0, ta_p),
-    ta_ip           = ifelse(margin == 1, 0, ta_ip),
-    ta_ba           = ifelse(margin == 1, 0, ta_ba),
-    avg_ta          = ifelse(margin == 1, 0, avg_ta),
-    perimeter_ratio = ifelse(margin == 1, 1, perimeter_ratio)
+    tc_p            = ifelse(margin == 1 & is.na(tc_p), 0, tc_p),
+    tc_ip           = ifelse(margin == 1 & is.na(tc_ip), 0, tc_ip),
+    tc_ba           = ifelse(margin == 1 & is.na(tc_ba), 0, tc_ba),
+    ta_p            = ifelse(margin == 1 & is.na(ta_p), 0, ta_p),
+    ta_ip           = ifelse(margin == 1 & is.na(ta_ip), 0, ta_ip),
+    ta_ba           = ifelse(margin == 1 & is.na(ta_ba), 0, ta_ba),
+    avg_ta          = ifelse(margin == 1 & is.na(avg_ta), 0, avg_ta),
+    perimeter_ratio = ifelse(margin == 1 & is.na(perimeter_ratio), 1, perimeter_ratio)
   )
 
 # Rename dilp output columns to pipeline convention
@@ -73,7 +79,9 @@ rename_pipeline <- function(df) {
 dat         <- rename_pipeline(dat)
 dat_prefill <- rename_pipeline(dat_prefill)
 
+# ==============================================================================
 # 3. AGGREGATE TO SPECIES LEVEL
+# ==============================================================================
 
 agg_cols <- c("pw2.a.ratio", "ln.leaf.area.mm2", "feret.diam.ratio", "margin.score",
               "perim.ratio", "teeth.perimeter.percm", "teeth.interior.percm",
@@ -89,8 +97,29 @@ dat_sp <- aggregate(dat[, agg_cols],
   FUN = mean, na.rm = TRUE)
 dat_sp <- dat_sp[!is.na(dat_sp$Order) & dat_sp$Order != "unknown", ]
 dat_sp <- dat_sp[grepl("[A-Za-z]", dat_sp$genusSpecies), ]
+# Collapse duplicate species names (same species with inconsistent Family/Order
+# across sites — a data quality issue in subsets). Mirrors 03_loso_cv.R's
+# agg_species() trait-averaging rule; currently a no-op on the full dataset but
+# keeps the two aggregation paths from silently drifting apart (issue #15).
+# Unlike 03_ (which doesn't need taxonomy after this point), the scaffold-tree
+# grafting below needs genus/Family/Order, so the first-listed values are kept
+# and a warning is raised naming the affected species.
+if (anyDuplicated(dat_sp$genusSpecies)) {
+  dup_species <- unique(dat_sp$genusSpecies[duplicated(dat_sp$genusSpecies)])
+  warning("Species with inconsistent Family/Order across sites, collapsed by ",
+          "averaging traits and taking the first-listed Family/Order: ",
+          paste(dup_species, collapse = ", "))
+  taxon_lookup <- dat_sp[!duplicated(dat_sp$genusSpecies),
+                        c("genusSpecies", "genus", "Family", "Order")]
+  dat_sp <- aggregate(dat_sp[, agg_cols],
+    by  = list(genusSpecies = dat_sp$genusSpecies),
+    FUN = mean, na.rm = TRUE)
+  dat_sp <- merge(dat_sp, taxon_lookup, by = "genusSpecies", sort = FALSE)
+}
 
+# ==============================================================================
 # 3b. AGGREGATE TO SITE LEVEL (three variants)
+# ==============================================================================
 
 # Variant 1: morphotype → site (tooth-filled; each morphotype equally weighted)
 dat_site <- aggregate(dat[, agg_cols],
@@ -105,16 +134,22 @@ write.csv(dat_site, file = "data/dat_site_sp_zero.csv", row.names = FALSE)
 cat("Wrote data/dat_site_sp_zero.csv (", nrow(dat_site), "sites)\n")
 
 # Variant 3: morphotype → site without tooth-fill; untoothed species are
-# excluded from tooth trait site means via na.rm = TRUE. Matches Peppe et al. (2011).
-dat_site_peppe <- aggregate(dat_prefill[, agg_cols],
+# excluded from tooth trait site means via na.rm = TRUE. This mirrors the
+# AGGREGATION rule of Peppe et al. (2011) only. It is NOT the published Peppe
+# regression: the models fitted on this table use all 12 fossil traits with
+# coefficients refit on our sites, whereas the published DiLP MLR uses 3
+# predictors with fixed coefficients (and log-transformed ones for MAP).
+dat_site_untoothed_excl <- aggregate(dat_prefill[, agg_cols],
                             by  = list(Site = dat_prefill$Site),
                             FUN = mean, na.rm = TRUE)
-write.csv(dat_site_peppe, file = "data/dat_site_peppe.csv", row.names = FALSE)
-cat("Wrote data/dat_site_peppe.csv (", nrow(dat_site_peppe), "sites)\n")
+write.csv(dat_site_untoothed_excl, file = "data/dat_site_untoothed_excl.csv", row.names = FALSE)
+cat("Wrote data/dat_site_untoothed_excl.csv (", nrow(dat_site_untoothed_excl), "sites)\n")
 
 if (BUILD_PHYLOGENY) {
 
+# ==============================================================================
 # 4. LOAD FULL WCVP TREE AND BUILD NAME TABLE
+# ==============================================================================
 
 tree <- ladderize(read.tree("data/best_wcvp.tre_dated"))
 
@@ -135,7 +170,9 @@ orig_labels    <- tree$tip.label
 # Save name_table so downstream scripts don't need to reload the full tree
 write.csv(name_table, file = "data/name_table_full.csv", row.names = FALSE)
 
+# ==============================================================================
 # 5. HELPER: CROWN TIPS OF A CLADE
+# ==============================================================================
 
 # Given a set of tip labels that form a clade, returns one tip from each
 # daughter of their MRCA — the pair that anchors the correct crown age.
@@ -155,10 +192,14 @@ crown_tips <- function(tr, tip_labels) {
   unique(sapply(children, get_one_tip))
 }
 
+# ==============================================================================
 # 6. BUILD FAMILY-LEVEL BACKBONE
+# ==============================================================================
 
-# Two crown tips per family: small enough for fast getMRCA/bind.tip calls, but
-# still spans the full angiosperm topology so any fossil rank can be placed.
+# For each angiosperm family in the WCVP tree, keep the 2 tips from the basal
+# split. This ~2 × n_families tip tree is small enough that all subsequent
+# getMRCA / bind.tip calls are fast, while still spanning the full angiosperm
+# topology so any fossil order/family can be placed in 03_.
 
 cat("Building family-level backbone...\n")
 all_families  <- unique(name_table$family)
@@ -178,7 +219,9 @@ bb_idx              <- which(orig_labels %in% backbone_tips)
 name_table_backbone <- name_table[bb_idx, ]
 orig_labels_bb      <- orig_labels[bb_idx]
 
+# ==============================================================================
 # 7. GRAFT TRAINING SPECIES ONTO BACKBONE
+# ==============================================================================
 
 # All getMRCA / bind.tip calls now run on the small scaffold
 
@@ -233,7 +276,9 @@ for (i in seq_along(dat_sp$genusSpecies)) {
 }
 cat("\n")
 
+# ==============================================================================
 # 8. WRITE OUTPUTS
+# ==============================================================================
 
 # tre_scaffold.tre — family backbone + all training species; used by
 #   04_fossil_predictions.R to graft fossils into the full angiosperm topology

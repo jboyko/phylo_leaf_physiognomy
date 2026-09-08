@@ -1,10 +1,12 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(caret)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
 
+# ==============================================================================
 # 1. LOAD DATA AND PHYLOGENY
+# ==============================================================================
 
 phy         <- read.tree("data/tre_pruned.tre")
 dat         <- read.csv("data/data_species.csv")
@@ -16,23 +18,60 @@ rownames(dat) <- dat$genusSpecies  # species names as rownames throughout
 phylomat <- vcv(phy)
 diag(phylomat) <- diag(phylomat) + 1e-6
 
+# ==============================================================================
 # 2. BUILD FULL-TREE TAXONOMY TABLE
+# ==============================================================================
 
 # Covers all families/orders in the WCVP backbone for fossil placement in 04_.
 # Written by 00_data_cleaning.R — no need to reload the full 123k-tip tree.
 name_table_full <- read.csv("data/name_table_full.csv", stringsAsFactors = FALSE)
 cat("name_table_full:", nrow(name_table_full), "rows\n")
 
+# ==============================================================================
 # 3. SELECT TRAITS
+# ==============================================================================
 
-# Same predictor set as the LM in 01_ so the comparison is like-for-like:
-# every fossil-measurable trait passing the NA threshold, no variable selection.
+# Use the same predictor set as the LM in 01_ for a fair comparison.
+# No ENet-based variable selection — all fossil-measurable traits that pass
+# the NA threshold are included in both phylogenetic and non-phylogenetic models.
 pred_names  <- all_results$pred_names
 target_vars <- c("mat", "log_map")
 
 cat("Predictors (", length(pred_names), "):", paste(pred_names, collapse = ", "), "\n")
 
+# ==============================================================================
+# 3b. REPRODUCIBILITY / SAFETY HELPERS (issues #8, #14)
+# ==============================================================================
+
+SEED <- 42  # bagImpute (bagged trees) is stochastic; seed before every call
+            # for bit-reproducible imputed values and PGLS fits (issue #8).
+
+# aggregate(..., na.rm = TRUE) upstream (00_) can leave NaN (not NA) when a
+# species/trait combination has zero observations. bagImpute's predict() is
+# not guaranteed to treat NaN as missing, so coerce NaN -> NA before any
+# imputation step (issue #14).
+nan_to_na <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.numeric(col)) col[is.nan(col)] <- NA
+    col
+  })
+  df
+}
+
+# Fail loudly rather than silently propagate a corrupted (non-finite) value
+# into a design matrix (issue #14).
+assert_finite <- function(x, label) {
+  m <- as.matrix(x)
+  if (any(!is.finite(m))) {
+    bad <- colnames(m)[colSums(!is.finite(m)) > 0]
+    stop(sprintf("%s: non-finite values remain after imputation in columns: %s",
+                 label, paste(bad, collapse = ", ")))
+  }
+}
+
+# ==============================================================================
 # 4. FIT PGLS — IMPUTE AND COMPLETE-CASE VARIANTS
+# ==============================================================================
 
 pgls_configs <- list(
   impute = list(impute = TRUE,  desc = "bagImpute"),
@@ -51,14 +90,20 @@ for (cfg_name in names(pgls_configs)) {
     cat("  Fitting PGLS for", target, "...\n")
 
     cols <- c(target, pred_names)
-    d    <- dat[, cols, drop = FALSE]
+    d    <- nan_to_na(dat[, cols, drop = FALSE])
 
     if (cfg$impute) {
       # Impute response + predictors for PGLS fitting
+      set.seed(SEED)
       imp_obj    <- preProcess(d, method = "bagImpute")
       d_fit      <- predict(imp_obj, d)
+      assert_finite(d_fit, paste0("PGLS d_fit (", cfg_name, ", ", target, ")"))
       # Traits-only imputation for fossil application (no observed response)
-      imp_traits <- preProcess(dat[, pred_names, drop = FALSE], method = "bagImpute")
+      traits_only <- nan_to_na(dat[, pred_names, drop = FALSE])
+      set.seed(SEED)
+      imp_traits <- preProcess(traits_only, method = "bagImpute")
+      assert_finite(predict(imp_traits, traits_only),
+                    paste0("impute_model_traits (", target, ")"))
       phy_fit    <- phy
       pm_fit     <- phylomat
       # Ensure row order matches VCV matrix
@@ -114,7 +159,9 @@ for (cfg_name in names(pgls_configs)) {
   }
 }
 
+# ==============================================================================
 # 5. SAVE PIP COMPONENTS
+# ==============================================================================
 
 taxonomy <- dat[, c("genusSpecies", "genus", "Family", "Order")]
 colnames(taxonomy) <- c("species", "genus", "family", "order")
