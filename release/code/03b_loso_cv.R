@@ -1,11 +1,15 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
+source("code/site_grouping.R")
 
+pip_require_dilp()
 library(ape)
 library(dplyr)
 library(caret)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
 
+# ==============================================================================
 # CONSTANTS
+# ==============================================================================
 
 K_FOLDS <- 10
 SEED    <- 42
@@ -22,7 +26,9 @@ lma_fossil_traits <- c(
 )
 multi_formula <- as.formula(paste(target, "~", paste(lma_fossil_traits, collapse = " + ")))
 
+# ==============================================================================
 # 1. LOAD AND PROCESS RAW DATA  (mirrors 00b_data_cleaning.R)
+# ==============================================================================
 
 lma_cols <- c("specimen_number", "site", "morphotype", "order", "family", "genus", "species",
               "margin", "lma_g_m2",
@@ -42,6 +48,7 @@ input <- bind_rows(
   input_2 %>% dplyr::select(any_of(lma_cols))
 )
 
+input$site <- normalise_calibration_site(input$site)
 dilp_out    <- dilp(input)
 leaf_data   <- dilp_out$processed_leaf_data
 morpho_data <- dilp_out$processed_morphotype_data
@@ -94,7 +101,9 @@ morpho_data <- morpho_data %>%
 cat("Complete morphotype rows:", nrow(morpho_data), "\n")
 cat("Sites:", length(unique(morpho_data$site)), "\n")
 
+# ==============================================================================
 # 2. SITE-LEVEL OBSERVED LMA
+# ==============================================================================
 
 site_obs <- morpho_data %>%
   group_by(site, genusSpecies) %>%
@@ -105,14 +114,18 @@ site_obs <- morpho_data %>%
 
 rownames(site_obs) <- site_obs$site
 
+# ==============================================================================
 # 3. PRE-COMPUTE FULL VCV
+# ==============================================================================
 
 phy      <- read.tree("data/tre_lma_pruned.tre")
 full_vcv <- vcv(phy)
 diag(full_vcv) <- diag(full_vcv) + 1e-6
 cat("Full VCV:", nrow(full_vcv), "x", ncol(full_vcv), "\n")
 
-# 4. ASSIGN LOSO FOLDS (stratified by site-mean log10_lma, snake pattern)
+# ==============================================================================
+# 4. ASSIGN 10-FOLD SITE-GROUPED CV FOLDS (stratified by site-mean log10_lma, snake pattern)
+# ==============================================================================
 
 set.seed(SEED)
 foldable_sites <- site_obs$site[!is.na(site_obs$obs_log10_lma)]
@@ -122,7 +135,9 @@ names(fold_assignment) <- foldable_sites
 
 cat("Fold sizes:", paste(table(fold_assignment), collapse = " "), "\n")
 
-# 5. LOSO CV LOOP
+# ==============================================================================
+# 5. 10-FOLD SITE-GROUPED CV LOOP
+# ==============================================================================
 
 cv_results      <- list()
 model_coefs     <- list()
@@ -562,7 +577,9 @@ for (fold in seq_len(K_FOLDS)) {
   cat("  Fold", fold, "complete in", round(fold_time, 1), "s\n")
 }
 
+# ==============================================================================
 # 6. COMPILE RESULTS
+# ==============================================================================
 
 cat("\nCompiling results...\n")
 
@@ -585,7 +602,9 @@ results_df <- do.call(rbind, lapply(cv_results, function(r) {
 }))
 rownames(results_df) <- NULL
 
+# ==============================================================================
 # 7. RMSE TABLE
+# ==============================================================================
 
 rmse <- function(obs, pred) sqrt(mean((obs - pred)^2, na.rm = TRUE))
 
@@ -605,10 +624,12 @@ rmse_rows <- data.frame(
 )
 rmse_rows <- rmse_rows[order(rmse_rows$rmse), ]
 
-cat("\n10-fold LOSO CV RMSE (log10 LMA, site level):\n")
+cat("\n10-fold site-grouped CV RMSE (log10 LMA, site level):\n")
 print(rmse_rows, row.names = FALSE)
 
+# ==============================================================================
 # 8. WRITE OUTPUTS
+# ==============================================================================
 
 model_coefs_df     <- do.call(rbind, Filter(Negate(is.null), model_coefs))
 model_fit_stats_df <- do.call(rbind, Filter(Negate(is.null), model_fit_stats))
@@ -625,7 +646,9 @@ cat("Saved tables/lma_cv_rmse.csv\n")
 cat("Saved tables/lma_cv_model_coefs.csv\n")
 cat("Saved tables/lma_cv_model_fit.csv\n")
 
+# ==============================================================================
 # 9. SAME-SITE COMPARISON
+# ==============================================================================
 
 # The CC multivariate models only predict for the 63 sites with complete trait
 # data. To fairly compare all models, compute RMSE restricted to those sites.

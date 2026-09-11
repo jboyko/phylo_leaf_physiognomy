@@ -76,29 +76,24 @@ taxonomy_for_scenario <- function(data,
 
 fossil_site_ages <- function() {
   c(
-    "Fox Hills" = 66.5,
-    "Williston Basin I" = 64.75,
-    "Williston Basin II" = 63.5,
-    "Williston Basin III" = 59.75,
-    "Palacio de los Loros PL1" = 61.7,
-    "Palacio de los Loros PL2" = 61.7,
-    "Cerrejon" = 58.0,
+    "Fox Hills" = 67,
+    "Williston Basin I" = 65.07,
+    "Williston Basin II" = 63.8,
+    "Williston Basin III" = 60.4,
+    "Palacio de los Loros" = 64.08,
+    "Cerrejon" = 59,
     "Hubble Bubble" = 55.8,
-    "Laguna del Hunco" = 51.9,
-    "Republic" = 49.4,
+    "Laguna del Hunco" = 52,
+    "Republic" = 51.18,
     "Bonanza" = 47.3
   )
 }
 
-palacio_analysis_site <- function(morphotype) {
-  # Subsite assignments preserved from Table S7 of
-  # "Fossil specimen scores for phylo-DiLP (June 2012)_adjusted.xlsx".
-  pl2_morphotypes <- c("SA050", "SA054", "SA055", "SA057", "SA058", "SA059")
-  ifelse(
-    trimws(as.character(morphotype)) %in% pl2_morphotypes,
-    "Palacio de los Loros PL2",
-    "Palacio de los Loros PL1"
-  )
+normalise_fossil_site <- function(site) {
+  site <- trimws(as.character(site))
+  site[site %in% c("Palacio de los Loros PL1", "Palacio de los Loros PL2")] <-
+    "Palacio de los Loros"
+  site
 }
 
 read_mixed_utf8_csv <- function(path) {

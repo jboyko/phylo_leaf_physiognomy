@@ -1,14 +1,17 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
+source("code/site_grouping.R")
 
-library(dilp)
-library(dplyr)
+pip_require_dilp()
+library(tidyverse)
 library(ape)
 library(phytools)
 
-# Set FALSE to skip the slow tree-grafting step when only trait data changed.
+# Matches 00_data_cleaning.R's default (issue #23): FALSE here skipped tree
+# building entirely, which left data/tre_lma_pruned.tre unwritten and broke
+# 02b_phy_regression.R / 03b_loso_cv.R on a fresh clone.
 BUILD_PHYLOGENY <- TRUE
 
-input_1 <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv", fileEncoding = "latin1")
+input_1 <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv", fileEncoding = "latin1") #or write in your file path
 input_2 <- read.csv("data/extra_calibration_data_for_LMA.csv", fileEncoding = "latin1")
 
 # Combine leaf-level and petiole-width-only datasets (same columns; input_2 is already species-site level)
@@ -24,11 +27,14 @@ input <- bind_rows(
   input_2 %>% dplyr::select(any_of(lma_cols))
 )
 
-input <- dilp(input)
-input.leaf <- input$processed_leaf_data
-input.morphotype <- input$processed_morphotype_data
+input$site <- normalise_calibration_site(input$site)
+input <- dilp(input)  #runs the dilp package
+input.leaf <- input$processed_leaf_data #includes calculated variables at the leaf level
+input.morphotype <- input$processed_morphotype_data #includes calculated variables at the species-site level
 
+# ==============================================================================
 # 2. ADD TAXONOMY AND FILL TOOTH TRAITS
+# ==============================================================================
 
 # Join taxonomy back via site+morphotype (safer than positional indexing)
 taxonomy_lookup <- input.leaf %>%
@@ -53,7 +59,9 @@ input.morphotype <- input.morphotype %>%
     perimeter_ratio = ifelse(margin == 1, 1, perimeter_ratio)
   )
 
+# ==============================================================================
 # 3. AGGREGATE TO SPECIES LEVEL
+# ==============================================================================
 
 # Create genus_species key; drop rows with no genus/species identification
 input.morphotype <- input.morphotype %>%
@@ -99,7 +107,9 @@ dat_sp_lma <- dat_sp_lma %>%
     log10_pw2a_ratio = log10(pw2.a.ratio)
   )
 
+# ==============================================================================
 # 4. MATCH TO PHYLOGENY
+# ==============================================================================
 
 if (BUILD_PHYLOGENY) {
 
@@ -109,8 +119,9 @@ if (BUILD_PHYLOGENY) {
 tree_scaffold <- read.tree("data/tre_scaffold.tre")
 name_table    <- read.csv("data/name_table_full.csv", stringsAsFactors = FALSE)
 
-# Restrict MRCA lookups to backbone tips; grafted species have no name_table
-# row and would yield NAs that corrupt the tip indexing.
+# Only use backbone tips (those with valid name_table entries) for MRCA lookups.
+# Grafted training species (905 tips) have no name_table rows and would produce
+# NAs in genus/family/order comparisons, corrupting the tip indexing.
 all_labels   <- tree_scaffold$tip.label
 bb_matches   <- match(all_labels, paste(name_table$genus, name_table$species, sep = "_"))
 bb_valid     <- !is.na(bb_matches)
@@ -178,8 +189,9 @@ cat("Wrote data/tre_lma_pruned.tre (", length(tree_lma_pruned$tip.label), "tips)
 
 } # end BUILD_PHYLOGENY
 
+# ==============================================================================
 # 5. WRITE OUTPUT
+# ==============================================================================
 
 write.csv(dat_sp_lma, file = "data/lma_species.csv", row.names = FALSE)
 cat("Wrote data/lma_species.csv (", nrow(dat_sp_lma), "species)\n")
-

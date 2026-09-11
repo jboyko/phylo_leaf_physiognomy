@@ -10,7 +10,6 @@ required <- c(
   "code/04_fossil_predictions.R",
   "data/fossil_traits.csv",
   "models/pip_components.rds",
-  "models/nophy_models.rds",
   "models/site_models.rds"
 )
 
@@ -32,17 +31,8 @@ dir.create(file.path(test_root, "tables"))
 old_wd <- setwd(test_root)
 on.exit(setwd(old_wd), add = TRUE)
 
-output <- system2(
-  file.path(R.home("bin"), "Rscript"),
-  "code/04_fossil_predictions.R",
-  stdout = TRUE,
-  stderr = TRUE
-)
-status <- attr(output, "status")
-if (is.null(status)) status <- 0L
-if (status != 0L) {
-  stop("04_fossil_predictions.R failed:\n", paste(output, collapse = "\n"))
-}
+pipeline <- new.env(parent = globalenv())
+invisible(capture.output(sys.source("code/04_fossil_predictions.R", envir = pipeline)))
 
 placement <- read.csv(
   "tables/fossil_placement_log_formal_only.csv",
@@ -71,4 +61,34 @@ stopifnot(
   setequal(predictions$fossil_name, input$fossil_name)
 )
 
-cat("Fossil occurrence placement integration checks passed.\n")
+# Removed comparators must not survive in tables or placement logs.
+stopifnot(all(placement$tip_scope == "site_occurrence"))
+comparison <- pipeline$scenario_results$formal_only$site
+stopifnot(!any(c("lm_sp", "pip_sp") %in% names(comparison)))
+stopifnot(!any(grepl("^(lm_sp|pip_sp)_", names(read.csv(
+  "tables/fossil_taxonomy_sensitivity.csv"
+)))))
+
+# Change one site's measured traits for a species shared with another site.
+# Every other site's prediction must remain unchanged.
+shared <- names(which(vapply(split(input$site, input$species),
+  function(x) length(unique(x)) > 1L, logical(1))))
+stopifnot(length(shared) > 0L)
+changed_site <- input$site[match(shared[1], input$species)]
+rows <- pipeline$foss_base$site == changed_site
+pipeline$foss_base$ln.leaf.area.mm2[rows] <-
+  pipeline$foss_base$ln.leaf.area.mm2[rows] + 2
+invisible(capture.output(changed <- pipeline$run_fossil_scenario("formal_only")))
+other <- predictions$site != changed_site
+stopifnot(isTRUE(all.equal(
+  predictions[other, c("mat_pip_site", "map_pip_site")],
+  changed$species[other, c("mat_pip_site", "map_pip_site")],
+  tolerance = 1e-10, check.attributes = FALSE
+)))
+other_sites <- comparison$site != changed_site
+stopifnot(isTRUE(all.equal(comparison[other_sites, ],
+                          changed$site[other_sites, ], tolerance = 1e-10)))
+stopifnot(any(abs(predictions$mat_pip_site[!other] -
+                 changed$species$mat_pip_site[!other]) > 1e-8))
+
+cat("Fossil occurrence placement and site-local prediction checks passed.\n")

@@ -1,4 +1,5 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
+source("code/site_grouping.R")
 
 pip_require_dilp()
 library(tidyverse)
@@ -26,6 +27,7 @@ input <- bind_rows(
   input_2 %>% dplyr::select(any_of(lma_cols))
 )
 
+input$site <- normalise_calibration_site(input$site)
 input <- dilp(input)  #runs the dilp package
 input.leaf <- input$processed_leaf_data #includes calculated variables at the leaf level
 input.morphotype <- input$processed_morphotype_data #includes calculated variables at the species-site level
@@ -193,4 +195,3 @@ cat("Wrote data/tre_lma_pruned.tre (", length(tree_lma_pruned$tip.label), "tips)
 
 write.csv(dat_sp_lma, file = "data/lma_species.csv", row.names = FALSE)
 cat("Wrote data/lma_species.csv (", nrow(dat_sp_lma), "species)\n")
-

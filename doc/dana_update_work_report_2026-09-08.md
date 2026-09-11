@@ -4,7 +4,7 @@ The climate analysis repairs, refreshed validation and fossil results, local pac
 
 ## Completed work
 
-- Fossil climate predictions use each occurrence's site age and within-site traits. Taxonomic placement uses an immutable extant scaffold, preventing previously inserted fossils from becoming taxonomic anchors. Both previously failed records now place successfully: Cornus nebrascensis at Williston Basin I and Crataegus sp. (rp42) at Republic. All 361 occurrences are retained.
+- Fossil climate predictions use each occurrence's site age and within-site traits. Taxonomic placement uses an immutable extant scaffold, preventing previously inserted fossils from becoming taxonomic anchors. Palacio de los Loros PL1 and PL2 are combined before species-site averaging. Both previously failed records now place successfully: Cornus nebrascensis at Williston Basin I and Crataegus sp. (rp42) at Republic. All 360 combined occurrences are retained.
 - Following the averaging comparison requested by James, precipitation validation and fossil predictions now use geometric site means. The complete ten-fold climate CV was rerun and figures and diagnostics refreshed. MAT predictions were unchanged.
 - The climate analysis and release code were synchronized. The local `/Users/jboyko/dilp` source now implements occurrence-specific predictions, target-specific trait imputation, formal versus informal taxonomy scenarios, explicit input validation, and visible placement failures. Exported package model data include the refreshed validation errors.
 - Table 1, Table 6, methods, discussion, and a short talk handoff were updated in Markdown and Word. All pages of the five final Word documents were rendered and visually inspected. LMA results remain in the manuscript; its legacy prediction workflow was not rerun or modernized during this climate update.
@@ -22,9 +22,9 @@ Geometric averaging was selected after comparison on the same 93 held-out sites:
 ## Verification
 
 - Site-aggregation regression checks cover arithmetic versus geometric MAP means, missing values, and numerical overflow.
-- All 361 fossil occurrences were inserted in original, reversed, and shuffled order. Extant–fossil covariance agreed to numerical tolerance, and final tip ages matched their supplied ages. An age older than the scaffold root fails without modifying the tree.
+- All 360 fossil occurrences were inserted in original, reversed, and shuffled order. Extant–fossil covariance agreed to numerical tolerance, and final tip ages matched their supplied ages. An age older than the scaffold root fails without modifying the tree.
 - Both formal-only and informal-inclusive fossil scenarios completed. Their largest rounded site differences were 0.5 °C and 4 cm MAP, both at Cerrejon. Formal-only placement includes 193 root, 99 family, 49 genus, and 20 order placements; successful placement does not imply precise taxonomic information.
-- Local package tests passed. Source and temporarily installed package predictions matched the main pipeline for all 361 occurrences in both taxonomy scenarios, including unrounded MAT and MAP values. Existing raw-data quality and deprecation warnings remain visible.
+- Local package tests passed. Source and temporarily installed package predictions matched the main pipeline for all 360 occurrences in both taxonomy scenarios, including unrounded MAT and MAP values. Existing raw-data quality and deprecation warnings remain visible.
 - An isolated release-code run reproduced the four checked fossil output files byte for byte. Main and release climate scripts were also compared as parsed R expressions. The repository whitespace check passed.
 
 ## Decision retained for review

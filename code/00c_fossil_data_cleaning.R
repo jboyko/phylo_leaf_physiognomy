@@ -18,12 +18,9 @@ mean_or_na <- function(x) {
 input_path <- "data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv"
 input <- read_mixed_utf8_csv(input_path)
 
-input$site <- trimws(input$site)
+# Combine the two Palacio collections before morphotype/species averaging.
+input$site <- normalise_fossil_site(input$site)
 input$morphotype <- trimws(input$morphotype)
-
-# Restore the PL1/PL2 distinction omitted from the April leaf-level CSV.
-is_palacio <- input$site == "Palacio de los Loros"
-input$site[is_palacio] <- palacio_analysis_site(input$morphotype[is_palacio])
 
 ages <- fossil_site_ages()
 unknown_sites <- setdiff(unique(input$site), names(ages))
@@ -183,8 +180,8 @@ row.names(species_site) <- NULL
 if (anyDuplicated(paste(species_site$site, species_site$species))) {
   stop("Output contains duplicate species-site rows.")
 }
-if (nrow(species_site) != 361L) {
-  stop("Expected 361 species-site rows; produced ", nrow(species_site), ".")
+if (nrow(species_site) != 360L) {
+  stop("Expected 360 species-site rows; produced ", nrow(species_site), ".")
 }
 
 write.csv(species_site, "data/fossil_traits.csv", row.names = FALSE)

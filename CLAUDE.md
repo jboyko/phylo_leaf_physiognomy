@@ -69,20 +69,26 @@ This raw tooth-linked measurement (~67% NA) is not on Dana's fossil list and rem
 ### MAP units
 The training data `map` column is in **centimetres**, not millimetres (range ~19–680 cm, mean ~215 cm). All model MAP outputs are therefore in cm, directly comparable to the published DiLP MAP estimates in Peppe et al. (2011). Do not convert.
 
+### Fossil site grouping
+Palacio de los Loros PL1 and PL2 are one analytical site, named `Palacio de los Loros`. Combine their specimens before species-within-site aggregation in both climate and LMA analyses; use age 64.08 Ma.
+
+### Extant site grouping
+Combine `Yasuni-ridgetop` and `Yasuni-upper slope` before trait aggregation and CV fold assignment, following Dana Royer and the original collector's advice. Use `Yasuni-ridgetop and upper slope` for the combined site; keep `Yasuni-valley bottom` separate. There are 92 extant climate calibration sites. Apply the same grouping in the LMA pipeline.
+
 ### Fossil site ages
-Ages used for phylogenetic placement of Peppe et al. (2011) fossil sites (midpoints of published ranges):
+Ages supplied by Dana Royer and Dan Peppe for phylogenetic placement:
 
 | Site | Age (Ma) |
 |------|----------|
-| Fox Hills | 66.5 |
-| Williston Basin I | 64.75 |
-| Williston Basin II | 63.5 |
-| Williston Basin III | 59.75 |
-| Palacio de los Loros PL1 & PL2 | 61.7 |
-| Cerrejon | 58.0 |
+| Fox Hills | 67 |
+| Williston Basin I | 65.07 |
+| Palacio de los Loros | 64.08 |
+| Williston Basin II | 63.8 |
+| Williston Basin III | 60.4 |
+| Cerrejon | 59 |
 | Hubble Bubble | 55.8 |
-| Laguna del Hunco | 51.9 |
-| Republic | 49.4 |
+| Laguna del Hunco | 52 |
+| Republic | 51.18 |
 | Bonanza | 47.3 |
 
 ### Species-level vs site-level aggregation — key finding

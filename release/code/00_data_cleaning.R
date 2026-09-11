@@ -1,4 +1,5 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
+source("code/site_grouping.R")
 
 # Set to TRUE to rebuild phylogenies (slow; only needed when tree or species
 # list changes). Set to FALSE to skip sections 4-8 and only regenerate data.
@@ -15,6 +16,7 @@ library(dplyr)
 
 raw      <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
                      fileEncoding = "latin1")
+raw$site <- normalise_calibration_site(raw$site)
 dilp_out <- dilp(raw)
 dat_leaf <- dilp_out$processed_leaf_data
 dat      <- dilp_out$processed_morphotype_data  # species×site means

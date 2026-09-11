@@ -1,39 +1,56 @@
 # Climate model update for Dana
 
-The updated MAT and MAP analysis is ready for review ahead of the October talk. PIP has lower cross-validated error than the requested non-phylogenetic site LM baseline. Fossil placement now preserves each occurrence’s site age, and all 361 occurrences contribute to the primary analysis.
+We compared three methods for estimating mean annual temperature (MAT) and mean annual precipitation (MAP) from leaf morphology. Phylogenetically informed prediction (PIP) had the lowest cross-validated error for both variables. We applied PIP and a 12-trait site regression to 10 fossil floras comprising 360 species-by-site occurrences.
+
+## Models and validation
+
+PIP is fitted to extant species’ mean leaf traits and climate. It predicts climate for each species at a new site using that species’ local traits, then adds a correction based on its relatedness to extant calibration species and their regression residuals. The species predictions are averaged to estimate the site’s climate.
+
+The 12-trait site regression is fitted to site averages of 12 traits measurable on fossil leaves. Measurements are first averaged within species at each site, then across species to obtain site means. The model predicts climate directly from those site means.
+
+For both methods, a leaf identified as untoothed receives zero for missing tooth-count and tooth-area traits, and one for a missing perimeter ratio, before traits are averaged. These values represent the absence of teeth. Other missing traits are estimated from observed traits using bagged regression trees fitted to the calibration data.
+
+DiLP regression uses the three predictors and trait processing specified by Peppe et al. (2011) for each climate variable. MAT predictors are the percentage of untoothed species, feret diameter ratio, and tooth count per internal perimeter. MAP predictors are the natural logarithms of leaf area, tooth count per internal perimeter, and perimeter ratio. Log transformations are applied before site averaging.
+
+We evaluated all three methods using the same ten groups of sites. In each round, one group was held out, coefficients were fitted using the remaining sites, and climate was predicted for the held-out sites. Imputation models were also fitted using only training data. Each site received one held-out prediction. RMSE summarizes the differences between predicted and observed climate; smaller values indicate better prediction.
 
 ## Calibration comparison
 
 | Model | MAT RMSE (°C) | ln(MAP) RMSE | n sites MAT / MAP |
-| --- | ---: | ---: | ---: |
-| PIP impute | 3.414 | 0.525 | 93 |
-| LM site sp+zero impute | 4.217 | 0.672 | 93 |
-| Published DiLP in-sample | 3.791 | 0.554 | 93 / 91 |
+| --- | --- | --- | --- |
+| PIP | 3.417 | 0.530 | 93 / 91 |
+| 12-trait site regression | 4.209 | 0.679 | 93 / 91 |
+| DiLP regression | 3.918 | 0.577 | 93 / 91 |
 
-PIP and LM use 10-fold cross-validation with whole sites held out and models and imputers refitted within each fold. Published DiLP uses fixed published coefficients scored on the calibration data; it is an in-sample historical reference. Its MAP score must not be presented as a like-for-like validation result. PIP versus the site LM is a practical comparison; PGLS versus PIP isolates the prediction-time phylogenetic correction.
-
-MAP validation and fossil prediction use geometric site means: average species log predictions, then exponentiate for MAP in cm. On the same held-out sites, geometric averaging gave lower PIP impute RMSE than arithmetic averaging on both the log scale (0.525 versus 0.559) and the original scale (76.9 versus 81.2 cm). MAT is unchanged. The complete-case-training MAP variant has RMSE 0.508; this talk comparison retains the requested imputed variant.
+The MAT comparison includes the same 93 sites for all models. The MAP comparison includes the same 91 sites with usable DiLP predictors. Kepong and Tanjung Tuan lack the logged tooth measurements needed for DiLP’s MAP equation. MAP errors are measured on the natural-log scale, with precipitation expressed in centimetres.
 
 ## Fossil climate comparison
 
+Palacio de los Loros combines the PL1 and PL2 collections at an age of 61.7 Ma. Leaf measurements are averaged within each species at each fossil site. Each occurrence is placed on the extant phylogeny at its site’s age using its formal genus, family, or order identification. PIP combines that occurrence’s local traits with its phylogenetic correction. The 12-trait site regression predicts directly from the site’s mean traits. Missing fossil traits are estimated using the extant calibration imputers.
+
+In the table, LM denotes the 12-trait site regression, age is in millions of years, and n is the number of species-by-site occurrences contributing to PIP. Site MAT estimates are arithmetic means of species predictions. Site MAP estimates are geometric means, calculated by averaging species predictions on the log scale and exponentiating.
+
 | Site | Age (Ma) | MAT PIP (°C) | MAT LM (°C) | MAP PIP (cm) | MAP LM (cm) | n |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Fox Hills | 66.5 | 16.3 | 18.1 | 153 | 83 | 24 |
-| Williston Basin I | 64.75 | 17.5 | 14.6 | 168 | 138 | 20 |
-| Williston Basin II | 63.5 | 16.7 | 13.8 | 161 | 102 | 23 |
-| Palacio de los Loros PL1 | 61.7 | 17.1 | 12.9 | 168 | 118 | 24 |
-| Palacio de los Loros PL2 | 61.7 | 18.2 | 17.6 | 161 | 83 | 6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fox Hills | 66.5 | 16.2 | 18.1 | 152 | 83 | 24 |
+| Williston Basin I | 64.75 | 17.5 | 14.6 | 168 | 137 | 20 |
+| Williston Basin II | 63.5 | 16.6 | 13.8 | 161 | 101 | 23 |
+| Palacio de los Loros | 61.7 | 17.2 | 13.5 | 166 | 107 | 29 |
 | Williston Basin III | 59.75 | 16.6 | 16.1 | 160 | 106 | 18 |
-| Cerrejon | 58 | 21.6 | 25.9 | 216 | 288 | 45 |
-| Hubble Bubble | 55.8 | 19.2 | 17.8 | 166 | 96 | 16 |
-| Laguna del Hunco | 51.9 | 16.7 | 11.0 | 168 | 139 | 119 |
-| Republic | 49.4 | 14.1 | 8.6 | 146 | 67 | 41 |
-| Bonanza | 47.3 | 17.1 | 10.3 | 149 | 116 | 25 |
+| Cerrejon | 58 | 21.6 | 25.9 | 217 | 286 | 45 |
+| Hubble Bubble | 55.8 | 19.2 | 17.8 | 167 | 96 | 16 |
+| Laguna del Hunco | 51.9 | 16.6 | 11 | 168 | 139 | 119 |
+| Republic | 49.4 | 14 | 8.7 | 146 | 66 | 41 |
+| Bonanza | 47.3 | 17.1 | 10.3 | 148 | 116 | 25 |
 
-PIP uses formal-only taxonomy and each occurrence’s own site traits and age. Quoted ranks are excluded as placement evidence; including them provisionally changes site estimates by at most 0.5 °C and 4 cm MAP. Taxonomic anchors are restricted to the original extant scaffold, and all 361 occurrences are retained. The table corresponds to Table 6 after the validation section’s Tables 1–5.
+A taxonomic sensitivity analysis also uses provisional identifications reported in quotation marks. These placements change site PIP estimates by at most 0.5 °C for MAT and 3 cm for MAP.
 
-## Interpretation for the talk
+## Interpretation
 
-Fitting still averages extant traits across sites within each operational taxon, losing within-species variation. Prediction preserves site-specific traits and ages. Calibration labels with no species epithet can pool unnamed morphotypes and remain subject to taxonomic review. The benchmark tests new-site prediction with known extant relationships; it does not quantify fossil-placement uncertainty. Calibration RMSE is an error benchmark, not a fossil-specific confidence interval.
+PIP predicts held-out extant sites more accurately than either site regression in this comparison. Its fossil estimates range from 14.0 to 21.6 °C for MAT and 146 to 217 cm for MAP.
 
-The requested comparison concerns MAT and MAP. LMA remains in the manuscript and has not been rerun for this update. Brian’s involvement is settled.
+Species-level calibration averages traits and climate across extant occurrences, so within-species variation is reduced during fitting. Some genus-level calibration labels combine unnamed morphotypes and require taxonomic review. Applying the validation results to fossils also depends on the accuracy of taxonomic assignments and fossil ages. The reported RMSE describes prediction error across held-out extant sites; fossil uncertainty additionally includes those placement and age uncertainties.
+
+## Reproducibility
+
+The site folds and held-out PIP and 12-trait regression predictions are stored in `tables/loso_cv_site_predictions.csv`. Running `Rscript code/03c_dilp_cv.R` fits DiLP on those folds and writes its predictions and coefficients to `tables/dilp_cv_site_predictions.csv` and `tables/dilp_cv_coefficients.csv`. The matching-site RMSE comparison is saved in `tables/dana_cv_comparison.csv`.

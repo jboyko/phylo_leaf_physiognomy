@@ -69,7 +69,7 @@ crown tips per family — and grafts the training species onto it. `BUILD_PHYLOG
 <- FALSE` skips the tree-building sections when only the trait data has changed.
 
 **`00c_fossil_data_cleaning.R`** builds one row per fossil species × site,
-restores the Palacio de los Loros PL1/PL2 split, applies the site ages in
+combines the Palacio de los Loros PL1 and PL2 collections, applies the site ages in
 `code/fossil_taxonomy.R`, and records which taxonomic ranks were reported
 informally (in quotation marks).
 
@@ -91,14 +91,12 @@ label convention requires rebuilding the calibration data and rerunning full CV.
 
 **`04_fossil_predictions.R`** grafts each fossil occurrence onto the scaffold tree
 at its genus, family or order MRCA, using that occurrence's site age to set tip depth,
-and predicts under four methods:
+and predicts under two methods:
 
 | Method | Training data | Fossil input |
 | --- | --- | --- |
-| LM sp | extant species means | fossil species grand means, averaged to site |
 | LM site | extant site means | fossil site-mean traits, one prediction per site |
-| PIP sp | extant species (PGLS) | fossil species grand means, averaged to site |
-| PIP+site | extant species (PGLS) | site-specific species means, averaged to site |
+| PIP | extant species (PGLS) | site-specific species means, averaged to site |
 
 It runs two taxonomy scenarios. `formal_only` is primary and censors any rank
 reported in quotation marks from placement evidence; `include_informal` is a sensitivity analysis that
@@ -138,7 +136,7 @@ checkout with `DILP_SYSDATA=/path/to/dilp/R/sysdata.rda`.
 
 `03_loso_cv.R` and its outputs are named `loso` for continuity, but the procedure
 is **10-fold cross-validation with sites as the grouping unit**, not
-leave-one-site-out. The 93 calibration sites are ranked by site MAT and assigned round-robin to
+leave-one-site-out. The 92 calibration sites are ranked by site MAT and assigned round-robin to
 10 folds, so roughly 9 sites are held out per fold. Whole sites are always held
 out together and every model is refitted from scratch on the remaining sites, so
 no specimen from a held-out site informs its own prediction. Figure titles
@@ -202,28 +200,28 @@ estimates in Peppe et al. (2011).
 
 ## Fossil site ages
 
-Midpoints of the published ranges, used to set tip depth during phylogenetic
+Ages supplied by Dana Royer and Dan Peppe, used to set tip depth during phylogenetic
 placement. Defined in `code/fossil_taxonomy.R`.
 
 | Site | Age (Ma) |
 | --- | --- |
-| Fox Hills | 66.5 |
-| Williston Basin I | 64.75 |
-| Williston Basin II | 63.5 |
-| Williston Basin III | 59.75 |
-| Palacio de los Loros PL1 and PL2 | 61.7 |
-| Cerrejón | 58.0 |
+| Fox Hills | 67 |
+| Williston Basin I | 65.07 |
+| Palacio de los Loros | 64.08 |
+| Williston Basin II | 63.8 |
+| Williston Basin III | 60.4 |
+| Cerrejón | 59 |
 | Hubble Bubble | 55.8 |
-| Laguna del Hunco | 51.9 |
-| Republic | 49.4 |
+| Laguna del Hunco | 52 |
+| Republic | 51.18 |
 | Bonanza | 47.3 |
 
 ## Data
 
 | File | Description |
 | --- | --- |
-| `data/Peppe_2011_calibration_data_leaf_level_clean.csv` | Extant leaf-level morphology and climate, 93 sites |
-| `data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv` | Fossil leaf-level measurements and taxonomy, 11 sites |
+| `data/Peppe_2011_calibration_data_leaf_level_clean.csv` | Extant leaf-level morphology and climate; 92 analytical sites after combining Yasuni ridgetop and upper slope |
+| `data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv` | Fossil leaf-level measurements and taxonomy, 10 sites |
 | `data/extra_calibration_data_for_LMA.csv` | Additional petiole-width records used only by the LMA pipeline |
 | `data/best_wcvp.tre_dated` | Dated angiosperm phylogeny; tip labels are `order_family_genus_species` |
 

@@ -1,4 +1,4 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ggplot2)
 library(dplyr)
@@ -10,8 +10,18 @@ preds <- read.csv("tables/lma_cv_site_predictions.csv",      stringsAsFactors = 
 coefs <- read.csv("tables/lma_cv_model_coefs.csv",           stringsAsFactors = FALSE)
 fit   <- read.csv("tables/lma_cv_model_fit.csv",             stringsAsFactors = FALSE)
 
+# These figures describe the single-predictor models used for fossil LMA.
+rmse <- rmse |> filter(model %in% c("pred_uni_lm", "pred_uni_pgls", "pred_uni_pip")) |>
+  mutate(model = toupper(sub("pred_uni_", "", model)))
+preds <- preds |> rename(pred_lm = pred_uni_lm, pred_pgls = pred_uni_pgls,
+                         pred_pip = pred_uni_pip)
+coefs <- coefs |> filter(method %in% c("LM_uni", "PGLS_uni")) |>
+  mutate(method = sub("_uni$", "", method))
+fit <- fit |> filter(method %in% c("LM_uni", "PGLS_uni")) |>
+  mutate(method = sub("_uni$", "", method))
+
 # ── 2. Shared aesthetics ───────────────────────────────────────────────────────
-model_labels <- c(PIP = "PIP", LM = "LM (Peppe)", PGLS = "PGLS")
+model_labels <- c(PIP = "PIP", LM = "LM", PGLS = "PGLS")
 model_colours <- c(PIP = "#1b7837", LM = "#d6604d", PGLS = "#9970ab")
 
 # ── 3. Figure 1: RMSE dot plot ────────────────────────────────────────────────
@@ -86,7 +96,7 @@ message("Saved lma_fig2_obs_vs_pred")
 
 # ── 5. Figure 3: Slope stability across folds ─────────────────────────────────
 coef_slope <- coefs |>
-  filter(predictor == "log10_petiole_metric") |>
+  filter(predictor == "log10_pw2a_ratio") |>
   mutate(
     label = factor(model_labels[method], levels = model_labels[c("LM", "PGLS")])
   )

@@ -24,16 +24,17 @@ stopifnot(
 
 ages <- fossil_site_ages()
 stopifnot(
-  identical(unname(ages["Fox Hills"]), 66.5),
-  identical(unname(ages["Williston Basin I"]), 64.75),
-  identical(unname(ages["Williston Basin II"]), 63.5),
-  identical(unname(ages["Williston Basin III"]), 59.75)
+  identical(unname(ages["Fox Hills"]), 67),
+  identical(unname(ages["Williston Basin I"]), 65.07),
+  identical(unname(ages["Williston Basin II"]), 63.8),
+  identical(unname(ages["Williston Basin III"]), 60.4)
 )
 
 stopifnot(
-  identical(palacio_analysis_site("SA049"), "Palacio de los Loros PL1"),
-  identical(palacio_analysis_site("SA050"), "Palacio de los Loros PL2"),
-  identical(palacio_analysis_site("SA060"), "Palacio de los Loros PL1")
+  identical(normalise_fossil_site(c("Palacio de los Loros PL1",
+    " Palacio de los Loros PL2 ", "Palacio de los Loros", "Republic")),
+    c(rep("Palacio de los Loros", 3), "Republic")),
+  identical(unname(ages["Palacio de los Loros"]), 64.08)
 )
 
 raw <- read_mixed_utf8_csv(
@@ -46,9 +47,12 @@ stopifnot(
 
 fossil_traits <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
 stopifnot(
-  nrow(fossil_traits) == 361L,
+  nrow(fossil_traits) == 360L,
+  length(unique(fossil_traits$site)) == 10L,
+  sum(fossil_traits$site == "Palacio de los Loros") == 29L,
+  !any(grepl("Palacio de los Loros PL[12]", fossil_traits$site)),
   !anyDuplicated(paste(fossil_traits$site, fossil_traits$species)),
-  sum(fossil_traits$genus_informal) == 20L,
+  sum(fossil_traits$genus_informal) == 19L,
   sum(fossil_traits$family_informal) == 12L,
   sum(fossil_traits$order_informal) == 6L,
   all(fossil_traits$genus[fossil_traits$genus_informal] == "unknown"),

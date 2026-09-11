@@ -14,7 +14,7 @@ fit     <- read.csv("tables/loso_cv_model_fit.csv", stringsAsFactors = FALSE)
 model_labels <- c(
   pip_sp_site_impute              = "PIP (impute)",
   pip_sp_site_cc                  = "PIP (CC)",
-  dilp_pub_site                   = "Published DiLP (in-sample)",
+  dilp_cv_site                   = "DiLP regression (CV)",
   lm_site_site_untoothed_excl_impute       = "LM site, untoothed-excl (impute)",
   lm_site_site_untoothed_excl_cc           = "LM site, untoothed-excl (CC)",
   lm_site_site_sp_zero_impute     = "LM site, sp+zero (impute)",
@@ -30,7 +30,7 @@ model_labels <- c(
 model_family <- c(
   pip_sp_site_impute              = "PIP",
   pip_sp_site_cc                  = "PIP",
-  dilp_pub_site                   = "Published DiLP",
+  dilp_cv_site                   = "DiLP regression",
   lm_site_site_untoothed_excl_impute       = "LM site",
   lm_site_site_untoothed_excl_cc           = "LM site",
   lm_site_site_sp_zero_impute     = "LM site",
@@ -48,7 +48,7 @@ family_colours <- c(
   "LM site"  = "#4393c3",
   "LM species" = "#d6604d",
   PGLS       = "#9970ab",
-  "Published DiLP" = "#7f7f7f"
+  "DiLP regression" = "#7f7f7f"
 )
 
 # ── 3. Figure 1: RMSE dot plot ────────────────────────────────────────────────
@@ -78,11 +78,8 @@ p1 <- ggplot(rmse, aes(x = rmse, y = label, colour = family)) +
     title = "10-fold site-grouped CV RMSE across model configurations",
     x     = "RMSE",
     y     = NULL,
-    # Published DiLP uses Peppe et al. (2011) coefficients calibrated on this
-    # same dataset, so its RMSE is in-sample and not a like-for-like CV score.
-    caption = paste("Published DiLP is scored in-sample (fixed published",
-                    "coefficients calibrated on these sites); all other rows",
-                    "are cross-validated.")
+    caption = paste("All rows use held-out site predictions; DiLP coefficients",
+                    "are refitted within folds. Site coverage varies with missing inputs.")
   ) +
   theme_bw(base_size = 12) +
   theme(
@@ -101,7 +98,7 @@ focal_models <- c(
   "pip_sp_site_impute",
   "lm_site_site_untoothed_excl_impute",
   "lm_sp_site_impute",
-  "dilp_pub_site"
+  "dilp_cv_site"
 )
 
 preds_long <- preds |>
@@ -241,7 +238,7 @@ all_impute_models <- c(
   "lm_site_site_specimen_impute",
   "lm_sp_site_impute",
   "pgls_sp_site_impute",
-  "dilp_pub_site"
+  "dilp_cv_site"
 )
 
 diag_table <- preds |>

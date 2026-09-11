@@ -35,7 +35,7 @@ package via `devtools::load_all("~/dilp")` and uses its own calibration inputs
 
 **`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating. Outputs three site-level datasets for model comparison: `dat_site.csv` and `dat_site_sp_zero.csv` (both morphotypes → site, zero-filled, identical in the current implementation), and `dat_site_untoothed_excl.csv` (morphotypes → site, untoothed excluded from tooth-trait averages). Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. A `BUILD_PHYLOGENY` flag (default `TRUE`) skips the slow tree-building sections when set to `FALSE` and only data changes. Outputs `data/data_species.csv`, the three site CSVs, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
 
-**`00c_fossil_data_cleaning.R`** — Converts Dana Royer's April 2026 leaf-level fossil dataset into one row per species × site using `dilp`. It restores the Palacio de los Loros PL1/PL2 assignments, applies the documented site ages, preserves the reported taxonomy and quote flags, and writes formal-only placement columns to `data/fossil_traits.csv`. Quoted genus/family/order names are informal: the primary analysis censors the quoted rank, while the sensitivity analysis can use its unquoted value provisionally.
+**`00c_fossil_data_cleaning.R`** — Converts Dana Royer's April 2026 leaf-level fossil dataset into one row per species × site using `dilp`. It combines Palacio de los Loros PL1 and PL2 into a single site before averaging traits, applies the documented site ages, preserves the reported taxonomy and quote flags, and writes formal-only placement columns to `data/fossil_traits.csv`. Quoted genus/family/order names are informal: the primary analysis censors the quoted rank, while the sensitivity analysis can use its unquoted value provisionally.
 
 **`01_nophy_regression.R`** — Fits **LM only** (via `caret`) at **species level** for MAT and log(MAP); earlier ElasticNet and Random Forest comparisons are not part of the current analysis. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Also fits LM at site level across six combinations (3 datasets × bagImpute / complete-case). All site configs stored under `site_models$configs`; backward-compatible top-level keys preserved. Saves `models/nophy_models.rds` and `models/site_models.rds`.
 
@@ -43,16 +43,16 @@ package via `devtools::load_all("~/dilp")` and uses its own calibration inputs
 
 Species-level training rows are currently operational labels: named species are averaged across sites, while records lacking a species epithet are pooled under genus-level keys. Those genus-only pools can combine several sites or morphotypes and await taxonomic review. They are retained for the current analysis; changing this convention requires rebuilding the training data and rerunning full CV.
 
-**`04_fossil_predictions.R`** — Grafts each fossil occurrence onto `tre_scaffold.tre` at its reported site age and runs four prediction approaches under two taxonomy scenarios. The canonical `tables/fossil_site_comparison.csv` and `tables/fossil_predictions.csv` use formal taxonomy only: quoted genus, family, and order ranks are excluded from placement evidence. Scenario-specific predictions, placement logs, and `tables/fossil_taxonomy_sensitivity.csv` compare that primary interpretation with provisional inclusion of quoted taxonomy:
+**`04_fossil_predictions.R`** — Grafts each fossil occurrence onto `tre_scaffold.tre` at its reported site age and runs two prediction approaches under two taxonomy scenarios. The canonical `tables/fossil_site_comparison.csv` and `tables/fossil_predictions.csv` use formal taxonomy only: quoted genus, family, and order ranks are excluded from placement evidence. Scenario-specific predictions, placement logs, and `tables/fossil_taxonomy_sensitivity.csv` compare that primary interpretation with provisional inclusion of quoted taxonomy:
 
 | Method | Training data | Fossil input | Aggregation |
 | ------ | ------------ | ------------ | ----------- |
-| LM sp | extant species means | fossil species grand means | average per site |
 | LM site | extant site means | fossil site-mean traits | direct (one per site) |
-| PIP sp | extant species (PGLS) | fossil species grand means | average per site |
-| PIP+site | extant species (PGLS) | site-specific species means | average per site |
+| PIP | extant species (PGLS) | site-specific species means | average per site |
 
-PIP sp uses fossil species grand means; PIP+site uses site-specific species means and occurrence-specific placements. The `PLACEMENT_FALLBACK` flag controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default) or `"node"`.
+See [the model table](doc/models.md) for the fitted approaches and their site estimators.
+
+Both retained fossil approaches use only traits from the site being reconstructed. PIP uses occurrence-specific ages and placements; cross-site pooled fossil comparators have been removed. The `PLACEMENT_FALLBACK` flag controls behaviour when a fossil predates its placement node: `"ancestral_branch"` (default) or `"node"`.
 
 **`03_loso_cv.R`** — 10-fold cross-validation, grouped by site, across all 12 model configurations. Sites are ranked by site MAT and assigned round-robin to folds (roughly 9 sites held out per fold); each fold retrains all models from scratch on the remaining sites and predicts the held-out sites. For species-level MAP models, log predictions are averaged within site for evaluation; exponentiating that mean gives the geometric site MAP estimate, matching the fossil MAP estimator. Whole sites are withheld, though their extant species can occur at training sites; the benchmark therefore tests site transfer with known extant relationships, not fossil-placement accuracy. It is **not** leave-one-site-out (that would be 93 folds, one per site) — see the naming note below. Saves per-fold model objects to `models/loso_cv_fold_XX.rds`. Outputs: `tables/loso_cv_rmse.csv`, `tables/loso_cv_site_predictions.csv`, `tables/loso_cv_model_coefs.csv` (per-fold coefficient estimates), `tables/loso_cv_model_fit.csv` (per-fold R², residual SE, lambda).
 
@@ -68,7 +68,7 @@ PIP sp uses fossil species grand means; PIP+site uses site-specific species mean
 
 `03_loso_cv.R` and its outputs are named `loso` for continuity, but the procedure
 is **10-fold cross-validation with sites as the grouping unit**, not
-leave-one-site-out. The 93 calibration sites are ranked by site MAT and assigned round-robin to
+leave-one-site-out. The 92 calibration sites are ranked by site MAT and assigned round-robin to
 10 folds, so roughly 9 sites are held out per fold. Whole sites are always held
 out together and every model is refitted from scratch on the remaining sites, so
 no specimen from a held-out site informs its own prediction. Figure titles
@@ -81,7 +81,7 @@ continuity.
 `03_loso_cv.R` evaluates 6 model types, each in two NA-handling variants (bagImpute and complete-case), for a total of 12 configurations per climate target. Because the held-out unit is always a site, all predictions are site-level values. Column names use `sp_site` to indicate a species-level model whose predictions are averaged to site, and `site` to indicate a model trained directly on site-level data.
 
 **Species-level LM (`lm_sp_site`)**
-Ordinary least squares trained on species grand means (averaged across all training sites). Each held-out species gets a prediction from Xβ; those are aggregated to a site estimate. No use of phylogenetic information. Averaging across training sites loses within-species climatic and trait variation, whereas held-out and fossil prediction rows preserve within-site species means; this is a limitation of this calibration implementation.
+Ordinary least squares trained on species grand means (averaged across all training sites). Each held-out species gets a prediction from Xβ; those are aggregated to a site estimate. No use of phylogenetic information. Averaging across training sites loses within-species climatic and trait variation, whereas held-out prediction rows preserve within-site species means; this is a limitation of this calibration implementation. The pooled fossil LM comparator has been removed; this species-trained LM is currently evaluated in validation only.
 
 **Site-level LM — `specimen` (`lm_site_specimen`)**
 Ordinary least squares trained on site means computed by averaging `dilp` morphotype means within sites. In the current data this is identical by construction to `sp_zero`; it does not weight raw specimens directly.
@@ -164,6 +164,8 @@ remotes::install_github("jboyko/dilp", ref = "b29be909355f7edb7809bf718f189b7a53
 
 ## September 2026 climate update
 
-Primary fossil predictions now use fixed extant scaffold anchors and retain all 361 occurrences. Tests cover insertion-order invariance, site ages, and numerical agreement with the updated local dilp source. Run `Rscript tests/test_fossil_placement.R`, `Rscript tests/test_site_prediction.R`, and `DILP_SOURCE=/path/to/updated/dilp Rscript tests/test_dilp_parity.R` after generating models and fossil outputs.
+Primary fossil predictions now use fixed extant scaffold anchors and retain all 360 occurrences. Tests cover insertion-order invariance, site ages, and numerical agreement with the updated local dilp source. Run `Rscript tests/test_fossil_placement.R`, `Rscript tests/test_site_prediction.R`, and `DILP_SOURCE=/path/to/updated/dilp Rscript tests/test_dilp_parity.R` after generating models and fossil outputs.
 
 The pinned April dilp commit remains the raw `dilp()` preprocessing dependency. It does **not** contain the revised `dilp_pgls()` implementation. The September package changes are local and must be published/pinned separately before distributing a package-based reproduction claim. `code/06_update_dilp_package.R` stages fitted trait imputers, coefficients, covariance weights, lambda, and current validation error scales into `dilp_update/`.
+
+**`03c_dilp_cv.R`** — Refits the published DiLP predictor equations on the existing 10-fold site assignments, then scores PIP, the 12-trait site regression, and DiLP on matching sites for the Dana update. Run after `03_loso_cv.R`; optionally pass a local dilp checkout path. Writes `tables/dana_cv_comparison.csv` and DiLP fold predictions and coefficients. The main CV now also includes refitted DiLP (`dilp_cv_site`), replacing its fixed-coefficient in-sample reference.
