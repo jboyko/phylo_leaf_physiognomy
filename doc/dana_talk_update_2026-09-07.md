@@ -18,38 +18,38 @@ We evaluated all three methods using the same ten groups of sites. In each round
 
 | Model | MAT RMSE (°C) | ln(MAP) RMSE | n sites MAT / MAP |
 | --- | --- | --- | --- |
-| PIP | 3.417 | 0.530 | 93 / 91 |
-| 12-trait site regression | 4.209 | 0.679 | 93 / 91 |
-| DiLP regression | 3.918 | 0.577 | 93 / 91 |
+| PIP | 3.451 | 0.535 | 92 / 90 |
+| 12-trait site regression | 4.269 | 0.695 | 92 / 90 |
+| DiLP regression | 3.891 | 0.575 | 92 / 90 |
 
-The MAT comparison includes the same 93 sites for all models. The MAP comparison includes the same 91 sites with usable DiLP predictors. Kepong and Tanjung Tuan lack the logged tooth measurements needed for DiLP’s MAP equation. MAP errors are measured on the natural-log scale, with precipitation expressed in centimetres.
+The calibration contains 92 sites. Yasuni-ridgetop and Yasuni-upper slope are treated as one site, while Yasuni-valley bottom remains separate. The MAT comparison includes all 92 sites; the MAP comparison includes the same 90 sites for every model. Kepong and Tanjung Tuan lack the logged tooth measurements needed for DiLP’s MAP equation. MAP errors are measured on the natural-log scale, with precipitation expressed in centimetres.
 
 ## Fossil climate comparison
 
-Palacio de los Loros combines the PL1 and PL2 collections at an age of 61.7 Ma. Leaf measurements are averaged within each species at each fossil site. Each occurrence is placed on the extant phylogeny at its site’s age using its formal genus, family, or order identification. PIP combines that occurrence’s local traits with its phylogenetic correction. The 12-trait site regression predicts directly from the site’s mean traits. Missing fossil traits are estimated using the extant calibration imputers.
+Palacio de los Loros combines the PL1 and PL2 collections at an age of 64.08 Ma. Leaf measurements are averaged within each species at each fossil site. Each occurrence is placed on the extant phylogeny at its site’s age using its formal genus, family, or order identification. PIP combines that occurrence’s local traits with its phylogenetic correction. The 12-trait site regression predicts directly from the site’s mean traits. Missing fossil traits are estimated using the extant calibration imputers.
 
 In the table, LM denotes the 12-trait site regression, age is in millions of years, and n is the number of species-by-site occurrences contributing to PIP. Site MAT estimates are arithmetic means of species predictions. Site MAP estimates are geometric means, calculated by averaging species predictions on the log scale and exponentiating.
 
 | Site | Age (Ma) | MAT PIP (°C) | MAT LM (°C) | MAP PIP (cm) | MAP LM (cm) | n |
 | --- | --- | --- | --- | --- | --- | --- |
-| Fox Hills | 66.5 | 16.2 | 18.1 | 152 | 83 | 24 |
-| Williston Basin I | 64.75 | 17.5 | 14.6 | 168 | 137 | 20 |
-| Williston Basin II | 63.5 | 16.6 | 13.8 | 161 | 101 | 23 |
-| Palacio de los Loros | 61.7 | 17.2 | 13.5 | 166 | 107 | 29 |
-| Williston Basin III | 59.75 | 16.6 | 16.1 | 160 | 106 | 18 |
-| Cerrejon | 58 | 21.6 | 25.9 | 217 | 286 | 45 |
-| Hubble Bubble | 55.8 | 19.2 | 17.8 | 167 | 96 | 16 |
-| Laguna del Hunco | 51.9 | 16.6 | 11 | 168 | 139 | 119 |
-| Republic | 49.4 | 14 | 8.7 | 146 | 66 | 41 |
-| Bonanza | 47.3 | 17.1 | 10.3 | 148 | 116 | 25 |
+| Fox Hills | 67 | 16.3 | 18.1 | 153 | 83 | 24 |
+| Williston Basin I | 65.07 | 17.5 | 14.5 | 168 | 137 | 20 |
+| Palacio de los Loros | 64.08 | 17.2 | 13.5 | 166 | 108 | 29 |
+| Williston Basin II | 63.8 | 16.7 | 13.7 | 161 | 102 | 23 |
+| Williston Basin III | 60.4 | 16.6 | 16 | 160 | 107 | 18 |
+| Cerrejon | 59 | 21.6 | 25.9 | 216 | 283 | 45 |
+| Hubble Bubble | 55.8 | 19.2 | 17.8 | 166 | 96 | 16 |
+| Laguna del Hunco | 52 | 16.7 | 11 | 168 | 139 | 119 |
+| Republic | 51.18 | 14.1 | 8.6 | 146 | 67 | 41 |
+| Bonanza | 47.3 | 17.1 | 10.3 | 149 | 116 | 25 |
 
-A taxonomic sensitivity analysis also uses provisional identifications reported in quotation marks. These placements change site PIP estimates by at most 0.5 °C for MAT and 3 cm for MAP.
+A taxonomic sensitivity analysis also uses provisional identifications reported in quotation marks. These placements change site PIP estimates by at most 0.5 °C for MAT and 4 cm for MAP.
 
 ## Interpretation
 
-PIP predicts held-out extant sites more accurately than either site regression in this comparison. Its fossil estimates range from 14.0 to 21.6 °C for MAT and 146 to 217 cm for MAP.
+PIP predicts held-out extant sites more accurately than either site regression in this comparison. Its fossil estimates range from 14.1 to 21.6 °C for MAT and 146 to 216 cm for MAP.
 
-Species-level calibration averages traits and climate across extant occurrences, so within-species variation is reduced during fitting. Some genus-level calibration labels combine unnamed morphotypes and require taxonomic review. Applying the validation results to fossils also depends on the accuracy of taxonomic assignments and fossil ages. The reported RMSE describes prediction error across held-out extant sites; fossil uncertainty additionally includes those placement and age uncertainties.
+Species-level calibration averages traits and climate across extant occurrences, so within-species variation is reduced during fitting. Some genus-level calibration labels combine unnamed morphotypes and require taxonomic review. Applying the validation results to fossils also depends on the accuracy of taxonomic assignments and fossil ages.
 
 ## Reproducibility
 

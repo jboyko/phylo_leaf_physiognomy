@@ -6,7 +6,7 @@ Cross-validation RMSE measures the typical prediction error across held-out exta
 \mathrm{RMSE}=\sqrt{\frac{1}{N}\sum_{s=1}^{N}(\widehat y_s-y_s)^2}.
 \]
 
-The previously reported 3.417 °C was calculated across 93 held-out site predictions before the Yasuni grouping correction. It measures predictive error, not the standard error of a fitted coefficient or a fossil site's estimated climate. The corrected calibration has 92 sites.
+The current imputed PIP MAT RMSE is 3.451 °C across 92 held-out site predictions. It measures predictive error, not the standard error of a fitted coefficient or a fossil site's estimated climate.
 
 ## Species and site uncertainty
 
