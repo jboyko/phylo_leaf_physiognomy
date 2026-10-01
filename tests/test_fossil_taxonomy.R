@@ -38,7 +38,7 @@ stopifnot(
 )
 
 raw <- read_mixed_utf8_csv(
-  "data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv"
+  "data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv"
 )
 stopifnot(
   nrow(raw) == 1413L,
@@ -52,7 +52,7 @@ stopifnot(
   sum(fossil_traits$site == "Palacio de los Loros") == 29L,
   !any(grepl("Palacio de los Loros PL[12]", fossil_traits$site)),
   !anyDuplicated(paste(fossil_traits$site, fossil_traits$species)),
-  sum(fossil_traits$genus_informal) == 19L,
+  sum(fossil_traits$genus_informal) == 26L,
   sum(fossil_traits$family_informal) == 12L,
   sum(fossil_traits$order_informal) == 6L,
   all(fossil_traits$genus[fossil_traits$genus_informal] == "unknown"),

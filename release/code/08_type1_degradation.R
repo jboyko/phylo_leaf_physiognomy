@@ -1,15 +1,16 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(ggplot2)
 library(gridExtra)
 
+# ==============================================================================
 # 1. LOAD PIP COMPONENTS
+# ==============================================================================
 
 pip <- readRDS("models/pip_components.rds")
 
-phylomat <- vcv(pip$tree_pruned)
-diag(phylomat) <- diag(phylomat) + 1e-6
+phylomat <- pip$configs$impute$mat$phylomat
 
 tree    <- pip$tree_pruned
 tax     <- pip$taxonomy          # species, genus, family, order
@@ -21,8 +22,10 @@ cat("n unique genera:", length(unique(tax$genus)), "\n")
 cat("n unique families:", length(unique(tax$family)), "\n")
 cat("n unique orders:", length(unique(tax$order)), "\n")
 
-# Branching times (internal node ages, Ma from root)
-bt <- branching.times(tree)
+# Node depths measured from the same scaffold root as the fitted VCV.
+# branching.times() returns ages before present, not covariance depths.
+root_offset <- min(phylomat)
+node_depths <- node.depth.edgelength(tree) + root_offset
 
 # Per-target components
 targets <- list(
@@ -40,15 +43,25 @@ targets <- list(
   )
 )
 
+# ==============================================================================
 # 2. HELPER — maps lambda-scaled cross-covariance to PIP adjustment
 #    (reused from 07_type2_degradation.R)
+# ==============================================================================
 
 pip_adj_from_vcov <- function(v_cross, V_inv, resid) {
   as.numeric(t(v_cross) %*% V_inv %*% resid)
 }
 
-# 3. Clade tables — MRCA node and depth per rank. For a fossil at node M,
-#    cov = depth(M) for tips inside the clade and phylomat[rep, T] outside it.
+# ==============================================================================
+# 3. BUILD CLADE TABLES — for each rank, find the MRCA node and its depth
+#    for every multi-species clade present in the training set.
+#
+#    Placement covariance for a fossil at MRCA node M (depth d_M):
+#      - For training tip T descending from M: cov(fossil, T) = d_M
+#      - For training tip T outside M's clade: cov(fossil, T) = phylomat[rep, T]
+#        where rep is any member of the focal clade (same value for all members
+#        because MRCA(clade, T) is the same regardless of which member we pick).
+# ==============================================================================
 
 # Lookup: species index in the species vector
 sp_idx <- setNames(seq_len(n), species)
@@ -71,7 +84,7 @@ build_clade_table <- function(rank_col) {
 
     # MRCA node and its depth
     mrca_node  <- getMRCA(tree, in_training)
-    depth_M    <- bt[as.character(mrca_node)]
+    depth_M    <- node_depths[mrca_node]
 
     # Descendants of MRCA that are in the training set
     desc_all   <- extract.clade(tree, mrca_node)$tip.label
@@ -99,9 +112,27 @@ clade_tables <- list(
   order  = build_clade_table("order")
 )
 
-# 4. LOO adjustments per target x rank x focal: adj_loo_i(M) = t(v_M) %*% p -
-#    w[i] * (V_inv %*% v_M)[i], with v_M = lambda * cov_M, p = V_inv %*% resid,
-#    w = p / diag(V_inv). Error (b) is vs adj_correct_i, error (a) vs resid[i].
+# ==============================================================================
+# 4. COMPUTE LOO ADJUSTMENTS FOR EACH TARGET × RANK × FOCAL
+#
+#  For a focal species i placed at its rank-level MRCA (node M):
+#
+#    adj_loo_i(M) = adj_full(M) - w[i] * c_M[i]
+#
+#  where:
+#    v_M      = lambda * cov_M          (lambda-scaled cross-cov vector)
+#    adj_full = t(v_M) %*% p            (full, non-LOO adjustment)
+#    c_M      = V_inv %*% v_M           (n-vector; need only the focal's element)
+#    w[i]     = p[i] / V_inv[i,i]       (leverage weight)
+#    p        = V_inv %*% resid
+#
+#  Error (b): marginal — adj_loo_i(MRCA) minus adj_correct_i
+#  Error (a): absolute — adj_loo_i(MRCA) minus resid[i]
+#
+#  adj_correct_i = adj_full(tip_i) - w[i] * c_tip_i[i]
+#               = a[i]            - lambda * w[i] * E[i,i]
+#  (same formula as Type 2 diagonal, recomputed here for self-containment)
+# ==============================================================================
 
 cat("Computing LOO adjustments...\n")
 
@@ -183,7 +214,9 @@ for (tname in names(targets)) {
   cat("   Rows:", nrow(result_df), "\n")
 }
 
+# ==============================================================================
 # 5. MERGE TARGETS AND SAVE TABLE
+# ==============================================================================
 
 mat_df <- all_results$mat[, c("focal","rank","clade","depth_M","error_b","error_a")]
 names(mat_df)[names(mat_df) == "error_b"] <- "error_b_mat"
@@ -205,7 +238,9 @@ result_df$rank <- factor(result_df$rank,
 write.csv(result_df, "tables/type1_degradation.csv", row.names = FALSE)
 cat("Saved tables/type1_degradation.csv (", nrow(result_df), "rows)\n")
 
+# ==============================================================================
 # 6. SUMMARY TABLE — mean errors by rank
+# ==============================================================================
 
 summary_df <- do.call(rbind, lapply(split(result_df, result_df$rank), function(d) {
   data.frame(
@@ -226,7 +261,9 @@ write.csv(summary_df, "tables/type1_degradation_summary.csv", row.names = FALSE)
 cat("Saved tables/type1_degradation_summary.csv\n")
 print(summary_df)
 
+# ==============================================================================
 # 7. FIGURES
+# ==============================================================================
 
 rank_colours <- c(genus = "#1b9e77", family = "#d95f02", order = "#7570b3")
 
@@ -323,7 +360,9 @@ ggsave("plots/type1_error_a.pdf", fig2, width = 12, height = 5)
 ggsave("plots/type1_error_a.png", fig2, width = 12, height = 5, dpi = 150)
 cat("Saved plots/type1_error_a.{pdf,png}\n")
 
+# ==============================================================================
 # 8. SUMMARY DIAGNOSTICS
+# ==============================================================================
 
 cat("\n=== SUMMARY ===\n")
 cat("MAT sd(resid):", round(sd_mat, 4), "\n")

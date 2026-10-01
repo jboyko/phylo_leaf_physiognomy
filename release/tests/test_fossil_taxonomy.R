@@ -37,7 +37,7 @@ stopifnot(
 )
 
 raw <- read_mixed_utf8_csv(
-  "data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv"
+  "data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv"
 )
 stopifnot(
   nrow(raw) == 1413L,

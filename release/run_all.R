@@ -8,6 +8,7 @@ scripts <- c(
   "code/01_nophy_regression.R",
   "code/02_phy_regression.R",
   "code/03_loso_cv.R",
+  "code/03d_uncertainty_diagnostics.R",
   "code/04_fossil_predictions.R",
   "code/05_visualizations.R",
   # Degradation and adjustment-field analyses

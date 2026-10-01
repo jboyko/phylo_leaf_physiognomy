@@ -54,7 +54,7 @@ Climate scripts source `code/setup.R`, which locates the release root and create
 | Script | Reads | Writes |
 | --- | --- | --- |
 | `00_data_cleaning.R` | `Peppe_2011_calibration_data_leaf_level_clean.csv`, `best_wcvp.tre_dated` | `data/data_species.csv`, `data/dat_site*.csv`, `data/tre_scaffold.tre`, `data/tre_pruned.tre`, `data/name_table_full.csv` |
-| `00c_fossil_data_cleaning.R` | `Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv` | `data/fossil_traits.csv` |
+| `00c_fossil_data_cleaning.R` | `Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv` | `data/fossil_traits.csv` |
 | `01_nophy_regression.R` | `data/data_species.csv`, `data/dat_site*.csv` | `models/nophy_models.rds`, `models/site_models.rds` |
 | `02_phy_regression.R` | `data/tre_pruned.tre`, `models/nophy_models.rds` | `models/pip_components.rds` |
 | `03_loso_cv.R` | raw calibration data, `data/tre_pruned.tre` | `tables/loso_cv_*.csv`, `models/loso_cv_fold_XX.rds` |
@@ -88,6 +88,16 @@ analysis retains these genus-only pools pending taxonomic review; changing the
 label convention requires rebuilding the calibration data and rerunning full CV.
 
 **`03_loso_cv.R`** is the predictive benchmark. See the naming note below.
+
+An optional 92-fold check holds out one complete site per fit for the imputed PIP
+model. Run `PIP_CV_SCHEME=leave_one_site_out Rscript code/03_loso_cv.R`, then
+`Rscript code/03e_loso_coverage_comparison.R`. Outputs go in separate
+`models/leave_one_site_out/` and `tables/leave_one_site_out/` directories. The
+comparison verifies fold membership and interval endpoints before reporting
+conditional 95% coverage against observed site climate. The default remains
+ten-fold CV. For disjoint batches, `PIP_CV_FOLDS` accepts comma-separated fold
+IDs; combine their checkpoints with `03e` after all 92 fits finish.
+
 
 **`04_fossil_predictions.R`** grafts each fossil occurrence onto the scaffold tree
 at its genus, family or order MRCA, using that occurrence's site age to set tip depth,
@@ -221,7 +231,7 @@ placement. Defined in `code/fossil_taxonomy.R`.
 | File | Description |
 | --- | --- |
 | `data/Peppe_2011_calibration_data_leaf_level_clean.csv` | Extant leaf-level morphology and climate; 92 analytical sites after combining Yasuni ridgetop and upper slope |
-| `data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv` | Fossil leaf-level measurements and taxonomy, 10 sites |
+| `data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv` | Fossil leaf-level measurements and taxonomy, 10 sites |
 | `data/extra_calibration_data_for_LMA.csv` | Additional petiole-width records used only by the LMA pipeline |
 | `data/best_wcvp.tre_dated` | Dated angiosperm phylogeny; tip labels are `order_family_genus_species` |
 
@@ -267,3 +277,27 @@ Phylogenetically-informed predictions.
 
 
 The climate code and shared placement/aggregation tests are synchronized with the September 2026 analysis. `test_fossil_placement.R` requires the generated scaffold and PIP model; `test_dilp_parity.R` additionally requires the updated local dilp source or its installed build. LMA has not received the occurrence-placement changes in this climate update.
+
+## Conditional PIP intervals
+
+Climate fitting and prediction preserve the scaffold root when selecting covariance blocks. Refit older climate models before using this release. `03_loso_cv.R` writes conditional species and site intervals. Run `03d_uncertainty_diagnostics.R` after it to assess held-out site-climate coverage. `04_fossil_predictions.R` writes separate `fossil_species_uncertainty_<scenario>.csv` and `fossil_site_uncertainty_<scenario>.csv` tables, plus joint covariance matrices in `models/`. These nominal 95% model intervals condition on fitted lambda, imputed traits, ages, and placements. They are experimental; they do not yet quantify all fossil uncertainty. MAP interval calculations use log units, with `_response` endpoints in cm.
+
+### Exploratory MAP alternatives
+
+Optional scripts `03f_map_model_experiment.R` and
+`03g_map_experiment_results.R` compare nested PIP recalibration with species-
+and site-trained GAM/RF/LM models. They require `mgcv` and `ranger`, use the
+existing ten outer site folds plus five inner folds for tuning/recalibration,
+and save separate `map_model_experiment` outputs. Run `03f` followed by `03g`;
+production fits are not updated. See the main repository's
+`doc/map_model_experiment.md` for the experimental design and results.
+
+`03h_map_kernel_cv.R` adds the separate nonlinear phylogenetic MAP experiment:
+linear and RBF trait kernels with a prediction-time scaffold covariance term.
+Run it after `03f` has saved its inner fold memberships, then run
+`03i_map_kernel_results.R` and `03k_map_kernel_fit_audit.R`. Optional
+`03j_map_kernel_coarsened_transfer.R` checks genus/family/order placement,
+and `04d_map_kernel_fossil_sensitivity.R` requires an explicit
+`PIP_KERNEL_FOSSIL_CANDIDATE`. All outputs remain under
+`map_kernel_experiment` and do not update production predictions. The main
+repository's `doc/map_kernel_experiment.md` records the results and limits.

@@ -10,8 +10,7 @@ library(gridExtra)
 
 pip <- readRDS("models/pip_components.rds")
 
-phylomat   <- vcv(pip$tree_pruned)
-diag(phylomat) <- diag(phylomat) + 1e-6
+phylomat <- pip$configs$impute$mat$phylomat
 
 species    <- rownames(pip$V_lam_mat)    # same order for mat and map
 n          <- length(species)

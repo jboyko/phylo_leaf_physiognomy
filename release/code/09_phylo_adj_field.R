@@ -1,25 +1,41 @@
-source("code/_setup.R")
+# ==============================================================================
+# 09_phylo_adj_field.R
+# Visualize the PIP phylogenetic-adjustment field over `tre_pruned`.
+#
+# For every tip and internal node X of the pruned tree, compute the adjustment
+# a hypothetical fossil placed at X would receive:
+#
+#   phylo_adj(X) = lambda * v_X' %*% V_inv %*% resid
+#
+# where v_X[i] = depth of MRCA(X, training-tip i). No leave-one-out: a
+# hypothetical fossil is genuinely outside the training data.
+#
+# Output: separate trees for MAT and log(MAP), rendered as fan phylogenies
+# with order-level bands around the perimeter.
+# ==============================================================================
 
-# Adjustment a hypothetical fossil placed at node X would receive:
-#   phylo_adj(X) = lambda * v_X' %*% V_inv %*% resid,  v_X[i] = depth(MRCA(X, i)).
-
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(phytools)
 
+# ==============================================================================
 # 1. LOAD
+# ==============================================================================
 
-pip  <- readRDS("models/pip_components.rds")
-phy  <- pip$tree_pruned
+pip <- readRDS("models/pip_components.rds")
+phy <- pip$tree_pruned
 
 Ntip  <- length(phy$tip.label)
 Nnode <- phy$Nnode
 
 # Depth of every node (root = 0, tips = h for ultrametric tree)
-depths   <- node.depth.edgelength(phy)
+depths   <- node.depth.edgelength(phy) + min(pip$configs$impute$mat$phylomat)
 mrca_mat <- mrca(phy, full = TRUE)  # (Ntip+Nnode) x (Ntip+Nnode) of node IDs
 
+# ==============================================================================
 # 2. FIELD COMPUTATION
+# ==============================================================================
 
 phylo_adj_field <- function(lambda, V_lam, resid) {
   # V_lam is keyed by training tip labels; align to phy tip order
@@ -55,10 +71,14 @@ cat("  MAT     adj range: [", round(min(adj_mat), 2), ",",
 cat("  log MAP adj range: [", round(min(adj_map), 3), ",",
     round(max(adj_map), 3), "]\n")
 
+# ==============================================================================
 # 3. ORDER-LEVEL MRCAs FOR LABELING
+# ==============================================================================
 # Parse genus from each tip label, look up order in name_table_full, take MRCA.
 
-name_tbl      <- pip$name_table_full
+name_tbl <- pip$name_table_full
+h_tree   <- max(node.depth.edgelength(phy))
+
 tip_genus_phy <- sapply(strsplit(phy$tip.label, "_"), `[`, 1)
 gen2order     <- setNames(name_tbl$order, name_tbl$genus)
 tip_order_phy <- gen2order[tip_genus_phy]
@@ -75,7 +95,9 @@ ord_tip_idx <- lapply(ord_keep, function(o)
   which(phy$tip.label %in% order_tbl$tip[order_tbl$order == o]))
 names(ord_tip_idx) <- ord_keep
 
+# ==============================================================================
 # 4. RENDER
+# ==============================================================================
 
 # Draw a filled annular wedge between radii (r1, r2) and angles (a1, a2),
 # centred on (x0, y0), then place a label at the mid-angle just outside.

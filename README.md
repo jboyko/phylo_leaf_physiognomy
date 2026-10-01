@@ -14,11 +14,12 @@ Run scripts in order from the repository root. Each script sources `code/setup.R
 
 ```r
 Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate to species, build scaffold tree
-Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from the April 2026 leaf-level data
+Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from the June 2026 leaf-level data
 Rscript code/01_nophy_regression.R   # Fit LM via caret (species + site level)
 Rscript code/02_phy_regression.R     # Fit PGLS (MAT + MAP), save PIP components
 Rscript code/03_loso_cv.R            # 10-fold site-grouped CV across all 12 model configs, RMSE tables, model summaries
-Rscript code/04_fossil_predictions.R # Predict MAT/MAP under both taxonomy scenarios
+Rscript code/03d_uncertainty_diagnostics.R # Coverage of conditional PIP intervals
+Rscript code/04_fossil_predictions.R # Predict MAT/MAP and conditional intervals under both taxonomy scenarios
 Rscript code/05_visualizations.R     # Figures from the 10-fold site-grouped CV outputs
 Rscript code/06_update_dilp_package.R # Maintenance utility: regenerate dilp package model objects + constants
 Rscript code/07_type2_degradation.R  # Sensitivity: adjustment degradation vs. placement distance
@@ -35,7 +36,7 @@ package via `devtools::load_all("~/dilp")` and uses its own calibration inputs
 
 **`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating. Outputs three site-level datasets for model comparison: `dat_site.csv` and `dat_site_sp_zero.csv` (both morphotypes → site, zero-filled, identical in the current implementation), and `dat_site_untoothed_excl.csv` (morphotypes → site, untoothed excluded from tooth-trait averages). Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. A `BUILD_PHYLOGENY` flag (default `TRUE`) skips the slow tree-building sections when set to `FALSE` and only data changes. Outputs `data/data_species.csv`, the three site CSVs, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
 
-**`00c_fossil_data_cleaning.R`** — Converts Dana Royer's April 2026 leaf-level fossil dataset into one row per species × site using `dilp`. It combines Palacio de los Loros PL1 and PL2 into a single site before averaging traits, applies the documented site ages, preserves the reported taxonomy and quote flags, and writes formal-only placement columns to `data/fossil_traits.csv`. Quoted genus/family/order names are informal: the primary analysis censors the quoted rank, while the sensitivity analysis can use its unquoted value provisionally.
+**`00c_fossil_data_cleaning.R`** — Converts Dana Royer's June 2026 leaf-level fossil dataset into one row per species × site using `dilp`. It combines Palacio de los Loros PL1 and PL2 into a single site before averaging traits, applies the documented site ages, preserves the reported taxonomy and quote flags, and writes formal-only placement columns to `data/fossil_traits.csv`. Quoted genus/family/order names are informal: the primary analysis censors the quoted rank, while the sensitivity analysis can use its unquoted value provisionally.
 
 **`01_nophy_regression.R`** — Fits **LM only** (via `caret`) at **species level** for MAT and log(MAP); earlier ElasticNet and Random Forest comparisons are not part of the current analysis. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Also fits LM at site level across six combinations (3 datasets × bagImpute / complete-case). All site configs stored under `site_models$configs`; backward-compatible top-level keys preserved. Saves `models/nophy_models.rds` and `models/site_models.rds`.
 
@@ -67,7 +68,7 @@ Both retained fossil approaches use only traits from the site being reconstructe
 ## A note on cross-validation naming
 
 `03_loso_cv.R` and its outputs are named `loso` for continuity, but the procedure
-is **10-fold cross-validation with sites as the grouping unit**, not
+defaults to **10-fold cross-validation with sites as the grouping unit**, not
 leave-one-site-out. The 92 calibration sites are ranked by site MAT and assigned round-robin to
 10 folds, so roughly 9 sites are held out per fold. Whole sites are always held
 out together and every model is refitted from scratch on the remaining sites, so
@@ -75,6 +76,25 @@ no specimen from a held-out site informs its own prediction. Figure titles
 produced by `05_visualizations.R` have been updated to say "10-fold site-grouped
 CV"; the `loso_cv_*` file, column, and object names remain unchanged for
 continuity.
+
+### Leave-one-site-out coverage check
+
+For 92 fits holding out one site at a time, using the imputed PIP model:
+
+```sh
+PIP_CV_SCHEME=leave_one_site_out Rscript code/03_loso_cv.R
+Rscript code/03e_loso_coverage_comparison.R
+```
+
+This saves separate outputs under `models/leave_one_site_out/` and
+`tables/leave_one_site_out/`, preserving the default ten-fold run.
+The comparison script checks that each fit excludes exactly one site, verifies
+interval endpoints against saved standard errors and training degrees of freedom,
+and compares nominal 95% conditional interval coverage against observed site
+climate. It also writes `plots/pip_leave_one_site_out_coverage.png`.
+For disjoint batches, set `PIP_CV_FOLDS` to comma-separated fold IDs; each batch
+writes compact checkpoints only. Run the comparison script after all 92 finish.
+Seeds depend on fold ID, so batching preserves the fitted model for each fold.
 
 ## 10-Fold Site-Grouped CV Model Configurations
 
@@ -134,7 +154,7 @@ Traits excluded despite predictive power: `evergreen` (phenological — not dete
 | ---- | ----------- |
 | `data/Peppe_2011_calibration_data_leaf_level_clean.csv` | Raw leaf morphology + climate data (read by `00_data_cleaning.R`) |
 | `data/best_wcvp.tre_dated` | Dated angiosperm phylogeny (tip format: `order_family_genus_species`) |
-| `data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv` | Dana Royer's updated leaf-level fossil measurements and taxonomy |
+| `data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv` | Dana Royer's updated leaf-level fossil measurements and taxonomy |
 | `data/fossil_traits.csv` | Tracked, reproducible fossil analysis input generated by `00c_fossil_data_cleaning.R` — one row per species × site, with formal-only placement taxonomy, reported taxonomy, informal-rank flags, site age, and the 12 trait columns. MAP units throughout are **cm** (same as the training data). |
 | `data/extra_calibration_data_for_LMA.csv`, `data/lma_species.csv` | Calibration inputs specific to the `*b*` / LMA pipeline |
 | `data/RoyerLeafShapeClimateDataFixedNames_June2012.csv` | Original Royer leaf-shape + climate dataset. **Superseded** by `Peppe_2011_calibration_data_leaf_level_clean.csv` and read by no script; retained as the provenance record for the calibration set (it carries the pre-filtering columns, e.g. `evergreen`, petiole traits, `internal.perimeter.cm`). |
@@ -169,3 +189,47 @@ Primary fossil predictions now use fixed extant scaffold anchors and retain all 
 The pinned April dilp commit remains the raw `dilp()` preprocessing dependency. It does **not** contain the revised `dilp_pgls()` implementation. The September package changes are local and must be published/pinned separately before distributing a package-based reproduction claim. `code/06_update_dilp_package.R` stages fitted trait imputers, coefficients, covariance weights, lambda, and current validation error scales into `dilp_update/`.
 
 **`03c_dilp_cv.R`** — Refits the published DiLP predictor equations on the existing 10-fold site assignments, then scores PIP, the 12-trait site regression, and DiLP on matching sites for the Dana update. Run after `03_loso_cv.R`; optionally pass a local dilp checkout path. Writes `tables/dana_cv_comparison.csv` and DiLP fold predictions and coefficients. The main CV now also includes refitted DiLP (`dilp_cv_site`), replacing its fixed-coefficient in-sample reference.
+
+## Experimental climate uncertainty
+
+The climate PGLS fit, validation, and fossil prediction use covariance blocks from the same rooted scaffold. Subsetting a freshly pruned tree is not equivalent: it can discard shared evolutionary history. Run `02_phy_regression.R` again when updating from models fitted before the September 22, 2026 root correction.
+
+`code/pip_uncertainty.R` implements joint conditional prediction-error covariance. `03_loso_cv.R` writes species and site intervals for the imputed PIP model, and `03d_uncertainty_diagnostics.R` reports their held-out coverage and plots observations against intervals. `04_fossil_predictions.R` writes `tables/fossil_species_uncertainty_<scenario>.csv`, `tables/fossil_site_uncertainty_<scenario>.csv`, and named joint covariance matrices in `models/fossil_prediction_covariance_<scenario>.rds`. All intervals are nominal 95% intervals conditional on the fitted covariance parameters, traits, ages, and placements. They do not include imputation, age, or placement uncertainty and under-cover held-out extant sites (about 35%). The site tables therefore also carry calibrated intervals (`calibrated_lower`/`calibrated_upper`) that add a shared site discrepancy variance estimated from the 10-fold site-grouped CV residuals; these cover about 95% of held-out extant sites out of fold and are the intervals to report. MAP estimates and standard errors are on the natural-log scale; columns ending in `_response` give back-transformed endpoints in cm. See `doc/prediction_uncertainty.md`.
+
+## Exploratory MAP model experiment
+
+`code/03f_map_model_experiment.R` compares the current PIP, nested linear
+recalibration of PIP, and trait-only LM/GAM/random-forest models trained at
+species and site levels. It uses the existing ten site-grouped outer folds;
+five inner site-grouped folds choose nonlinear-model settings and generate the
+predictions used to fit the recalibration. It does not update production fits.
+
+```sh
+Rscript code/03f_map_model_experiment.R
+Rscript code/03g_map_experiment_results.R
+```
+
+Requires `mgcv` and `ranger` in addition to the usual calibration dependencies.
+Optional environment variables: `DILP_SOURCE` loads a local dilp checkout,
+`PIP_EXPERIMENT_R_LIB` adds a dependency library, and `PIP_MAP_FOLDS` chooses
+comma-separated outer fold IDs for disjoint batches. Run `03g` after all ten
+checkpoints exist. It verifies outer/inner exclusions, reproduces the original
+PIP predictions, and independently checks selection and recalibration.
+Outputs are under `tables/map_model_experiment/`, `models/map_model_experiment/`,
+and `plots/map_model_experiment_*.png`. This is an exploratory comparison;
+selecting a winner from these results needs subsequent validation.
+
+## Exploratory nonlinear phylogenetic MAP experiment
+
+`code/03h_map_kernel_cv.R` implements the separate nested experiment in
+[`doc/nonlinear_phylogenetic_prediction_protocol.md`](doc/nonlinear_phylogenetic_prediction_protocol.md).
+It combines a linear or RBF trait kernel with scaffold-rooted phylogenetic
+residual covariance and predicts each held-site occurrence before averaging on
+the log(MAP) scale. It preserves the production models and fossil tables.
+Run `03h` after `03f` has saved its inner site memberships, then run
+`code/03i_map_kernel_results.R` and `code/03k_map_kernel_fit_audit.R`.
+The optional `03j_map_kernel_coarsened_transfer.R` evaluates genus, family,
+and order placement, and `04d_map_kernel_fossil_sensitivity.R` writes separate
+fossil point estimates for a model family named in
+`PIP_KERNEL_FOSSIL_CANDIDATE`. Results and interpretation are in
+[`doc/map_kernel_experiment.md`](doc/map_kernel_experiment.md).

@@ -11,6 +11,7 @@
 #   models/site_models.rds      -- output of 01_nophy_regression.R
 #   data/tre_scaffold.tre       -- output of 00_data_cleaning.R
 #   data/fossil_traits.csv      -- species-site rows with trait + age_ma columns
+#   tables/pip_cv_site_uncertainty.csv -- output of 03_loso_cv.R (site discrepancy)
 #
 # Output:
 #   tables/fossil_site_comparison.csv       -- formal-only site comparison
@@ -27,6 +28,7 @@ library(caret)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
 source("code/fossil_taxonomy.R")
 source("code/fossil_placement.R")
+source("code/pip_uncertainty.R")
 
 # ==============================================================================
 # USER SETTINGS
@@ -41,6 +43,9 @@ PLACEMENT_FALLBACK <- "ancestral_branch"
 pip       <- readRDS("models/pip_components.rds")
 site_mods <- readRDS("models/site_models.rds")
 foss_base <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
+# Shared site discrepancy from 10-fold site-grouped CV (output of 03).
+site_discrepancy <- pip_load_site_discrepancy()
+rownames(site_discrepancy) <- site_discrepancy$target
 
 # Dana's requested non-phylogenetic comparison is the species-to-site,
 # zero-fill, bag-imputed LM.  Select it explicitly instead of relying on the
@@ -146,8 +151,18 @@ placement_log <- do.call(rbind, placement_rows_site)
 idx_extant  <- rownames(pip$dat_imputed_mat)
 idx_fossil_occ <- foss$fossil_name    # site-occurrence tips (PIP, issue #11)
 
-tree_small     <- keep.tip(tree, c(idx_extant, idx_fossil_occ))
-phylomat_small <- vcv(tree_small)
+# Subset the matrix, not the tree: pruning can silently move the root.
+phylomat_small <- vcv(tree)
+phylomat_small <- phylomat_small[c(idx_extant, idx_fossil_occ),
+                               c(idx_extant, idx_fossil_occ), drop = FALSE]
+for (suffix in c("mat", "map")) {
+  ids <- rownames(pip[[paste0("X_", suffix)]])
+  expected <- phylomat_small[ids, ids, drop = FALSE]
+  diag(expected) <- diag(expected) + 1e-6
+  expected <- pip_lambda_covariance(expected, pip[[paste0("lambda_", suffix)]])
+  if (max(abs(expected - pip[[paste0("V_lam_", suffix)]][ids, ids])) > 1e-7)
+    stop("Calibration/scaffold covariance mismatch: rerun 02_phy_regression.R")
+}
 
 V_inv_mat <- solve(pip$V_lam_mat)
 V_inv_map <- solve(pip$V_lam_map)
@@ -213,6 +228,59 @@ yhat_site_map <- as.numeric(X_site_map %*% pip$beta_map) +
 
 foss$mat_pip_site <- yhat_site_mat
 foss$map_pip_site <- exp(yhat_site_map)
+
+# Joint occurrence prediction errors, including estimated-coefficient covariance.
+# Keep these intervals separate from the legacy tables. The conditional
+# interval (se, lower, upper) under-covers held-out extant sites; the
+# calibrated interval adds the CV-estimated shared site discrepancy.
+uncertainty_species <- list()
+uncertainty_sites <- list()
+uncertainty_covariance <- list()
+for (target in c("mat", "log_map")) {
+  suffix <- if (target == "mat") "mat" else "map"
+  X_train <- pip[[paste0("X_", suffix)]]
+  train_ids <- rownames(X_train)
+  K <- if (target == "mat") V_inv_mat else V_inv_map
+  fit_unc <- pip_uncertainty_fit(X_train, K,
+    pip[[paste0("resid_", suffix)]][train_ids])
+  X_new <- if (target == "mat") X_site_mat else X_site_map
+  prediction <- if (target == "mat") yhat_site_mat else yhat_site_map
+  lambda <- pip[[paste0("lambda_", suffix)]]
+  C <- phylomat_small[idx_fossil_occ, train_ids, drop = FALSE] * lambda
+  V_new <- pip_lambda_covariance(
+    phylomat_small[idx_fossil_occ, idx_fossil_occ, drop = FALSE], lambda)
+  S <- pip_prediction_covariance(fit_unc, X_new, C, V_new)
+  uncertainty_covariance[[target]] <- S
+  species_ci <- pip_interval(prediction, diag(S), fit_unc$df)
+  uncertainty_species[[target]] <- cbind(
+    foss[, c("fossil_name", "species", "site", "age_ma")],
+    target = target, taxonomy_scenario = taxonomy_scenario, species_ci,
+    lower_response = if (target == "mat") species_ci$lower else exp(species_ci$lower),
+    upper_response = if (target == "mat") species_ci$upper else exp(species_ci$upper))
+  uncertainty_sites[[target]] <- do.call(rbind, lapply(unique(foss$site), function(s) {
+    ii <- which(foss$site == s)
+    ci <- pip_site_interval(prediction[ii], S[ii, ii, drop = FALSE], fit_unc$df)
+    tau2 <- site_discrepancy[target, "tau2"]
+    cal <- pip_calibrated_interval(ci$estimate, ci$se, tau2)
+    back <- function(x) if (target == "mat") x else exp(x)
+    data.frame(site = s, age_ma = foss$age_ma[ii[1]], target = target,
+      taxonomy_scenario = taxonomy_scenario, n_species = length(ii), ci,
+      estimate_response = back(ci$estimate),
+      lower_response = back(ci$lower),
+      upper_response = back(ci$upper),
+      independence_se = sqrt(sum(diag(S)[ii])) / length(ii),
+      interval_type = "conditional_model_95pct_unvalidated",
+      site_discrepancy_sd = sqrt(tau2), cal,
+      calibrated_lower_response = back(cal$calibrated_lower),
+      calibrated_upper_response = back(cal$calibrated_upper))
+  }))
+}
+write.csv(do.call(rbind, uncertainty_species), file.path("tables",
+  paste0("fossil_species_uncertainty_", taxonomy_scenario, ".csv")), row.names = FALSE)
+write.csv(do.call(rbind, uncertainty_sites), file.path("tables",
+  paste0("fossil_site_uncertainty_", taxonomy_scenario, ".csv")), row.names = FALSE)
+saveRDS(uncertainty_covariance, file.path("models",
+  paste0("fossil_prediction_covariance_", taxonomy_scenario, ".rds")))
 
 site_pip_site <- aggregate(cbind(mat_pip_site, map_pip_site) ~ site + age_ma,
                             data = foss, FUN = mean)

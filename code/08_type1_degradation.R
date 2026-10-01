@@ -10,8 +10,7 @@ library(gridExtra)
 
 pip <- readRDS("models/pip_components.rds")
 
-phylomat <- vcv(pip$tree_pruned)
-diag(phylomat) <- diag(phylomat) + 1e-6
+phylomat <- pip$configs$impute$mat$phylomat
 
 tree    <- pip$tree_pruned
 tax     <- pip$taxonomy          # species, genus, family, order
@@ -23,8 +22,10 @@ cat("n unique genera:", length(unique(tax$genus)), "\n")
 cat("n unique families:", length(unique(tax$family)), "\n")
 cat("n unique orders:", length(unique(tax$order)), "\n")
 
-# Branching times (internal node ages, Ma from root)
-bt <- branching.times(tree)
+# Node depths measured from the same scaffold root as the fitted VCV.
+# branching.times() returns ages before present, not covariance depths.
+root_offset <- min(phylomat)
+node_depths <- node.depth.edgelength(tree) + root_offset
 
 # Per-target components
 targets <- list(
@@ -83,7 +84,7 @@ build_clade_table <- function(rank_col) {
 
     # MRCA node and its depth
     mrca_node  <- getMRCA(tree, in_training)
-    depth_M    <- bt[as.character(mrca_node)]
+    depth_M    <- node_depths[mrca_node]
 
     # Descendants of MRCA that are in the training set
     desc_all   <- extract.clade(tree, mrca_node)$tip.label

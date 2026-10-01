@@ -30,7 +30,7 @@ Ntip  <- length(phy$tip.label)
 Nnode <- phy$Nnode
 
 # Depth of every node (root = 0, tips = h for ultrametric tree)
-depths   <- node.depth.edgelength(phy)
+depths   <- node.depth.edgelength(phy) + min(pip$configs$impute$mat$phylomat)
 mrca_mat <- mrca(phy, full = TRUE)  # (Ntip+Nnode) x (Ntip+Nnode) of node IDs
 
 # ==============================================================================

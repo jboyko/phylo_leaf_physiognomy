@@ -58,7 +58,7 @@ pipeline_scaffold <- pipeline_tree$tip.label
 pipeline_taxonomy <- readRDS("models/pip_components.rds")$name_table_full
 fossils <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
 problem_rows <- fossils[fossils$species %in%
-  c("Cornus nebrascensis", "Crataegus sp. (rp42)"), ]
+  c("Mciverphyllum nebracensum", "Crataegus sp. (rp42)"), ]
 stopifnot(nrow(problem_rows) == 2L)
 for (i in seq_len(nrow(problem_rows))) {
   row <- problem_rows[i, ]

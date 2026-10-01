@@ -8,7 +8,8 @@ if (nzchar(package_source)) {
 }
 source("code/fossil_taxonomy.R")
 
-raw <- read_mixed_utf8_csv("data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv")
+raw <- read_mixed_utf8_csv("data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv")
+names(raw)[names(raw) == "Measurer comments"] <- "measurer_comments"
 raw$site <- normalise_fossil_site(raw$site)
 raw$morphotype <- trimws(raw$morphotype)
 raw$age_ma <- unname(fossil_site_ages()[raw$site])

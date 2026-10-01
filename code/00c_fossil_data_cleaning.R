@@ -1,6 +1,6 @@
 # ==============================================================================
 # 00c_fossil_data_cleaning.R
-# Build species-by-site fossil traits from Dana Royer's April 2026 leaf-level
+# Build species-by-site fossil traits from Dana Royer's June 2026 leaf-level
 # data while preserving formal vs informal taxonomy for sensitivity analysis.
 # ==============================================================================
 
@@ -15,8 +15,10 @@ mean_or_na <- function(x) {
   if (is.nan(value)) NA_real_ else value
 }
 
-input_path <- "data/Peppe_2011_fossil_data_April_2026_leaf_level_clean.csv"
+input_path <- "data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv"
 input <- read_mixed_utf8_csv(input_path)
+# Dana's June export uses a display label for the package comment field.
+names(input)[names(input) == "Measurer comments"] <- "measurer_comments"
 
 # Combine the two Palacio collections before morphotype/species averaging.
 input$site <- normalise_fossil_site(input$site)

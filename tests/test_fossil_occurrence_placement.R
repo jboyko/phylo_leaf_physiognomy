@@ -22,11 +22,16 @@ test_root <- tempfile("fossil-occurrence-placement-")
 dir.create(test_root)
 on.exit(unlink(test_root, recursive = TRUE, force = TRUE), add = TRUE)
 
-for (path in c("README.md", "code", "data", "models")) {
+for (path in c("README.md", "code", "data")) {
   linked <- file.symlink(file.path(project_root, path), file.path(test_root, path))
   if (!linked) stop("Could not create test symlink for ", path)
 }
 dir.create(file.path(test_root, "tables"))
+dir.create(file.path(test_root, "models"))
+for (path in c("pip_components.rds", "site_models.rds")) {
+  stopifnot(file.symlink(file.path(project_root, "models", path),
+                        file.path(test_root, "models", path)))
+}
 
 old_wd <- setwd(test_root)
 on.exit(setwd(old_wd), add = TRUE)

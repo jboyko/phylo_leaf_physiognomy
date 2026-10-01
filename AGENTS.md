@@ -30,6 +30,10 @@ A parallel `*b*` / LMA pipeline (`00b`–`03b`, `04b_lma_*`, `05b_lma_*`) mirror
 
 ## Key Decisions from Correspondence with Dana Royer
 
+**Climate covariance root**: fitting, cross-validation, and fossil prediction must use covariance blocks from `tre_scaffold.tre` with its root preserved. Subset the covariance matrix, not a freshly pruned tree's VCV. Pruning to calibration taxa removes about 270.13 Ma of shared stem and makes those fitted covariances incompatible with fossil cross-covariances on the scaffold. `tests/test_climate_covariance_root.R` checks this invariant.
+
+**Experimental prediction intervals**: `pip_uncertainty.R` computes joint conditional prediction-error covariance, including coefficient uncertainty. Aggregate the full matrix within a site; never assume species errors are independent. These intervals condition on fitted lambda, traits, ages, and placements. Evaluate site-climate coverage using `03d_uncertainty_diagnostics.R` before interpreting them as calibrated fossil intervals.
+
 Dana Royer is the fossil leaf expert and domain collaborator. These decisions were made explicitly with him and must not be silently reversed.
 
 ### Fossil-measurable traits only

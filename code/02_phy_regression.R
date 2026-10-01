@@ -15,7 +15,10 @@ all_results <- readRDS("models/nophy_models.rds")
 if (!"log_map" %in% names(dat)) dat$log_map <- log(dat$map)
 rownames(dat) <- dat$genusSpecies  # species names as rownames throughout
 
-phylomat <- vcv(phy)
+# Preserve the same root/time origin used for fossil placement. Pruning the
+# scaffold before vcv() drops its shared stem and changes the covariance scale.
+scaffold_vcv <- vcv(read.tree("data/tre_scaffold.tre"))
+phylomat <- scaffold_vcv[phy$tip.label, phy$tip.label, drop = FALSE]
 diag(phylomat) <- diag(phylomat) + 1e-6
 
 # ==============================================================================
@@ -114,7 +117,7 @@ for (cfg_name in names(pgls_configs)) {
       complete_rows <- complete.cases(d)
       d_fit         <- d[complete_rows, , drop = FALSE]
       phy_fit       <- keep.tip(phy, rownames(d_fit))
-      pm_fit        <- vcv(phy_fit)
+      pm_fit        <- scaffold_vcv[phy_fit$tip.label, phy_fit$tip.label, drop = FALSE]
       diag(pm_fit)  <- diag(pm_fit) + 1e-6
       # Ensure row order matches VCV matrix
       d_fit         <- d_fit[rownames(pm_fit), , drop = FALSE]

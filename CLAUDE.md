@@ -14,7 +14,7 @@ Scripts must be run in order. Each sources `code/setup.R` as its first line, whi
 
 ```r
 Rscript code/00_data_cleaning.R      # Fill tooth traits, aggregate, build scaffold tree
-Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from April 2026 leaf data
+Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from June 2026 leaf data
 Rscript code/01_nophy_regression.R   # Fit non-phylogenetic models (species + site level)
 Rscript code/02_phy_regression.R     # Fit PGLS, save pip_components.rds
 Rscript code/03_loso_cv.R            # 10-fold site-grouped cross-validation (see naming note below)

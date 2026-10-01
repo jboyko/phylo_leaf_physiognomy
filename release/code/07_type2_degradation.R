@@ -1,15 +1,16 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(ggplot2)
 library(gridExtra)
 
+# ==============================================================================
 # 1. LOAD PIP COMPONENTS (impute variant, backward-compatible top-level keys)
+# ==============================================================================
 
 pip <- readRDS("models/pip_components.rds")
 
-phylomat   <- vcv(pip$tree_pruned)
-diag(phylomat) <- diag(phylomat) + 1e-6
+phylomat <- pip$configs$impute$mat$phylomat
 
 species    <- rownames(pip$V_lam_mat)    # same order for mat and map
 n          <- length(species)
@@ -32,18 +33,38 @@ targets <- list(
   )
 )
 
+# ==============================================================================
 # 2. REUSABLE HELPER — maps a covariance vector to its PIP adjustment
 #    Consumed by the Type 1 (taxonomic imprecision) analysis in 08_.
+# ==============================================================================
 
-# Phylogenetic adjustment for one new placement. v_cross is the lambda-scaled
-# cross-covariance to every training species; V_inv and resid share its order.
+#' Compute the phylogenetic adjustment for a single new placement.
+#'
+#' @param v_cross  Numeric vector: cross-covariance between the new tip and
+#'                 every training species (length n, already lambda-scaled).
+#' @param V_inv    n×n inverse of the lambda-transformed VCV of training species.
+#' @param resid    Named numeric vector of PGLS residuals (same order as V_inv).
+#' @return         Scalar phylogenetic adjustment.
 pip_adj_from_vcov <- function(v_cross, V_inv, resid) {
   as.numeric(t(v_cross) %*% V_inv %*% resid)
 }
 
-# 3. Vectorised leave-one-out adjustment: adj(i, R) = a[R] - lambda * w[i] * E[R,i],
-#    with p = V_inv %*% resid, a = lambda * phylomat %*% p, E = phylomat %*% V_inv,
-#    w = p / diag(V_inv).
+# ==============================================================================
+# 3. PRE-COMPUTE MATRICES FOR VECTORISED LOO FORMULA
+#
+# LOO derivation (full algebra in 07_type2_degradation_derivation.md if needed):
+#
+#   adj(focal=i, placement=R) = a[R] - lambda * w[i] * E[R,i]
+#
+#   where:
+#     p = V_inv %*% resid           (n-vector)
+#     a = lambda * phylomat %*% p   (full adjustment vector, n-vector)
+#     E = phylomat %*% V_inv        (n×n; E[R,i] = covariance-weighted VCV entry)
+#     w = p / diag(V_inv)           (n-vector; leverage weights)
+#
+#   The adj_all matrix (rows=focal, cols=recipient) is then:
+#     adj_all = matrix(a, n, n, byrow=TRUE) - lambda * outer(w, rep(1,n)) * t(E)
+# ==============================================================================
 
 cat("Computing LOO adjustment matrices...\n")
 
@@ -87,8 +108,10 @@ for (tname in names(targets)) {
   # error_b[i, R] = adj_all[i, R] - adj_all[i, i]
   error_b <- sweep(adj_all, 1, adj_correct, "-")
 
-  # Error (a): absolute error vs true climate, which reduces to
-  # adj_all[i, R] - resid[i] because the Xbeta term cancels.
+  # Error (a): absolute prediction error vs true climate
+  # pred(i→R) = X[i,] %*% beta + adj_all[i, R]
+  # true[i]   = X[i,] %*% beta + resid[i]
+  # pred - true = adj_all[i, R] - resid[i]
   error_a <- sweep(adj_all, 1, resid, "-")
 
   results[[tname]] <- list(
@@ -106,12 +129,16 @@ for (tname in names(targets)) {
       " | adj_correct range:", round(range(adj_correct), 3), "\n")
 }
 
+# ==============================================================================
 # 4. COPHENETIC DISTANCE MATRIX
+# ==============================================================================
 
 cat("Computing cophenetic distances...\n")
 coph <- cophenetic(pip$tree_pruned)[species, species]
 
+# ==============================================================================
 # 5. BUILD PAIRWISE RESULTS TABLE
+# ==============================================================================
 
 cat("Assembling pairwise table (n*(n-1) =", n*(n-1), "rows)...\n")
 
@@ -133,7 +160,9 @@ cat("Table rows:", nrow(pair_df), "\n")
 write.csv(pair_df, "tables/type2_degradation_pairwise.csv", row.names = FALSE)
 cat("Saved tables/type2_degradation_pairwise.csv\n")
 
+# ==============================================================================
 # 6. SUMMARY TABLE — binned by cophenetic distance
+# ==============================================================================
 
 pair_df$dist_bin <- cut(pair_df$coph_dist,
                         breaks = unique(quantile(pair_df$coph_dist,
@@ -157,7 +186,9 @@ summary_df <- do.call(rbind, lapply(split(pair_df, pair_df$dist_bin), function(d
 write.csv(summary_df, "tables/type2_degradation_summary.csv", row.names = FALSE)
 cat("Saved tables/type2_degradation_summary.csv\n")
 
+# ==============================================================================
 # 7. FIGURES
+# ==============================================================================
 
 # Pre-compute per-bin quantiles (10th, 50th, 90th) from all 3.4M pairs.
 # log_x = TRUE bins on log10 scale for equal visual spacing at short distances.
@@ -301,7 +332,9 @@ ggsave("plots/type2_error_a_log10.pdf", fig2l, width = 12, height = 5)
 ggsave("plots/type2_error_a_log10.png", fig2l, width = 12, height = 5, dpi = 150)
 cat("Saved plots/type2_error_a_log10.{pdf,png}\n")
 
+# ==============================================================================
 # 8. SUMMARY DIAGNOSTICS
+# ==============================================================================
 
 cat("\n=== SUMMARY ===\n")
 cat("MAT sd(resid):", round(results$mat$sd_resid, 4), "\n")

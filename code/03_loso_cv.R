@@ -9,11 +9,23 @@ library(tibble)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
 source("code/site_prediction.R")
 source("code/dilp_cv.R")
+source("code/pip_uncertainty.R")
 
 # ==============================================================================
 # CONSTANTS
 # ==============================================================================
 
+# Leave-one-site-out is an explicit alternative; preserve the historical run.
+CV_SCHEME <- match.arg(Sys.getenv("PIP_CV_SCHEME", "ten_fold"),
+                       c("ten_fold", "leave_one_site_out"))
+CV_TABLE_DIR <- if (CV_SCHEME == "ten_fold") "tables" else "tables/leave_one_site_out"
+CV_MODEL_DIR <- if (CV_SCHEME == "ten_fold") "models" else "models/leave_one_site_out"
+dir.create(CV_TABLE_DIR, showWarnings = FALSE, recursive = TRUE)
+dir.create(CV_MODEL_DIR, showWarnings = FALSE, recursive = TRUE)
+cv_table_path <- function(name) file.path(CV_TABLE_DIR, name)
+SAVE_FULL_FITS <- CV_SCHEME == "ten_fold"
+# This experiment targets the imputed PIP model whose intervals were audited.
+PGLS_CONFIGS <- if (CV_SCHEME == "ten_fold") c("impute", "cc") else "impute"
 K_FOLDS      <- 10
 NA_THRESHOLD <- 0.40
 SEED         <- 42
@@ -270,7 +282,8 @@ cat("Total sites:", length(all_sites), "\n")
 
 cat("Pre-computing full VCV from tre_pruned.tre...\n")
 full_phy              <- read.tree("data/tre_pruned.tre")
-full_vcv              <- vcv(full_phy)
+full_vcv              <- vcv(read.tree("data/tre_scaffold.tre"))
+full_vcv              <- full_vcv[full_phy$tip.label, full_phy$tip.label, drop = FALSE]
 diag(full_vcv)        <- diag(full_vcv) + 1e-6
 cat("Full VCV:", nrow(full_vcv), "x", ncol(full_vcv), "\n")
 
@@ -282,7 +295,12 @@ set.seed(SEED)
 site_mat_order        <- dat_site_obs[all_sites, "mat"]
 names(site_mat_order) <- all_sites
 mat_rank              <- rank(site_mat_order, ties.method = "first")
-fold_assignment       <- ((mat_rank - 1) %% K_FOLDS) + 1
+if (CV_SCHEME == "leave_one_site_out") {
+  K_FOLDS <- length(all_sites)
+  fold_assignment <- seq_along(all_sites)
+} else {
+  fold_assignment <- ((mat_rank - 1) %% K_FOLDS) + 1
+}
 names(fold_assignment) <- all_sites
 
 cat("Fold sizes:", table(fold_assignment), "\n")
@@ -292,18 +310,28 @@ dilp_cv <- dilp_site_cv(dilp_out$processed_site_data, data.frame(
   obs_mat = dat_site_obs[all_sites, "mat"],
   obs_log_map = dat_site_obs[all_sites, "log_map"]
 ))
-write.csv(dilp_cv$coefficients, "tables/dilp_cv_coefficients.csv", row.names = FALSE)
+# Optional disjoint fold batches for the coverage experiment. Seeds depend only
+# on fold ID, so batching does not change fitted models.
+fold_spec <- Sys.getenv("PIP_CV_FOLDS", "")
+folds_to_run <- if (nzchar(fold_spec)) as.integer(strsplit(fold_spec, ",", fixed = TRUE)[[1]]) else seq_len(K_FOLDS)
+stopifnot(length(folds_to_run) > 0L, !anyNA(folds_to_run),
+          !anyDuplicated(folds_to_run), all(folds_to_run %in% seq_len(K_FOLDS)),
+          !nzchar(fold_spec) || CV_SCHEME == "leave_one_site_out")
+if (!nzchar(fold_spec))
+  write.csv(dilp_cv$coefficients, cv_table_path("dilp_cv_coefficients.csv"), row.names = FALSE)
 
 # ==============================================================================
-# 4. 10-FOLD SITE-GROUPED CV LOOP
+# 4. SITE-GROUPED CV LOOP
 # (files/columns keep the historical "loso" prefix; see CLAUDE.md naming note)
 # ==============================================================================
 
 cv_results      <- list()
 model_coefs     <- list()
 model_fit_stats <- list()
+uncertainty_sites <- list()
+uncertainty_species <- list()
 
-for (fold in seq_len(K_FOLDS)) {
+for (fold in folds_to_run) {
 
   fold_start   <- proc.time()["elapsed"]
 
@@ -431,9 +459,10 @@ for (fold in seq_len(K_FOLDS)) {
   # 4e. Fit PGLS / PIP (impute and cc)
   # --------------------------------------------------------------------------
 
-  cat("  Fitting PGLS/PIP (impute + cc, lambda optimisation per config)...\n")
+  cat("  Fitting PGLS/PIP (", paste(PGLS_CONFIGS, collapse = " + "),
+      ", lambda optimisation per config)...\n", sep = "")
   pgls_res <- list()
-  for (pgls_cfg in c("impute", "cc")) {
+  for (pgls_cfg in PGLS_CONFIGS) {
     pgls_res[[pgls_cfg]] <- list()
     for (target in c("mat", "log_map")) {
 
@@ -508,6 +537,13 @@ for (fold in seq_len(K_FOLDS)) {
     }
   }
 
+  # Cache the fitted uncertainty components once per fold and target.
+  uncertainty_fit <- lapply(pgls_res$impute, function(pc) {
+    if (is.null(pc)) return(NULL)
+    X <- pc$pgls_fit$x[pc$sp_fit, pc$common_vars, drop = FALSE]
+    pip_uncertainty_fit(X, pc$K_train, pc$epsilon[pc$sp_fit])
+  })
+
   # --------------------------------------------------------------------------
   # 4f. Extract model summaries for this fold
   # --------------------------------------------------------------------------
@@ -541,7 +577,7 @@ for (fold in seq_len(K_FOLDS)) {
   }
 
   # PGLS / PIP — same fit, saved once as "PGLS" (PIP adds a prediction-time correction only)
-  for (pgls_cfg in c("impute", "cc")) {
+  for (pgls_cfg in PGLS_CONFIGS) {
     for (target in c("mat", "log_map")) {
       res <- summarise_pgls(pgls_res[[pgls_cfg]][[target]],
                             method = "PGLS", config = "grand_mean",
@@ -663,7 +699,7 @@ for (fold in seq_len(K_FOLDS)) {
     }
 
     # ---- PGLS / PIP predictions ----
-    for (pgls_cfg in c("impute", "cc")) {
+    for (pgls_cfg in PGLS_CONFIGS) {
       for (target in c("mat", "log_map")) {
         col_pgls <- paste0("pgls_sp_site_", pgls_cfg, "_", target)
         col_pip  <- paste0("pip_sp_site_",  pgls_cfg, "_", target)
@@ -720,6 +756,42 @@ for (fold in seq_len(K_FOLDS)) {
           })
         }
         rec[[col_pip]] <- site_prediction(y_pip, target)
+
+        if (pgls_cfg == "impute") {
+          # A new occurrence shares the taxon's phylogenetic component, but
+          # not its lambda-nugget residual with a training occurrence. This
+          # matches C_cross above, including for taxa present in training.
+          ids <- held_sp_in_X
+          fit_unc <- uncertainty_fit[[target]]
+          # The existing point predictor uses PGLS alone for taxa absent from
+          # the calibration scaffold. Model them as independent root-attached
+          # extant tips (C=0), rather than dropping them from the site interval.
+          C <- matrix(0, length(ids), length(pc$sp_fit), dimnames = list(ids, pc$sp_fit))
+          V_new <- diag(max(diag(full_vcv)), length(ids))
+          dimnames(V_new) <- list(ids, ids)
+          C[held_in_vcv, ] <- full_vcv[held_in_vcv, pc$sp_fit, drop = FALSE] * pc$lambda
+          V_new[held_in_vcv, held_in_vcv] <- pip_lambda_covariance(
+            full_vcv[held_in_vcv, held_in_vcv, drop = FALSE], pc$lambda)
+          rownames(X_aligned) <- ids
+          S <- pip_prediction_covariance(fit_unc, X_aligned, C, V_new)
+          ci <- pip_site_interval(y_pip[ids], S, fit_unc$df)
+          observed <- if (target == "mat") obs_mat else obs_log_map
+          represented <- ids %in% pc$sp_fit
+          key <- paste(fold, s, target, sep = "::")
+          uncertainty_sites[[key]] <- data.frame(site = s, fold = fold,
+            target = target, observed = observed, n_species = length(ids),
+            fraction_represented = mean(represented),
+            n_root_fallback = sum(!ids %in% held_in_vcv),
+            fraction_missing_traits = mean(is.na(as.matrix(held_sp_agg[, pc$pred_names]))),
+            ci, covered = observed >= ci$lower & observed <= ci$upper,
+            independence_se = sqrt(sum(diag(S))) / length(ids))
+          species_ci <- pip_interval(y_pip[ids], diag(S), fit_unc$df)
+          uncertainty_species[[key]] <- data.frame(site = s, fold = fold,
+            species = ids, target = target, represented = represented,
+            on_scaffold = ids %in% held_in_vcv,
+            observed_site_climate = observed, species_ci,
+            covers_site_climate = observed >= species_ci$lower & observed <= species_ci$upper)
+        }
       }
     }
 
@@ -743,14 +815,28 @@ for (fold in seq_len(K_FOLDS)) {
     pgls_res      = pgls_res,
     cv_results_so_far = cv_results
   )
-  saveRDS(fold_out, sprintf("models/loso_cv_fold_%02d.rds", fold))
-  cat(sprintf("  Saved models/loso_cv_fold_%02d.rds\n", fold))
+  if (SAVE_FULL_FITS) {
+    saveRDS(fold_out, file.path(CV_MODEL_DIR, sprintf("loso_cv_fold_%02d.rds", fold)))
+  } else {
+    # Compact audit checkpoints, avoiding 92 copies of dense covariance and
+    # imputation objects. Keep explicit training/held-out identities.
+    keys <- names(uncertainty_sites)[vapply(uncertainty_sites,
+      function(x) x$fold[1] == fold, logical(1))]
+    checkpoint <- list(fold = fold, seed = SEED + fold,
+      held_sites = held_sites, train_sites = train_sites,
+      model_parameters = lapply(pgls_res$impute, function(pc)
+        list(beta = pc$beta, lambda = pc$lambda, training_species = pc$sp_fit)),
+      sites = uncertainty_sites[keys], species = uncertainty_species[keys])
+    saveRDS(checkpoint, file.path(CV_MODEL_DIR, sprintf("coverage_fold_%02d.rds", fold)))
+  }
+  cat("  Saved fold", fold, "to", CV_MODEL_DIR, "\n")
 }
 
 # ==============================================================================
 # 5. COMPILE RESULTS INTO DATA FRAME
 # ==============================================================================
 
+if (!nzchar(fold_spec)) {
 cat("\nCompiling results...\n")
 
 all_keys   <- unique(unlist(lapply(cv_results, names)))
@@ -802,7 +888,7 @@ rmse_rows      <- do.call(rbind, Filter(Negate(is.null), rmse_rows))
 rmse_rows      <- rmse_rows[order(rmse_rows$target, rmse_rows$rmse), ]
 rownames(rmse_rows) <- NULL
 
-cat("\n10-fold site-grouped CV RMSE summary:\n")
+cat("\n", CV_SCHEME, "RMSE summary:\n")
 print(rmse_rows, row.names = FALSE)
 
 # ==============================================================================
@@ -814,12 +900,21 @@ model_fit_stats_df <- do.call(rbind, Filter(Negate(is.null), model_fit_stats))
 rownames(model_coefs_df)     <- NULL
 rownames(model_fit_stats_df) <- NULL
 
-write.csv(rmse_rows,          "tables/loso_cv_rmse.csv",             row.names = FALSE)
-write.csv(results_df,         "tables/loso_cv_site_predictions.csv", row.names = FALSE)
-write.csv(model_coefs_df,     "tables/loso_cv_model_coefs.csv",      row.names = FALSE)
-write.csv(model_fit_stats_df, "tables/loso_cv_model_fit.csv",        row.names = FALSE)
+write.csv(rmse_rows,          cv_table_path("loso_cv_rmse.csv"),             row.names = FALSE)
+write.csv(results_df,         cv_table_path("loso_cv_site_predictions.csv"), row.names = FALSE)
+write.csv(model_coefs_df,     cv_table_path("loso_cv_model_coefs.csv"),      row.names = FALSE)
+write.csv(model_fit_stats_df, cv_table_path("loso_cv_model_fit.csv"),        row.names = FALSE)
 
 cat("\nSaved tables/loso_cv_rmse.csv\n")
 cat("Saved tables/loso_cv_site_predictions.csv\n")
 cat("Saved tables/loso_cv_model_coefs.csv\n")
 cat("Saved tables/loso_cv_model_fit.csv\n")
+
+write.csv(do.call(rbind, uncertainty_sites),
+  cv_table_path("pip_cv_site_uncertainty.csv"), row.names = FALSE)
+write.csv(do.call(rbind, uncertainty_species),
+  cv_table_path("pip_cv_species_uncertainty.csv"), row.names = FALSE)
+
+} else {
+  cat("Saved coverage batch checkpoints; combine with code/03e_loso_coverage_comparison.R.\n")
+}
