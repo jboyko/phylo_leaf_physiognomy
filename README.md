@@ -170,7 +170,7 @@ install.packages(c("ape", "phytools", "caret", "glmnet", "ranger",
 
 # Pinned dilp fork — the CRAN release carries different regression
 # constants and will not reproduce these results:
-remotes::install_github("jboyko/dilp", ref = "b29be909355f7edb7809bf718f189b7a53b789d2")
+remotes::install_github("jboyko/dilp", ref = "88b568ab910aa7a6494e3eb407f424c341099d71")
 ```
 
 `caret`'s bagged-tree imputation additionally needs the `ipred` and `e1071` packages installed (not loaded directly).

@@ -29,10 +29,10 @@ A parallel `*b*` / LMA pipeline (`00b`–`03b`, `04b_lma_*`, `05b_lma_*`) mirror
 
 ### `dilp` dependency
 
-The pipeline depends on the unpublished fork `jboyko/dilp`, pinned to commit `b29be909355f7edb7809bf718f189b7a53b789d2` — the CRAN release of `dilp` carries different regression constants and will not reproduce these results. Install it with:
+The pipeline depends on the unpublished fork `jboyko/dilp`, pinned to commit `88b568ab910aa7a6494e3eb407f424c341099d71` — the CRAN release of `dilp` carries different regression constants and will not reproduce these results. Install it with:
 
 ```r
-remotes::install_github("jboyko/dilp", ref = "b29be909355f7edb7809bf718f189b7a53b789d2")
+remotes::install_github("jboyko/dilp", ref = "88b568ab910aa7a6494e3eb407f424c341099d71")
 ```
 
 Every script that needs it calls `pip_require_dilp()` (defined in `code/setup.R`), which errors out with the install command above if `dilp` is not on the library path. This replaces the previous three inconsistent loading styles (`library(dilp)`, `devtools::load_all("~/dilp")`, and a `requireNamespace()`/fallback combo).

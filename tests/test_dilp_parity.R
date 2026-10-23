@@ -13,16 +13,12 @@ names(raw)[names(raw) == "Measurer comments"] <- "measurer_comments"
 raw$site <- normalise_fossil_site(raw$site)
 raw$morphotype <- trimws(raw$morphotype)
 raw$age_ma <- unname(fossil_site_ages()[raw$site])
-# dilp_pgls's species field is a complete operational taxon identifier.
-genus_label <- strip_taxon_quotes(raw$genus)
-species_epithet <- strip_taxon_quotes(raw$species)
-genus_label[is.na(genus_label)] <- ""
-species_epithet[is.na(species_epithet)] <- ""
-raw$species <- ifelse(nzchar(genus_label) & nzchar(species_epithet),
-  trimws(gsub("[[:space:]]+", " ", paste(genus_label, species_epithet))), raw$morphotype)
+# dilp_pgls() now derives the operational taxon label itself: the binomial
+# where genus and epithet are both given, the morphotype otherwise. Raw
+# leaf-level input goes in unmodified, exactly as a user would supply it.
 
 for (scenario in c("formal_only", "include_informal")) {
-  actual <- dilp_pgls(raw, taxonomy_scenario = scenario)
+  actual <- suppressWarnings(dilp_pgls(raw, taxonomy_scenario = scenario))
   expected <- read.csv(paste0("tables/fossil_predictions_", scenario, ".csv"))
   actual_sp <- actual$species_predictions
   key <- function(d) paste(d$site, d$species, sep = "\r")
