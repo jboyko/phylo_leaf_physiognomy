@@ -1,7 +1,7 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 source("code/site_grouping.R")
 
-pip_require_dilp()
+source("code/dilp_preprocessing.R")
 library(tidyverse)
 library(ape)
 library(phytools)
@@ -28,7 +28,7 @@ input <- bind_rows(
 )
 
 input$site <- normalise_calibration_site(input$site)
-input <- dilp(input)  #runs the dilp package
+input <- pip_preprocess_dilp(input)  #runs the dilp package
 input.leaf <- input$processed_leaf_data #includes calculated variables at the leaf level
 input.morphotype <- input$processed_morphotype_data #includes calculated variables at the species-site level
 

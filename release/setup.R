@@ -1,29 +1,21 @@
-# Installs the required CRAN packages and the pinned dilp commit.
-# Run once from the release root: Rscript setup.R
-
-source("code/setup.R")
+# Install the ordinary R dependencies used by the release scripts.
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 cran_packages <- c(
-  "ape", "phytools", "caret", "tidyverse",
-  "ggplot2", "gridExtra", "mvtnorm", "MASS", "remotes", "ipred", "e1071"
+  "ape", "phytools", "caret", "tidyverse", "magrittr", "stringr",
+  "ggplot2", "gridExtra", "mvtnorm", "MASS", "ipred", "e1071", "patchwork"
 )
 
 missing <- cran_packages[!vapply(cran_packages, requireNamespace,
                                  logical(1), quietly = TRUE)]
-if (length(missing)) {
-  message("Installing: ", paste(missing, collapse = ", "))
-  install.packages(missing)
-}
+if (length(missing)) install.packages(missing)
+unavailable <- cran_packages[!vapply(cran_packages, requireNamespace,
+                                     logical(1), quietly = TRUE)]
+if (length(unavailable)) stop("Missing packages: ", paste(unavailable, collapse = ", "))
+if (!capabilities("cairo")) stop("The paper figures require R with Cairo support.")
 
-# dilp is pinned to a specific commit of the fork used for this analysis; the
-# CRAN release carries different regression constants and will not reproduce it.
-remotes::install_github("jboyko/dilp", ref = PIP_DILP_REF,
-                        upgrade = "never", force = FALSE)
-
-stopifnot(requireNamespace("dilp", quietly = TRUE),
-          identical(packageDescription("dilp", fields = "RemoteSha"), PIP_DILP_REF))
-cat("Setup complete. dilp version:",
-    as.character(utils::packageVersion("dilp")), "\n")
-cat("\nSession info:\n")
+versions <- vapply(cran_packages, function(package) {
+  as.character(utils::packageVersion(package))
+}, character(1))
+print(versions)
 print(sessionInfo())

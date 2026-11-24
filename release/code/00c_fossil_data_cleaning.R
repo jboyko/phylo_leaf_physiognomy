@@ -7,8 +7,7 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 source("code/fossil_taxonomy.R")
 
-pip_require_dilp()
-dilp_fn <- get("dilp", envir = asNamespace("dilp"))
+source("code/dilp_preprocessing.R")
 
 mean_or_na <- function(x) {
   value <- mean(x, na.rm = TRUE)
@@ -39,7 +38,7 @@ if (anyDuplicated(taxonomy_key)) {
   stop("Conflicting taxonomy found within at least one site-morphotype.")
 }
 
-processed <- dilp_fn(input)$processed_morphotype_data
+processed <- pip_preprocess_dilp(input)$processed_morphotype_data
 
 # `dilp()` returns NaN for tooth variables when every leaf in a morphotype is
 # untoothed. Match the extant training-data convention explicitly.

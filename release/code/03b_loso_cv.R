@@ -1,7 +1,7 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 source("code/site_grouping.R")
 
-pip_require_dilp()
+source("code/dilp_preprocessing.R")
 library(ape)
 library(dplyr)
 library(caret)
@@ -49,7 +49,7 @@ input <- bind_rows(
 )
 
 input$site <- normalise_calibration_site(input$site)
-dilp_out    <- dilp(input)
+dilp_out    <- pip_preprocess_dilp(input)
 leaf_data   <- dilp_out$processed_leaf_data
 morpho_data <- dilp_out$processed_morphotype_data
 

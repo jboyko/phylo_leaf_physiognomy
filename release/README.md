@@ -10,46 +10,51 @@ Every model is restricted to the twelve traits that can be measured on a fossil
 leaf, so the trait set used for training is identical to the one used for
 prediction.
 
-## Quick start
+## Rebuild the paper
+
+Use the release source and the submission's `Data_S1.zip`. From the repository
+root, for example:
 
 ```bash
-cd release
-Rscript setup.R      # install dependencies (once)
-Rscript run_all.R    # run the whole pipeline
+Rscript --vanilla release/setup.R
+Rscript --vanilla release/reproduce.R submission/submission_1/Data_S1.zip /tmp/phylodilp-rebuild
+Rscript --vanilla release/verify_reproduction.R /tmp/phylodilp-rebuild submission/submission_1
 ```
 
-Scripts are also runnable individually and in any order that respects the
-dependency chain below. All of them must be run **from the release root**; they
-use relative paths and will stop with an error otherwise.
+Choose an output directory that does not yet exist. The runner copies the
+release scripts there and extracts the frozen data and site ages. Every model
+and validation fold is rebuilt in that directory. Generated analysis outputs
+are in `data/`, `models/`, and `tables/`. Paper figures, figure source data,
+and tables are under `submission/submission_1/` within the output directory.
+The runner records the R session in `R-session.txt`.
 
-Expect several hours end to end on a laptop. Measured on an Apple M-series
-machine: `00_data_cleaning.R` ~4 min (grafting species onto the angiosperm
-backbone), `01_nophy_regression.R` ~3 min, `02_phy_regression.R` ~5 min,
-`04_fossil_predictions.R` ~1 min. `03_loso_cv.R` dominates the total, since it
-refits every model from scratch in each of ten folds.
+The comparison command checks identifiers, counts, ages, folds and missing
+values exactly. It checks the numerical values in the nine submitted tables
+and both figure source CSVs to within `1e-7 * max(1, abs(reference))`, including
+the reported fossil climate interval endpoints. It also checks that all four
+figure files were generated.
 
-`models/` grows to a few hundred MB — the fitted `caret` objects and the per-fold
-CV objects are large. Allow ~2 GB of free disk space.
+Allow several minutes or longer depending on the machine. The climate and LMA
+validation runs refit models in each of ten site-grouped folds. Allow about
+2 GB for generated files.
 
-On 19 November 2026, a run from the release inputs completed all 19 scripts
-under R 4.6.2 with Apple Accelerate and the pinned `dilp` build. It reproduced
-the 92-site climate validation and 107-site univariate LMA comparison, and
-wrote predictions for ten fossil climate sites and nine fossil LMA sites.
+For individual analyses, run scripts from the release or rebuild root in
+dependency order. `Rscript --vanilla run_all.R` includes the additional diagnostic
+scripts. The paper runner invokes `run_all.R --paper`.
 
-## Dependencies
+## Dependencies and preprocessing
 
-`setup.R` installs everything. The pipeline needs R ≥ 4.1 (it uses the native
-`|>` pipe and `\(x)` lambda syntax) plus:
+Use R 4.1 or later with Cairo support for the paper figures. `setup.R` installs
+`ape`, `phytools`, `caret`, `tidyverse`, `magrittr`, `stringr`, `ggplot2`,
+`gridExtra`, `mvtnorm`, `MASS`, `ipred`, `e1071`, and `patchwork` from CRAN
+and reports the versions.
 
-| Source | Packages |
-| --- | --- |
-| CRAN | `ape`, `phytools`, `caret` (with `ipred` and `e1071` for `bagImpute`), `tidyverse`, `gridExtra`, `mvtnorm`, `MASS`, `remotes` |
-| GitHub | `jboyko/dilp`, pinned in `code/setup.R` |
-
-`dilp` is pinned deliberately. The CRAN release of the package carries different
-regression constants and will not reproduce these results. `setup.R` installs the
-pinned commit and checks the installed commit SHA. The pinned package provides
-both the raw preprocessing and the occurrence-based `dilp_pgls()` implementation.
+The standalone analysis uses the DiLP column normalization, leaf trait
+calculations, and morphotype and site averaging in
+[`code/dilp_preprocessing.R`](code/dilp_preprocessing.R). These functions are
+included as source, with [provenance](licenses/DiLP.md) and the
+[GPL license](licenses/DiLP-GPL-3.md). The fossil age table and published
+comparator estimates come from Data S1.
 
 ## Pipeline
 
@@ -71,7 +76,7 @@ explicitly.
 | `04_fossil_predictions.R` | fitted models, scaffold, fossil traits, held-out site errors | `tables/fossil_*.csv` |
 | `05_visualizations.R` | `tables/loso_cv_*.csv` | `plots/fig1–4`, `tables/prediction_diagnostics.csv` |
 
-**`00_data_cleaning.R`** processes specimen data through `dilp()`, fills tooth
+**`00_data_cleaning.R`** processes specimens with the bundled DiLP routines, fills tooth
 traits for confirmed untoothed leaves (zero, or 1 for `perim.ratio`) before
 aggregation, and aggregates to species means and to three site-level variants.
 It then builds a family-level angiosperm backbone from the dated WCVP tree — two
@@ -79,8 +84,8 @@ crown tips per family — and grafts the training species onto it. `BUILD_PHYLOG
 <- FALSE` skips the tree-building sections when only the trait data has changed.
 
 **`00c_fossil_data_cleaning.R`** builds one row per fossil species × site,
-combines the Palacio de los Loros PL1 and PL2 collections, applies the site ages in
-`code/fossil_taxonomy.R`, and records which taxonomic ranks were marked as
+combines the Palacio de los Loros PL1 and PL2 collections, applies the ages from
+`data/fossil_site_ages.csv`, and records which taxonomic ranks were marked as
 uncertain by quotation marks or trailing question marks. A warning lists the
 affected occurrences and ranks for trailing question marks.
 For the LM17 morphotype in Williston Basin I
@@ -162,8 +167,8 @@ saved predictions.
 
 ### Not part of the analysis
 
-`06_update_dilp_package.R` regenerates the pre-baked model objects and constants
-that ship inside the `dilp` package. It is a maintenance utility, needs a local
+`06_update_dilp_package.R` stages the fitted climate and univariate LMA
+calibrations for the `dilp` package. It is a maintenance utility, needs a local
 checkout of the `dilp` source, and is excluded from `run_all.R`. Point it at a
 checkout with `DILP_SYSDATA=/path/to/dilp/R/sysdata.rda`.
 
@@ -261,22 +266,25 @@ placement. Defined in `code/fossil_taxonomy.R`.
 | `data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv` | Fossil leaf-level measurements and taxonomy, 10 sites |
 | `data/extra_calibration_data_for_LMA.csv` | Additional petiole-width records used only by the LMA pipeline |
 | `data/best_wcvp.tre_dated` | Dated angiosperm phylogeny; tip labels are `order_family_genus_species` |
+| `data/fossil_site_ages.csv` | Frozen analytical ages in Ma |
+| `data/published_dilp_fossil.csv` | Published comparator estimates for the fossil climate table |
 
-Everything else under `data/` is derived and regenerated by `00_data_cleaning.R`,
-`00b_data_cleaning.R` and `00c_fossil_data_cleaning.R`.
+The standalone run extracts these files from Data S1. The three preprocessing
+scripts regenerate the analysis inputs derived from them.
 
 ## Repository layout
 
 ```
 release/
-  setup.R          install pinned dependencies
-  run_all.R        run the pipeline end to end
-  code/            analysis scripts and shared helpers
-  data/            the four raw input files
-  tests/           assertions on the fossil taxonomy rules
-  models/          fitted model objects (created on run)
-  tables/          CSV results (created on run)
-  plots/           figures (created on run)
+  setup.R                 install R dependencies
+  reproduce.R             rebuild the paper from Data S1
+  verify_reproduction.R   compare rebuilt data with the submission
+  run_all.R               run the analysis stages
+  code/                   analysis scripts and shared helpers
+  paper/                  scripts for the submitted tables and figures
+  licenses/               provenance and license for DiLP preprocessing
+  data/                   inputs for individual script runs
+  tests/                  regression and integration checks
 ```
 
 Run the tests with `Rscript tests/test_fossil_taxonomy.R` from the release root.
@@ -303,11 +311,22 @@ Gardner, E. E., Baker, J., Venditti, C. and Organ, C. (2024)
 Phylogenetically-informed predictions.
 
 
-`test_fossil_placement.R` requires the generated scaffold and PIP model.
-`test_dilp_parity.R` compares the pinned package with the generated climate
-predictions in both taxonomy scenarios.
-`test_lma_fossil_occurrence_placement.R` checks occurrence placement and
-geometric site means using the generated LMA models.
+## Verification checks
+
+After the rebuild, run these tests from its output directory:
+
+```bash
+Rscript --vanilla tests/test_fossil_occurrence_placement.R
+Rscript --vanilla tests/test_lma_fossil_occurrence_placement.R
+Rscript --vanilla tests/test_uncertainty_outputs.R
+```
+
+The climate integration fixture runs the fossil prediction script in a
+temporary project with the generated scaffold, fossil traits, fitted models,
+and held-out site uncertainty. It checks dated occurrence placement and
+site-local prediction. The LMA fixture checks occurrence placement and
+geometric site means. The interval test recomputes shared-site discrepancies
+and verifies climate aggregation against the joint error covariance.
 
 ## Conditional PIP intervals
 

@@ -7,7 +7,7 @@ BUILD_PHYLOGENY <- TRUE
 
 library(ape)
 library(phytools)
-pip_require_dilp()
+source("code/dilp_preprocessing.R")
 library(dplyr)
 
 # ==============================================================================
@@ -17,7 +17,7 @@ library(dplyr)
 raw      <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
                      fileEncoding = "latin1")
 raw$site <- normalise_calibration_site(raw$site)
-dilp_out <- dilp(raw)
+dilp_out <- pip_preprocess_dilp(raw)
 dat_leaf <- dilp_out$processed_leaf_data
 dat      <- dilp_out$processed_morphotype_data  # species×site means
 

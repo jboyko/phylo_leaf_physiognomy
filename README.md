@@ -36,7 +36,8 @@ matching validation of the site mean on the log₁₀ scale.
 
 After both CV runs, `Rscript code/05c_paired_site_comparison.R` writes paired
 RMSE differences and site-bootstrap intervals to `tables/cv_paired_rmse.csv`.
-See [the reproduction package](release/README.md) for setup and the full runner.
+The [standalone reproduction package](release/README.md) rebuilds the paper
+from `Data_S1.zip` with bundled DiLP preprocessing.
 
 ### What each script does
 
@@ -190,9 +191,11 @@ remotes::install_github("jboyko/dilp", ref = "88b568ab910aa7a6494e3eb407f424c341
 
 ## September 2026 climate update
 
-Primary fossil predictions now use fixed extant scaffold anchors and retain all 360 occurrences. Tests cover insertion-order invariance, site ages, and numerical agreement with the updated local dilp source. Run `Rscript tests/test_fossil_placement.R`, `Rscript tests/test_site_prediction.R`, and `DILP_SOURCE=/path/to/updated/dilp Rscript tests/test_dilp_parity.R` after generating models and fossil outputs.
+Primary fossil predictions use fixed extant scaffold anchors and retain all 360 occurrences. Run `Rscript tests/test_fossil_placement.R` and `Rscript tests/test_site_prediction.R` after generating the models and fossil outputs.
 
-The pinned April dilp commit remains the raw `dilp()` preprocessing dependency. It does **not** contain the revised `dilp_pgls()` implementation. The September package changes are local and must be published/pinned separately before distributing a package-based reproduction claim. `code/06_update_dilp_package.R` stages fitted trait imputers, coefficients, covariance weights, lambda, and current validation error scales into `dilp_update/`.
+The analysis pin identifies the `dilp()` preprocessing dependency. Submission parity was verified with DiLP 1.4.0.9004 (`6e34818`). To repeat the check, run `R_LIBS_USER=/path/to/package-library Rscript tests/test_dilp_parity.R` after generating predictions with scripts 04 and 04b. The check reads frozen raw leaves and ages from Data S1. It verifies shared climate preprocessing, occurrence and site estimates, and 95% climate site interval endpoints. It compares `lma_pgls()` estimates with Figure 2 source values and Table 7 and verifies which occurrences and sites lack usable petiole measurements. Absolute numerical tolerances are 1e-7 °C for MAT, 1e-5 cm for MAP, and 1e-7 g/m² for LMA.
+
+`code/06_update_dilp_package.R` stages the climate model and site-interval inputs and the univariate LMA model and placement tree into `dilp_update/`. It uses the held-out site uncertainty output from script 03 and the fitted models from scripts 02 and 02b.
 
 **`03c_dilp_cv.R`** — Refits the published DiLP predictor equations on the existing 10-fold site assignments, then scores PIP, the 12-trait site regression, and DiLP on matching sites for the Dana update. Run after `03_loso_cv.R`; optionally pass a local dilp checkout path. Writes `tables/dana_cv_comparison.csv` and DiLP fold predictions and coefficients. The main CV now also includes refitted DiLP (`dilp_cv_site`), replacing its fixed-coefficient in-sample reference.
 

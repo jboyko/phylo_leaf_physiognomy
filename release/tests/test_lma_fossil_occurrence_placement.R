@@ -5,14 +5,14 @@ required <- c(
   "README.md",
   "code/04b_lma_fossil_predictions.R",
   "data/fossil_traits.csv",
+  "data/tre_lma_pruned.tre",
+  "data/name_table_full.csv",
   "models/lma_pip_components.rds",
   "models/lma_nophy_models.rds"
 )
 
-if (!all(file.exists(file.path(project_root, required)))) {
-  cat("Skipping LMA fossil occurrence integration test: generated models unavailable.\n")
-  quit(status = 0L)
-}
+missing <- required[!file.exists(file.path(project_root, required))]
+if (length(missing)) stop("Missing LMA occurrence fixture inputs: ", paste(missing, collapse = ", "))
 
 test_root <- tempfile("lma-fossil-occurrence-placement-")
 dir.create(test_root)

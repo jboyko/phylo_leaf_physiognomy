@@ -43,30 +43,4 @@ for (.pip_dir in c("models", "tables", "plots")) {
   dir.create(.pip_dir, showWarnings = FALSE, recursive = TRUE)
 }
 
-# ------------------------------------------------------------------------------
-# dilp package loader (issue #22)
-#
-# The pipeline depends on the unpublished fork jboyko/dilp, pinned to a
-# specific commit because the CRAN release carries different regression
-# constants and will not reproduce these results. Scripts that need dilp
-# call pip_require_dilp() instead of library(dilp) or devtools::load_all(),
-# so there is exactly one loading path and one hard error message.
-# ------------------------------------------------------------------------------
-
-PIP_DILP_REF <- "88b568ab910aa7a6494e3eb407f424c341099d71"
-
-pip_require_dilp <- function() {
-  if (!requireNamespace("dilp", quietly = TRUE)) {
-    stop(
-      "The 'dilp' package is required but not installed.\n",
-      "Install the pinned fork used for this analysis:\n\n",
-      '  remotes::install_github("jboyko/dilp", ref = "', PIP_DILP_REF, '")\n\n',
-      "The CRAN release of dilp carries different regression constants and ",
-      "will NOT reproduce these results."
-    )
-  }
-  library(dilp, character.only = FALSE)
-  invisible(TRUE)
-}
-
 rm(.pip_root, .pip_dir, .pip_find_root)

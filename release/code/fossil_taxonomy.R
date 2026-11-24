@@ -82,18 +82,11 @@ taxonomy_for_scenario <- function(data,
 }
 
 fossil_site_ages <- function() {
-  c(
-    "Fox Hills" = 67,
-    "Williston Basin I" = 65.07,
-    "Williston Basin II" = 63.8,
-    "Williston Basin III" = 60.4,
-    "Palacio de los Loros" = 64.08,
-    "Cerrejon" = 59,
-    "Hubble Bubble" = 55.8,
-    "Laguna del Hunco" = 52,
-    "Republic" = 51.18,
-    "Bonanza" = 47.3
-  )
+  ages <- read.csv("data/fossil_site_ages.csv", stringsAsFactors = FALSE)
+  stopifnot(nrow(ages) > 0L, !anyNA(ages$site), all(nzchar(ages$site)),
+            !anyDuplicated(ages$site), all(is.finite(ages$age_ma)),
+            all(ages$age_ma >= 0))
+  setNames(ages$age_ma, ages$site)
 }
 
 normalise_fossil_site <- function(site) {

@@ -3,17 +3,11 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 source("code/dilp_cv.R")
 source("code/site_grouping.R")
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args)) {
-  # Explicit local package checkout for environments without installed dilp.
-  devtools::load_all(args[1], quiet = TRUE)
-} else {
-  pip_require_dilp()
-}
+source("code/dilp_preprocessing.R")
 raw <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
                 fileEncoding = "latin1")
 raw$site <- normalise_calibration_site(raw$site)
-processed <- dilp(raw)$processed_site_data
+processed <- pip_preprocess_dilp(raw)$processed_site_data
 cv <- read.csv("tables/loso_cv_site_predictions.csv", stringsAsFactors = FALSE)
 result <- dilp_site_cv(processed, cv)
 write.csv(result$predictions, "tables/dilp_cv_site_predictions.csv", row.names = FALSE)

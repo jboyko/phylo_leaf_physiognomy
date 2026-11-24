@@ -9,32 +9,22 @@ required <- c(
   "README.md",
   "code/04_fossil_predictions.R",
   "data/fossil_traits.csv",
+  "data/tre_scaffold.tre",
   "models/pip_components.rds",
   "models/site_models.rds",
   "tables/pip_cv_site_uncertainty.csv"
 )
-
-if (!all(file.exists(file.path(project_root, required)))) {
-  cat("Skipping fossil occurrence integration test: generated inputs unavailable.\n")
-  quit(status = 0L)
-}
+missing <- required[!file.exists(file.path(project_root, required))]
+if (length(missing)) stop("Missing occurrence fixture inputs: ", paste(missing, collapse = ", "))
 
 test_root <- tempfile("fossil-occurrence-placement-")
 dir.create(test_root)
 on.exit(unlink(test_root, recursive = TRUE, force = TRUE), add = TRUE)
 
-for (path in c("README.md", "code", "data")) {
-  linked <- file.symlink(file.path(project_root, path), file.path(test_root, path))
-  if (!linked) stop("Could not create test symlink for ", path)
-}
-dir.create(file.path(test_root, "tables"))
-stopifnot(file.symlink(file.path(project_root, "tables", "pip_cv_site_uncertainty.csv"),
-                      file.path(test_root, "tables", "pip_cv_site_uncertainty.csv")))
-dir.create(file.path(test_root, "models"))
-for (path in c("pip_components.rds", "site_models.rds")) {
-  stopifnot(file.symlink(file.path(project_root, "models", path),
-                        file.path(test_root, "models", path)))
-}
+for (folder in c("data", "models", "tables")) dir.create(file.path(test_root, folder))
+fixtures <- c("code", required[!startsWith(required, "code/")])
+stopifnot(all(file.symlink(file.path(project_root, fixtures),
+                           file.path(test_root, fixtures))))
 
 old_wd <- setwd(test_root)
 on.exit(setwd(old_wd), add = TRUE)

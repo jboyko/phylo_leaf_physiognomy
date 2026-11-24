@@ -3,7 +3,7 @@ source("code/site_grouping.R")
 
 library(ape)
 library(caret)
-pip_require_dilp()
+source("code/dilp_preprocessing.R")
 library(dplyr)
 library(tibble)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
@@ -228,7 +228,7 @@ cat("Loading raw data via dilp...\n")
 raw_leaf    <- read.csv("data/Peppe_2011_calibration_data_leaf_level_clean.csv",
                         fileEncoding = "latin1", stringsAsFactors = FALSE)
 raw_leaf$site <- normalise_calibration_site(raw_leaf$site)
-dilp_out    <- dilp(raw_leaf)
+dilp_out    <- pip_preprocess_dilp(raw_leaf)
 dat_leaf    <- dilp_out$processed_leaf_data
 dat_morpho  <- dilp_out$processed_morphotype_data
 
