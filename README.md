@@ -18,6 +18,7 @@ Rscript code/00c_fossil_data_cleaning.R # Build fossil traits from the June 2026
 Rscript code/01_nophy_regression.R   # Fit LM via caret (species + site level)
 Rscript code/02_phy_regression.R     # Fit PGLS (MAT + MAP), save PIP components
 Rscript code/03_loso_cv.R            # 10-fold site-grouped CV across all 12 model configs, RMSE tables, model summaries
+Rscript code/03c_dilp_cv.R           # Common-site climate comparison with refitted DiLP
 Rscript code/03d_uncertainty_diagnostics.R # Coverage of conditional PIP intervals
 Rscript code/04_fossil_predictions.R # Predict MAT/MAP and conditional intervals under both taxonomy scenarios
 Rscript code/05_visualizations.R     # Figures from the 10-fold site-grouped CV outputs
@@ -28,15 +29,20 @@ Rscript code/09_phylo_adj_field.R    # Map the phylogenetic adjustment field ove
 ```
 
 A parallel `*b*` / LMA pipeline (`00b`–`03b`, `04b_lma_*`, `05b_lma_*`) mirrors
-`00`–`05` to predict leaf mass per area instead of climate. It loads the `dilp`
-package via `devtools::load_all("~/dilp")` and uses its own calibration inputs
-(`data/extra_calibration_data_for_LMA.csv`, `data/lma_species.csv`).
+`00`–`05` to predict leaf mass per area instead of climate. It uses the pinned
+`dilp` package and adds `data/extra_calibration_data_for_LMA.csv` to the
+calibration data. Fossil site LMA is the geometric mean of occurrence estimates,
+matching validation of the site mean on the log₁₀ scale.
+
+After both CV runs, `Rscript code/05c_paired_site_comparison.R` writes paired
+RMSE differences and site-bootstrap intervals to `tables/cv_paired_rmse.csv`.
+See [the reproduction package](release/README.md) for setup and the full runner.
 
 ### What each script does
 
 **`00_data_cleaning.R`** — Loads the raw Royer CSV and the WCVP-dated phylogeny. Fills tooth trait NAs with 0 (or 1 for `perim.ratio`) for confirmed untoothed leaves (`margin.score == 1`) before aggregating. Outputs three site-level datasets for model comparison: `dat_site.csv` and `dat_site_sp_zero.csv` (both morphotypes → site, zero-filled, identical in the current implementation), and `dat_site_untoothed_excl.csv` (morphotypes → site, untoothed excluded from tooth-trait averages). Builds a family-level angiosperm backbone (2 crown tips per family across all 515 WCVP families), then grafts training species onto that small scaffold. A `BUILD_PHYLOGENY` flag (default `TRUE`) skips the slow tree-building sections when set to `FALSE` and only data changes. Outputs `data/data_species.csv`, the three site CSVs, `data/tre_pruned.tre`, `data/tre_scaffold.tre`, and `data/name_table_full.csv`.
 
-**`00c_fossil_data_cleaning.R`** — Converts Dana Royer's June 2026 leaf-level fossil dataset into one row per species × site using `dilp`. It combines Palacio de los Loros PL1 and PL2 into a single site before averaging traits, applies the documented site ages, preserves the reported taxonomy and quote flags, and writes formal-only placement columns to `data/fossil_traits.csv`. Quoted genus/family/order names are informal: the primary analysis censors the quoted rank, while the sensitivity analysis can use its unquoted value provisionally.
+**`00c_fossil_data_cleaning.R`** — Converts Dana Royer's June 2026 leaf-level fossil dataset into one row per species × site using `dilp`. It combines Palacio de los Loros PL1 and PL2 before averaging traits, applies the documented site ages, and writes reported taxonomy and formal-only placement columns to `data/fossil_traits.csv`. Quotation marks and trailing question marks flag uncertain genus, family, or order assignments. The script warns with the affected occurrences and ranks when it finds trailing question marks.
 
 **`01_nophy_regression.R`** — Fits **LM only** (via `caret`) at **species level** for MAT and log(MAP); earlier ElasticNet and Random Forest comparisons are not part of the current analysis. **Restricted to the 12 fossil-measurable traits** identified by Dana Royer (pers. comm.) — see trait list below. Also fits LM at site level across six combinations (3 datasets × bagImpute / complete-case). All site configs stored under `site_models$configs`; backward-compatible top-level keys preserved. Saves `models/nophy_models.rds` and `models/site_models.rds`.
 
@@ -44,7 +50,7 @@ package via `devtools::load_all("~/dilp")` and uses its own calibration inputs
 
 Species-level training rows are currently operational labels: named species are averaged across sites, while records lacking a species epithet are pooled under genus-level keys. Those genus-only pools can combine several sites or morphotypes and await taxonomic review. They are retained for the current analysis; changing this convention requires rebuilding the training data and rerunning full CV.
 
-**`04_fossil_predictions.R`** — Grafts each fossil occurrence onto `tre_scaffold.tre` at its reported site age and runs two prediction approaches under two taxonomy scenarios. The canonical `tables/fossil_site_comparison.csv` and `tables/fossil_predictions.csv` use formal taxonomy only: quoted genus, family, and order ranks are excluded from placement evidence. Scenario-specific predictions, placement logs, and `tables/fossil_taxonomy_sensitivity.csv` compare that primary interpretation with provisional inclusion of quoted taxonomy:
+**`04_fossil_predictions.R`** — Grafts each fossil occurrence onto `tre_scaffold.tre` at its reported site age and runs two prediction approaches under two taxonomy scenarios. The canonical `tables/fossil_site_comparison.csv` and `tables/fossil_predictions.csv` use formal taxonomy only. The primary analysis skips ranks marked as uncertain. The sensitivity analysis tries those ranks provisionally after removing the markers. Scenario-specific predictions, placement logs, and `tables/fossil_taxonomy_sensitivity.csv` record the comparison.
 
 | Method | Training data | Fossil input | Aggregation |
 | ------ | ------------ | ------------ | ----------- |

@@ -79,7 +79,7 @@ for (i in seq_len(nrow(problem_rows))) {
 # block must be invariant to insertion order.
 formal_rows <- taxonomy_for_scenario(fossils, "formal_only")
 order_rows <- formal_rows
-stopifnot(nrow(order_rows) == 361L)
+stopifnot(nrow(order_rows) == 360L)
 fossil_labels <- order_rows$fossil_name
 extant_labels <- rownames(readRDS("models/pip_components.rds")$dat_imputed_mat)
 place_all_occurrences <- function(rows) {

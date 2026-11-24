@@ -10,11 +10,12 @@ required <- c(
   "code/04_fossil_predictions.R",
   "data/fossil_traits.csv",
   "models/pip_components.rds",
-  "models/site_models.rds"
+  "models/site_models.rds",
+  "tables/pip_cv_site_uncertainty.csv"
 )
 
 if (!all(file.exists(file.path(project_root, required)))) {
-  cat("Skipping fossil occurrence integration test: generated models unavailable.\n")
+  cat("Skipping fossil occurrence integration test: generated inputs unavailable.\n")
   quit(status = 0L)
 }
 
@@ -27,6 +28,8 @@ for (path in c("README.md", "code", "data")) {
   if (!linked) stop("Could not create test symlink for ", path)
 }
 dir.create(file.path(test_root, "tables"))
+stopifnot(file.symlink(file.path(project_root, "tables", "pip_cv_site_uncertainty.csv"),
+                      file.path(test_root, "tables", "pip_cv_site_uncertainty.csv")))
 dir.create(file.path(test_root, "models"))
 for (path in c("pip_components.rds", "site_models.rds")) {
   stopifnot(file.symlink(file.path(project_root, "models", path),

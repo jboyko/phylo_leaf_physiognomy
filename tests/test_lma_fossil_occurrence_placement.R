@@ -49,6 +49,12 @@ predictions <- read.csv(
   "tables/lma_fossil_species_predictions.csv",
   stringsAsFactors = FALSE
 )
+sites <- read.csv("tables/lma_fossil_site_predictions.csv", stringsAsFactors = FALSE)
+geometric_means <- aggregate(
+  cbind(lma_lm, lma_pip) ~ site + age_ma, predictions,
+  FUN = function(x) round(10^mean(log10(x)), 1)
+)
+sites <- sites[match(geometric_means$site, sites$site), ]
 
 stopifnot(
   nrow(placement) == nrow(eligible),
@@ -56,6 +62,10 @@ stopifnot(
   setequal(placement$fossil_name, eligible$fossil_name),
   nrow(predictions) == nrow(eligible),
   setequal(predictions$fossil_name, eligible$fossil_name),
+  identical(sites$site, geometric_means$site),
+  identical(sites$age_ma, geometric_means$age_ma),
+  identical(sites$lma_lm, geometric_means$lma_lm),
+  identical(sites$lma_pip, geometric_means$lma_pip),
   all(placement$age_ma == eligible$age_ma[match(
     placement$fossil_name, eligible$fossil_name
   )])

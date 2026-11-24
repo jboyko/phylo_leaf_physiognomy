@@ -1,4 +1,4 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(phytools)
@@ -54,11 +54,9 @@ cat("Fossil species-site rows:", nrow(foss_site), "\n")
 # 3. LM PREDICTIONS
 # ==============================================================================
 
-lm_preds <- predict(nophy$model,
-                    newdata = foss_site[, "log10_pw2a_ratio", drop = FALSE])
-foss_site$lma_lm <- 10^as.numeric(lm_preds)
-
-site_lm <- aggregate(lma_lm ~ site + age_ma, data = foss_site, FUN = mean)
+foss_site$log10_lma_lm <- as.numeric(predict(
+  nophy$model, newdata = foss_site[, "log10_pw2a_ratio", drop = FALSE]
+))
 
 cat("LM predictions done\n")
 
@@ -134,18 +132,13 @@ names(phylo_adj) <- idx_fossil
 
 # Build the design matrix from species-within-site means; the adjustment is
 # indexed by the occurrence-specific fossil tip.
-placed_site <- foss_site
-
-X_fossil <- cbind(1, placed_site$log10_pw2a_ratio)
+X_fossil <- cbind(1, foss_site$log10_pw2a_ratio)
 colnames(X_fossil) <- colnames(pip$X)
-rownames(X_fossil) <- placed_site$fossil_name
+rownames(X_fossil) <- foss_site$fossil_name
 
 # GLS prediction + occurrence-specific phylogenetic correction
-yhat_log10 <- as.numeric(X_fossil %*% pip$beta) +
-  phylo_adj[placed_site$fossil_name]
-placed_site$lma_pip <- 10^yhat_log10
-
-site_pip <- aggregate(lma_pip ~ site + age_ma, data = placed_site, FUN = mean)
+foss_site$log10_lma_pip <- as.numeric(X_fossil %*% pip$beta) +
+  phylo_adj[foss_site$fossil_name]
 
 cat("PIP predictions done\n")
 
@@ -153,19 +146,26 @@ cat("PIP predictions done\n")
 # 7. COMPILE AND WRITE OUTPUT
 # ==============================================================================
 
-site_out <- Reduce(function(x, y) merge(x, y, by = c("site", "age_ma")),
-                   list(site_lm, site_pip))
+# The held-out LMA target is the mean log10(LMA) across species at the site.
+site_log10 <- aggregate(
+  cbind(log10_lma_lm, log10_lma_pip) ~ site + age_ma,
+  data = foss_site, FUN = mean, na.action = na.fail
+)
+site_out <- data.frame(
+  site = site_log10$site,
+  age_ma = site_log10$age_ma,
+  lma_lm = round(10^site_log10$log10_lma_lm, 1),
+  lma_pip = round(10^site_log10$log10_lma_pip, 1)
+)
 site_out <- site_out[order(-site_out$age_ma), ]
-site_out[, c("lma_lm", "lma_pip")] <- round(site_out[, c("lma_lm", "lma_pip")], 1)
 
-cat("\nSite-level LMA predictions (g/m²):\n")
+cat("\nSite-level geometric mean LMA (g/m²):\n")
 print(site_out, row.names = FALSE)
 
 # Per-species-site predictions
-sp_out <- placed_site[, c("fossil_name", "species", "site", "age_ma", "lma_pip")]
-sp_out <- merge(sp_out,
-                foss_site[, c("fossil_name", "species", "site", "lma_lm")],
-                by = c("fossil_name", "species", "site"))
+sp_out <- foss_site[, c("fossil_name", "species", "site", "age_ma")]
+sp_out$lma_pip <- 10^foss_site$log10_lma_pip
+sp_out$lma_lm <- 10^foss_site$log10_lma_lm
 sp_out <- sp_out[order(-sp_out$age_ma, sp_out$site, sp_out$species), ]
 
 write.csv(site_out, "tables/lma_fossil_site_predictions.csv", row.names = FALSE)

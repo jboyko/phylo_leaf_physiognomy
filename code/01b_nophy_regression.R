@@ -1,6 +1,7 @@
 source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(caret)
+set.seed(42L)
 
 # ==============================================================================
 # 1. LOAD DATA

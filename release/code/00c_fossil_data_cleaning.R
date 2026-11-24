@@ -68,7 +68,7 @@ reported$genus_informal <- is_informal_taxon(reported$genus_reported)
 reported$family_informal <- is_informal_taxon(reported$family_reported)
 reported$order_informal <- is_informal_taxon(reported$order_reported)
 
-genus_label <- strip_taxon_quotes(taxonomy$genus)
+genus_label <- strip_taxon_markers(taxonomy$genus)
 species_epithet <- strip_taxon_quotes(taxonomy$species)
 genus_label[is.na(genus_label)] <- ""
 species_epithet[is.na(species_epithet)] <- ""
@@ -184,6 +184,21 @@ if (anyDuplicated(paste(species_site$site, species_site$species))) {
 }
 if (nrow(species_site) != 360L) {
   stop("Expected 360 species-site rows; produced ", nrow(species_site), ".")
+}
+
+question_mark_rows <- unlist(lapply(taxonomy_ranks, function(rank) {
+  reported_names <- species_site[[paste0(rank, "_reported")]]
+  marked <- has_trailing_taxon_question(reported_names)
+  sprintf("  %s at %s (%s = %s)", species_site$species[marked],
+          species_site$site[marked], rank, reported_names[marked])
+}), use.names = FALSE)
+if (length(question_mark_rows)) {
+  warning(
+    "Trailing '?' marks uncertain fossil taxonomy. These ranks are skipped in ",
+    "formal_only and tried provisionally in include_informal.\n",
+    paste(question_mark_rows, collapse = "\n"),
+    call. = FALSE
+  )
 }
 
 write.csv(species_site, "data/fossil_traits.csv", row.names = FALSE)

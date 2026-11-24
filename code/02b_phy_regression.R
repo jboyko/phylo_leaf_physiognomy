@@ -3,6 +3,7 @@ source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 library(ape)
 library(caret)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
+set.seed(42L)
 
 # ==============================================================================
 # 1. LOAD DATA AND PHYLOGENY

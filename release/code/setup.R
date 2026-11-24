@@ -53,7 +53,7 @@ for (.pip_dir in c("models", "tables", "plots")) {
 # so there is exactly one loading path and one hard error message.
 # ------------------------------------------------------------------------------
 
-PIP_DILP_REF <- "b29be909355f7edb7809bf718f189b7a53b789d2"
+PIP_DILP_REF <- "88b568ab910aa7a6494e3eb407f424c341099d71"
 
 pip_require_dilp <- function() {
   if (!requireNamespace("dilp", quietly = TRUE)) {

@@ -10,25 +10,19 @@ source("code/fossil_taxonomy.R")
 
 raw <- read_mixed_utf8_csv("data/Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv")
 names(raw)[names(raw) == "Measurer comments"] <- "measurer_comments"
-raw$site <- trimws(raw$site)
+raw$site <- normalise_fossil_site(raw$site)
 raw$morphotype <- trimws(raw$morphotype)
-is_palacio <- raw$site == "Palacio de los Loros"
-raw$site[is_palacio] <- palacio_analysis_site(raw$morphotype[is_palacio])
 raw$age_ma <- unname(fossil_site_ages()[raw$site])
-# dilp_pgls's species field is a complete operational taxon identifier.
-genus_label <- strip_taxon_quotes(raw$genus)
-species_epithet <- strip_taxon_quotes(raw$species)
-genus_label[is.na(genus_label)] <- ""
-species_epithet[is.na(species_epithet)] <- ""
-raw$species <- ifelse(nzchar(genus_label) & nzchar(species_epithet),
-  trimws(gsub("[[:space:]]+", " ", paste(genus_label, species_epithet))), raw$morphotype)
+# dilp_pgls() now derives the operational taxon label itself: the binomial
+# where genus and epithet are both given, the morphotype otherwise. Raw
+# leaf-level input goes in unmodified, exactly as a user would supply it.
 
 for (scenario in c("formal_only", "include_informal")) {
-  actual <- dilp_pgls(raw, taxonomy_scenario = scenario)
+  actual <- suppressWarnings(dilp_pgls(raw, taxonomy_scenario = scenario))
   expected <- read.csv(paste0("tables/fossil_predictions_", scenario, ".csv"))
   actual_sp <- actual$species_predictions
   key <- function(d) paste(d$site, d$species, sep = "\r")
-  stopifnot(nrow(actual_sp) == 361L, nrow(expected) == 361L,
+  stopifnot(nrow(actual_sp) == 360L, nrow(expected) == 360L,
             all(actual$placement_log$placed),
             !anyDuplicated(key(actual_sp)), setequal(key(actual_sp), key(expected)))
   actual_sp <- actual_sp[match(key(expected), key(actual_sp)), ]
@@ -41,5 +35,5 @@ for (scenario in c("formal_only", "include_informal")) {
   observed_sites <- actual$results[match(expected_sites$site, actual$results$site), ]
   stopifnot(isTRUE(all.equal(observed_sites$MAT.PIP, expected_sites$mat_pip_site, tolerance = 1e-8)),
             isTRUE(all.equal(observed_sites$MAP.PIP, exp(expected_sites$map_pip_site), tolerance = 1e-8)))
-  cat("Raw fossil pipeline/package parity passed:", scenario, "361 occurrences\n")
+  cat("Raw fossil pipeline/package parity passed:", scenario, "360 occurrences\n")
 }

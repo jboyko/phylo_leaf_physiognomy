@@ -1,10 +1,11 @@
-# Installs every package the pipeline needs, at the versions it was developed against.
+# Installs the required CRAN packages and the pinned dilp commit.
 # Run once from the release root: Rscript setup.R
 
+source("code/setup.R")
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 cran_packages <- c(
-  "ape", "phytools", "caper", "geiger", "caret", "dplyr", "tidyr", "tibble",
+  "ape", "phytools", "caret", "tidyverse",
   "ggplot2", "gridExtra", "mvtnorm", "MASS", "remotes", "ipred", "e1071"
 )
 
@@ -17,12 +18,11 @@ if (length(missing)) {
 
 # dilp is pinned to a specific commit of the fork used for this analysis; the
 # CRAN release carries different regression constants and will not reproduce it.
-DILP_COMMIT <- "b29be909355f7edb7809bf718f189b7a53b789d2"
-
-remotes::install_github("jboyko/dilp", ref = DILP_COMMIT,
+remotes::install_github("jboyko/dilp", ref = PIP_DILP_REF,
                         upgrade = "never", force = FALSE)
 
-stopifnot(requireNamespace("dilp", quietly = TRUE))
+stopifnot(requireNamespace("dilp", quietly = TRUE),
+          identical(packageDescription("dilp", fields = "RemoteSha"), PIP_DILP_REF))
 cat("Setup complete. dilp version:",
     as.character(utils::packageVersion("dilp")), "\n")
 cat("\nSession info:\n")

@@ -1,10 +1,13 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(ape)
 library(caret)
 source("code/Phylogenetically-Informed_Predictions_Source.R")
+set.seed(42L)
 
+# ==============================================================================
 # 1. LOAD DATA AND PHYLOGENY
+# ==============================================================================
 
 phy        <- read.tree("data/tre_lma_pruned.tre")
 dat        <- read.csv("data/lma_species.csv")
@@ -17,7 +20,9 @@ diag(phylomat) <- diag(phylomat) + 1e-6
 
 target <- "log10_lma"
 
+# ==============================================================================
 # 2. UNIVARIATE PGLS: log10_lma ~ log10_pw2a_ratio  (complete-case only)
+# ==============================================================================
 
 # bagImpute is meaningless with a single predictor, so complete-case is the
 # only sensible option here.
@@ -61,7 +66,9 @@ pip_univariate <- list(
   tree       = phy_uni
 )
 
+# ==============================================================================
 # 3. MULTIVARIATE PGLS: log10_lma ~ all 12 fossil-measurable traits
+# ==============================================================================
 
 # Use the same predictor set as the multivariate LM in 01b for direct comparison.
 pred_names <- lma_nophy$multivariate$pred_names
@@ -143,7 +150,9 @@ for (cfg_name in names(pgls_configs)) {
   )
 }
 
+# ==============================================================================
 # 4. SAVE PIP COMPONENTS
+# ==============================================================================
 
 lma_pip <- list(
   univariate   = pip_univariate,

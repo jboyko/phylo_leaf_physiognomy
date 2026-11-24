@@ -8,6 +8,7 @@ scripts <- c(
   "code/01_nophy_regression.R",
   "code/02_phy_regression.R",
   "code/03_loso_cv.R",
+  "code/03c_dilp_cv.R",
   "code/03d_uncertainty_diagnostics.R",
   "code/04_fossil_predictions.R",
   "code/05_visualizations.R",
@@ -21,7 +22,8 @@ scripts <- c(
   "code/02b_phy_regression.R",
   "code/03b_loso_cv.R",
   "code/04b_lma_fossil_predictions.R",
-  "code/05b_lma_visualizations.R"
+  "code/05b_lma_visualizations.R",
+  "code/05c_paired_site_comparison.R"
 )
 
 for (s in scripts) {

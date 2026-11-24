@@ -31,6 +31,11 @@ refits every model from scratch in each of ten folds.
 `models/` grows to a few hundred MB — the fitted `caret` objects and the per-fold
 CV objects are large. Allow ~2 GB of free disk space.
 
+On 19 November 2026, a run from the release inputs completed all 19 scripts
+under R 4.6.2 with Apple Accelerate and the pinned `dilp` build. It reproduced
+the 92-site climate validation and 107-site univariate LMA comparison, and
+wrote predictions for ten fossil climate sites and nine fossil LMA sites.
+
 ## Dependencies
 
 `setup.R` installs everything. The pipeline needs R ≥ 4.1 (it uses the native
@@ -38,16 +43,19 @@ CV objects are large. Allow ~2 GB of free disk space.
 
 | Source | Packages |
 | --- | --- |
-| CRAN | `ape`, `phytools`, `caper`, `geiger`, `caret` (with `ipred`, `e1071` for `bagImpute`), `dplyr`, `tidyr`, `tibble`, `ggplot2`, `gridExtra`, `mvtnorm`, `MASS` |
-| GitHub | `jboyko/dilp`, pinned to commit `b29be90` |
+| CRAN | `ape`, `phytools`, `caret` (with `ipred` and `e1071` for `bagImpute`), `tidyverse`, `gridExtra`, `mvtnorm`, `MASS`, `remotes` |
+| GitHub | `jboyko/dilp`, pinned in `code/setup.R` |
 
 `dilp` is pinned deliberately. The CRAN release of the package carries different
 regression constants and will not reproduce these results. `setup.R` installs the
-pinned commit; the bootstrap checks that the package is installed. The pinned commit supplies raw preprocessing but does not contain the September revised `dilp_pgls()` function. Package-based climate predictions require the separately updated local source until that revision is published.
+pinned commit and checks the installed commit SHA. The pinned package provides
+both the raw preprocessing and the occurrence-based `dilp_pgls()` implementation.
 
 ## Pipeline
 
-Climate scripts source `code/setup.R`, which locates the release root and creates output directories. Fitting and CV scripts set their random seeds explicitly. Legacy LMA and diagnostic scripts retain `code/_setup.R`.
+Analysis scripts source `code/setup.R`, which locates the release root and
+creates output directories. Fitting and CV scripts set their random seeds
+explicitly.
 
 ### Climate pipeline
 
@@ -56,9 +64,11 @@ Climate scripts source `code/setup.R`, which locates the release root and create
 | `00_data_cleaning.R` | `Peppe_2011_calibration_data_leaf_level_clean.csv`, `best_wcvp.tre_dated` | `data/data_species.csv`, `data/dat_site*.csv`, `data/tre_scaffold.tre`, `data/tre_pruned.tre`, `data/name_table_full.csv` |
 | `00c_fossil_data_cleaning.R` | `Peppe_2011_fossil_data_June_2026_leaf_level_clean.csv` | `data/fossil_traits.csv` |
 | `01_nophy_regression.R` | `data/data_species.csv`, `data/dat_site*.csv` | `models/nophy_models.rds`, `models/site_models.rds` |
-| `02_phy_regression.R` | `data/tre_pruned.tre`, `models/nophy_models.rds` | `models/pip_components.rds` |
-| `03_loso_cv.R` | raw calibration data, `data/tre_pruned.tre` | `tables/loso_cv_*.csv`, `models/loso_cv_fold_XX.rds` |
-| `04_fossil_predictions.R` | `models/*.rds`, `data/tre_scaffold.tre`, `data/fossil_traits.csv` | `tables/fossil_*.csv` |
+| `02_phy_regression.R` | `data/tre_scaffold.tre`, `models/nophy_models.rds` | `models/pip_components.rds` |
+| `03_loso_cv.R` | raw calibration data, `data/tre_pruned.tre`, `data/tre_scaffold.tre` | `tables/loso_cv_*.csv`, `tables/pip_cv_*_uncertainty.csv`, `models/loso_cv_fold_XX.rds` |
+| `03c_dilp_cv.R` | raw calibration data, `tables/loso_cv_site_predictions.csv` | `tables/dana_cv_comparison.csv`, DiLP predictions and coefficients |
+| `03d_uncertainty_diagnostics.R` | `tables/pip_cv_*_uncertainty.csv` | conditional and site-discrepancy interval coverage |
+| `04_fossil_predictions.R` | fitted models, scaffold, fossil traits, held-out site errors | `tables/fossil_*.csv` |
 | `05_visualizations.R` | `tables/loso_cv_*.csv` | `plots/fig1–4`, `tables/prediction_diagnostics.csv` |
 
 **`00_data_cleaning.R`** processes specimen data through `dilp()`, fills tooth
@@ -70,8 +80,15 @@ crown tips per family — and grafts the training species onto it. `BUILD_PHYLOG
 
 **`00c_fossil_data_cleaning.R`** builds one row per fossil species × site,
 combines the Palacio de los Loros PL1 and PL2 collections, applies the site ages in
-`code/fossil_taxonomy.R`, and records which taxonomic ranks were reported
-informally (in quotation marks).
+`code/fossil_taxonomy.R`, and records which taxonomic ranks were marked as
+uncertain by quotation marks or trailing question marks. A warning lists the
+affected occurrences and ranks for trailing question marks.
+For the LM17 morphotype in Williston Basin I
+and III, the June input uses the corrected spelling Oxalidales and marks both
+Oxalidales and Oxalidaceae as tentative. Higher-rank affinity is uncertain, so
+they enter only the provisional sensitivity analysis. See
+[Peppe and Hickey (2014), appendix](https://doi.org/10.3374/014.055.0209) and
+[West (2019), systematic paleobotany](https://harvest.usask.ca/bitstream/10388/12305/1/WEST-DISSERTATION-2019.pdf).
 
 **`01_nophy_regression.R`** fits ordinary least squares at species level and at
 site level, in bagged-imputation and complete-case variants. Only LM is fitted —
@@ -108,9 +125,9 @@ and predicts under two methods:
 | LM site | extant site means | fossil site-mean traits, one prediction per site |
 | PIP | extant species (PGLS) | site-specific species means, averaged to site |
 
-It runs two taxonomy scenarios. `formal_only` is primary and censors any rank
-reported in quotation marks from placement evidence; `include_informal` is a sensitivity analysis that
-takes the quoted name at face value. The unsuffixed output files
+It runs two taxonomy scenarios. The primary `formal_only` scenario skips ranks
+marked as uncertain. The `include_informal` sensitivity analysis removes the
+markers and tries those names provisionally. The unsuffixed output files
 (`tables/fossil_predictions.csv`, `tables/fossil_site_comparison.csv`) always
 hold the formal-only results.
 
@@ -133,7 +150,15 @@ MRCA with a minimal edge instead.
 width² / area and the same fossil-measurable trait set. They add
 `extra_calibration_data_for_LMA.csv` to the calibration data and build their own
 pruned tree. `00b` reuses `data/tre_scaffold.tre`, so `00_data_cleaning.R` must
-be run first.
+be run first. The fossil univariate models use PW²/A. Site estimates average
+occurrence predictions on the log₁₀ scale and back-transform once, giving
+geometric means in g/m².
+
+`05c_paired_site_comparison.R` runs after both climate and LMA validation.
+It writes `tables/cv_paired_rmse.csv` with PIP minus baseline RMSE on matched
+held-out sites and 95% percentile intervals from 10,000 paired site bootstrap
+draws. These intervals summarize variation across sites conditional on the
+saved predictions.
 
 ### Not part of the analysis
 
@@ -150,7 +175,9 @@ leave-one-site-out. The 92 calibration sites are ranked by site MAT and assigned
 10 folds, so roughly 9 sites are held out per fold. Whole sites are always held
 out together and every model is refitted from scratch on the remaining sites, so
 no specimen from a held-out site informs its own prediction. Figure titles
-produced by `05_visualizations.R` say "10-fold site-grouped CV". Species-level MAP predictions are averaged in cm and then logged for evaluation, matching the fossil site estimator.
+produced by `05_visualizations.R` say "10-fold site-grouped CV". Species-level
+MAP predictions are averaged on the log scale for evaluation and back-transformed
+once for fossil site estimates in cm.
 
 ## Model configurations
 
@@ -276,7 +303,11 @@ Gardner, E. E., Baker, J., Venditti, C. and Organ, C. (2024)
 Phylogenetically-informed predictions.
 
 
-The climate code and shared placement/aggregation tests are synchronized with the September 2026 analysis. `test_fossil_placement.R` requires the generated scaffold and PIP model; `test_dilp_parity.R` additionally requires the updated local dilp source or its installed build. LMA has not received the occurrence-placement changes in this climate update.
+`test_fossil_placement.R` requires the generated scaffold and PIP model.
+`test_dilp_parity.R` compares the pinned package with the generated climate
+predictions in both taxonomy scenarios.
+`test_lma_fossil_occurrence_placement.R` checks occurrence placement and
+geometric site means using the generated LMA models.
 
 ## Conditional PIP intervals
 

@@ -1,9 +1,10 @@
 source("code/fossil_taxonomy.R")
 
 fixture <- data.frame(
-  genus = c('"Vitis"', "Acer", ""),
-  family = c("Platanaceae", '"Salicaceae"', ""),
-  order = c("Proteales", "Malpighiales", '"Ericales"'),
+  genus = c('"Vitis"', "Acer", "", '"Archeampelos?"'),
+  family = c("Platanaceae", '"Salicaceae"', "", "Cercidiphyllaceae?"),
+  order = c("Proteales", "Malpighiales", '"Ericales"', "Saxifragales"),
+  family_informal = c(FALSE, TRUE, NA, FALSE),
   stringsAsFactors = FALSE
 )
 
@@ -14,26 +15,31 @@ stopifnot(
   !is_known_taxon("unknown"),
   !is_known_taxon(""),
   is_known_taxon("Acer"),
-  identical(formal$genus, c("unknown", "Acer", "unknown")),
-  identical(formal$family, c("Platanaceae", "unknown", "unknown")),
-  identical(formal$order, c("Proteales", "Malpighiales", "unknown")),
-  identical(provisional$genus, c("Vitis", "Acer", "unknown")),
-  identical(provisional$family, c("Platanaceae", "Salicaceae", "unknown")),
-  identical(provisional$order, c("Proteales", "Malpighiales", "Ericales"))
+  identical(formal$genus, c("unknown", "Acer", "unknown", "unknown")),
+  identical(formal$family, c("Platanaceae", "unknown", "unknown", "unknown")),
+  identical(formal$order, c("Proteales", "Malpighiales", "unknown", "Saxifragales")),
+  identical(provisional$genus, c("Vitis", "Acer", "unknown", "Archeampelos")),
+  identical(provisional$family, c("Platanaceae", "Salicaceae", "unknown", "Cercidiphyllaceae")),
+  identical(provisional$order, c("Proteales", "Malpighiales", "Ericales", "Saxifragales")),
+  formal$family_informal[4],
+  formal$family_reported[4] == "Cercidiphyllaceae?",
+  !has_trailing_taxon_question("A?cer"),
+  has_trailing_taxon_question("Cercidiphyllaceae ? ")
 )
 
 ages <- fossil_site_ages()
 stopifnot(
-  identical(unname(ages["Fox Hills"]), 66.5),
-  identical(unname(ages["Williston Basin I"]), 64.75),
-  identical(unname(ages["Williston Basin II"]), 63.5),
-  identical(unname(ages["Williston Basin III"]), 59.75)
+  identical(unname(ages["Fox Hills"]), 67),
+  identical(unname(ages["Williston Basin I"]), 65.07),
+  identical(unname(ages["Williston Basin II"]), 63.8),
+  identical(unname(ages["Williston Basin III"]), 60.4)
 )
 
 stopifnot(
-  identical(palacio_analysis_site("SA049"), "Palacio de los Loros PL1"),
-  identical(palacio_analysis_site("SA050"), "Palacio de los Loros PL2"),
-  identical(palacio_analysis_site("SA060"), "Palacio de los Loros PL1")
+  identical(normalise_fossil_site(c("Palacio de los Loros PL1",
+    " Palacio de los Loros PL2 ", "Palacio de los Loros", "Republic")),
+    c(rep("Palacio de los Loros", 3), "Republic")),
+  identical(unname(ages["Palacio de los Loros"]), 64.08)
 )
 
 raw <- read_mixed_utf8_csv(
@@ -46,15 +52,38 @@ stopifnot(
 
 fossil_traits <- read.csv("data/fossil_traits.csv", stringsAsFactors = FALSE)
 stopifnot(
-  nrow(fossil_traits) == 361L,
+  nrow(fossil_traits) == 360L,
+  length(unique(fossil_traits$site)) == 10L,
+  sum(fossil_traits$site == "Palacio de los Loros") == 29L,
+  !any(grepl("Palacio de los Loros PL[12]", fossil_traits$site)),
   !anyDuplicated(paste(fossil_traits$site, fossil_traits$species)),
-  sum(fossil_traits$genus_informal) == 20L,
-  sum(fossil_traits$family_informal) == 12L,
-  sum(fossil_traits$order_informal) == 6L,
+  sum(fossil_traits$genus_informal) == 26L,
+  sum(fossil_traits$family_informal) == 17L,
+  sum(fossil_traits$order_informal) == 8L,
   all(fossil_traits$genus[fossil_traits$genus_informal] == "unknown"),
   all(fossil_traits$family[fossil_traits$family_informal] == "unknown"),
   all(fossil_traits$order[fossil_traits$order_informal] == "unknown"),
   all(fossil_traits$age_ma == unname(ages[fossil_traits$site]))
+)
+
+questioned <- fossil_traits[has_trailing_taxon_question(fossil_traits$family_reported), ]
+questioned_provisional <- taxonomy_for_scenario(questioned, "include_informal")
+stopifnot(
+  nrow(questioned) == 3L,
+  all(questioned$family_reported == "Cercidiphyllaceae?"),
+  all(questioned$family == "unknown"),
+  all(questioned$order == "Saxifragales"),
+  all(questioned_provisional$family == "Cercidiphyllaceae")
+)
+
+lm17 <- fossil_traits[fossil_traits$species == "Averhoites affinus", ]
+lm17_provisional <- taxonomy_for_scenario(lm17, "include_informal")
+stopifnot(
+  setequal(lm17$site, c("Williston Basin I", "Williston Basin III")),
+  all(lm17$family == "unknown"),
+  all(lm17$order == "unknown"),
+  all(lm17_provisional$family == "Oxalidaceae"),
+  all(lm17_provisional$order == "Oxalidales")
 )
 
 cat("Fossil taxonomy regression checks passed.\n")

@@ -1,0 +1,729 @@
+"site","fold","target","model","observed","predicted"
+"Buena Vista",1,"MAT (°C)","PIP (imputed)",22.53333282,20.4031309865064
+"Buena Vista",1,"MAT (°C)","Refitted DiLP",22.53333282,21.2468798397807
+"Buena Vista",1,"MAT (°C)","Site LM (imputed)",22.53333282,22.5994723753343
+"Buena Vista",1,"MAT (°C)","Species LM (imputed)",22.53333282,18.8338576091269
+"Ducke",1,"MAT (°C)","PIP (imputed)",26.97500038,23.3905645187904
+"Ducke",1,"MAT (°C)","Refitted DiLP",26.97500038,25.7166502654484
+"Ducke",1,"MAT (°C)","Site LM (imputed)",26.97500038,26.2375497480824
+"Ducke",1,"MAT (°C)","Species LM (imputed)",26.97500038,22.2042821377732
+"Hood River, OR",1,"MAT (°C)","PIP (imputed)",10.95833302,11.0153297674494
+"Hood River, OR",1,"MAT (°C)","Refitted DiLP",10.95833302,10.2670071183894
+"Hood River, OR",1,"MAT (°C)","Site LM (imputed)",10.95833302,7.89125199187256
+"Hood River, OR",1,"MAT (°C)","Species LM (imputed)",10.95833302,14.2453542022001
+"Ketchikan",1,"MAT (°C)","PIP (imputed)",7.320833206,10.044697008234
+"Ketchikan",1,"MAT (°C)","Refitted DiLP",7.320833206,8.82882529655259
+"Ketchikan",1,"MAT (°C)","Site LM (imputed)",7.320833206,14.9005746451933
+"Ketchikan",1,"MAT (°C)","Species LM (imputed)",7.320833206,13.5442784136392
+"Margaret River",1,"MAT (°C)","PIP (imputed)",16.52499962,15.7573962017202
+"Margaret River",1,"MAT (°C)","Refitted DiLP",16.52499962,14.4584404491734
+"Margaret River",1,"MAT (°C)","Site LM (imputed)",16.52499962,13.4507185780176
+"Margaret River",1,"MAT (°C)","Species LM (imputed)",16.52499962,16.4622278403645
+"Nagakubo",1,"MAT (°C)","PIP (imputed)",19.19166565,17.5694086116186
+"Nagakubo",1,"MAT (°C)","Refitted DiLP",19.19166565,13.919093569688
+"Nagakubo",1,"MAT (°C)","Site LM (imputed)",19.19166565,15.1593509396959
+"Nagakubo",1,"MAT (°C)","Species LM (imputed)",19.19166565,18.6695666398044
+"Portal, AZ",1,"MAT (°C)","PIP (imputed)",12.29166698,13.8326486527811
+"Portal, AZ",1,"MAT (°C)","Refitted DiLP",12.29166698,15.5798943120178
+"Portal, AZ",1,"MAT (°C)","Site LM (imputed)",12.29166698,13.6749362969339
+"Portal, AZ",1,"MAT (°C)","Species LM (imputed)",12.29166698,15.6686822918022
+"Three Lynx, OR",1,"MAT (°C)","PIP (imputed)",9.520833015,11.3557433434504
+"Three Lynx, OR",1,"MAT (°C)","Refitted DiLP",9.520833015,8.70700739646992
+"Three Lynx, OR",1,"MAT (°C)","Site LM (imputed)",9.520833015,11.0780804975267
+"Three Lynx, OR",1,"MAT (°C)","Species LM (imputed)",9.520833015,14.209475273108
+"Wolf Creek, CO",1,"MAT (°C)","PIP (imputed)",0.974999964,10.040621466491
+"Wolf Creek, CO",1,"MAT (°C)","Refitted DiLP",0.974999964,6.55855746514912
+"Wolf Creek, CO",1,"MAT (°C)","Site LM (imputed)",0.974999964,16.8049178696516
+"Wolf Creek, CO",1,"MAT (°C)","Species LM (imputed)",0.974999964,11.8389151716611
+"Yasuni-ridgetop and upper slope",1,"MAT (°C)","PIP (imputed)",25.09583282,23.6486837331184
+"Yasuni-ridgetop and upper slope",1,"MAT (°C)","Refitted DiLP",25.09583282,22.2810929760612
+"Yasuni-ridgetop and upper slope",1,"MAT (°C)","Site LM (imputed)",25.09583282,25.1991508927458
+"Yasuni-ridgetop and upper slope",1,"MAT (°C)","Species LM (imputed)",25.09583282,22.5232051833315
+"Borinquen",2,"MAT (°C)","PIP (imputed)",25.17499924,21.9194038402618
+"Borinquen",2,"MAT (°C)","Refitted DiLP",25.17499924,23.4550542132703
+"Borinquen",2,"MAT (°C)","Site LM (imputed)",25.17499924,22.904697635003
+"Borinquen",2,"MAT (°C)","Species LM (imputed)",25.17499924,18.4690946169412
+"Cabo San Lucas, Baja Mexico",2,"MAT (°C)","PIP (imputed)",23.32083321,19.7554616302962
+"Cabo San Lucas, Baja Mexico",2,"MAT (°C)","Refitted DiLP",23.32083321,21.6926114912792
+"Cabo San Lucas, Baja Mexico",2,"MAT (°C)","Site LM (imputed)",23.32083321,18.8916090131466
+"Cabo San Lucas, Baja Mexico",2,"MAT (°C)","Species LM (imputed)",23.32083321,16.6952318904632
+"Clearwater, WA",2,"MAT (°C)","PIP (imputed)",9.699999809,10.607704237
+"Clearwater, WA",2,"MAT (°C)","Refitted DiLP",9.699999809,6.4480580574078
+"Clearwater, WA",2,"MAT (°C)","Site LM (imputed)",9.699999809,7.34523545359696
+"Clearwater, WA",2,"MAT (°C)","Species LM (imputed)",9.699999809,13.9491586991425
+"Foxton Estuary",2,"MAT (°C)","PIP (imputed)",12.95416641,15.1376773169175
+"Foxton Estuary",2,"MAT (°C)","Refitted DiLP",12.95416641,20.7242051765781
+"Foxton Estuary",2,"MAT (°C)","Site LM (imputed)",12.95416641,15.58958772034
+"Foxton Estuary",2,"MAT (°C)","Species LM (imputed)",12.95416641,14.2054897044437
+"Hobart Wet Sclerophyll, Tasmania",2,"MAT (°C)","PIP (imputed)",11.29166698,17.8394216114395
+"Hobart Wet Sclerophyll, Tasmania",2,"MAT (°C)","Refitted DiLP",11.29166698,14.753017331195
+"Hobart Wet Sclerophyll, Tasmania",2,"MAT (°C)","Site LM (imputed)",11.29166698,16.6796353729739
+"Hobart Wet Sclerophyll, Tasmania",2,"MAT (°C)","Species LM (imputed)",11.29166698,17.5476083695414
+"Huyck Preserve, NY",2,"MAT (°C)","PIP (imputed)",7.616666794,11.1867668566186
+"Huyck Preserve, NY",2,"MAT (°C)","Refitted DiLP",7.616666794,6.02439975930769
+"Huyck Preserve, NY",2,"MAT (°C)","Site LM (imputed)",7.616666794,5.66210306099952
+"Huyck Preserve, NY",2,"MAT (°C)","Species LM (imputed)",7.616666794,14.4460805429264
+"Kepong",2,"MAT (°C)","PIP (imputed)",27.47916603,23.0625239862367
+"Kepong",2,"MAT (°C)","Refitted DiLP",27.47916603,28.0830932793326
+"Kepong",2,"MAT (°C)","Site LM (imputed)",27.47916603,27.8686375631205
+"Kepong",2,"MAT (°C)","Species LM (imputed)",27.47916603,23.3628021768166
+"Parque El Rey",2,"MAT (°C)","PIP (imputed)",19.32500076,18.8278582504939
+"Parque El Rey",2,"MAT (°C)","Refitted DiLP",19.32500076,16.7885195099549
+"Parque El Rey",2,"MAT (°C)","Site LM (imputed)",19.32500076,18.5854175068919
+"Parque El Rey",2,"MAT (°C)","Species LM (imputed)",19.32500076,17.612948772223
+"Talkeetna",2,"MAT (°C)","PIP (imputed)",1.116666555,10.0374888245325
+"Talkeetna",2,"MAT (°C)","Refitted DiLP",1.116666555,10.8219444131422
+"Talkeetna",2,"MAT (°C)","Site LM (imputed)",1.116666555,10.2322096991891
+"Talkeetna",2,"MAT (°C)","Species LM (imputed)",1.116666555,13.4566819570368
+"West Head",2,"MAT (°C)","PIP (imputed)",16.70416641,20.2808316665716
+"West Head",2,"MAT (°C)","Refitted DiLP",16.70416641,20.7515060476117
+"West Head",2,"MAT (°C)","Site LM (imputed)",16.70416641,20.8849538602119
+"West Head",2,"MAT (°C)","Species LM (imputed)",16.70416641,20.8324458988307
+"Bandon, OR",3,"MAT (°C)","PIP (imputed)",11.47916698,11.7447806750983
+"Bandon, OR",3,"MAT (°C)","Refitted DiLP",11.47916698,10.2273846522899
+"Bandon, OR",3,"MAT (°C)","Site LM (imputed)",11.47916698,8.92251929733771
+"Bandon, OR",3,"MAT (°C)","Species LM (imputed)",11.47916698,15.7196760953595
+"Chamela",3,"MAT (°C)","PIP (imputed)",25.19583321,20.9446441441438
+"Chamela",3,"MAT (°C)","Refitted DiLP",25.19583321,24.9099565662561
+"Chamela",3,"MAT (°C)","Site LM (imputed)",25.19583321,23.4459351041621
+"Chamela",3,"MAT (°C)","Species LM (imputed)",25.19583321,18.4452534131791
+"Half Moon Bay, CA",3,"MAT (°C)","PIP (imputed)",12.96666718,12.1365479237707
+"Half Moon Bay, CA",3,"MAT (°C)","Refitted DiLP",12.96666718,10.1340232071549
+"Half Moon Bay, CA",3,"MAT (°C)","Site LM (imputed)",12.96666718,8.70684124090494
+"Half Moon Bay, CA",3,"MAT (°C)","Species LM (imputed)",12.96666718,15.3724482048839
+"Murrua Track",3,"MAT (°C)","PIP (imputed)",16.92083359,17.3946855579373
+"Murrua Track",3,"MAT (°C)","Refitted DiLP",16.92083359,19.0574110572448
+"Murrua Track",3,"MAT (°C)","Site LM (imputed)",16.92083359,16.7777854945798
+"Murrua Track",3,"MAT (°C)","Species LM (imputed)",16.92083359,18.6570644077258
+"Okataina",3,"MAT (°C)","PIP (imputed)",9.920833588,17.8516324778088
+"Okataina",3,"MAT (°C)","Refitted DiLP",9.920833588,13.8209836412275
+"Okataina",3,"MAT (°C)","Site LM (imputed)",9.920833588,15.229281844252
+"Okataina",3,"MAT (°C)","Species LM (imputed)",9.920833588,18.3447128661383
+"Panther Wildlife Refuge, FL",3,"MAT (°C)","PIP (imputed)",23.32500076,20.255476643834
+"Panther Wildlife Refuge, FL",3,"MAT (°C)","Refitted DiLP",23.32500076,19.8450453632945
+"Panther Wildlife Refuge, FL",3,"MAT (°C)","Site LM (imputed)",23.32500076,21.8506679263406
+"Panther Wildlife Refuge, FL",3,"MAT (°C)","Species LM (imputed)",23.32500076,20.1376702899828
+"Red Fleet, UT",3,"MAT (°C)","PIP (imputed)",7.645833015,12.0821325946932
+"Red Fleet, UT",3,"MAT (°C)","Refitted DiLP",7.645833015,11.5166186719086
+"Red Fleet, UT",3,"MAT (°C)","Site LM (imputed)",7.645833015,9.90966159605184
+"Red Fleet, UT",3,"MAT (°C)","Species LM (imputed)",7.645833015,13.9397371870216
+"Robinson Falls",3,"MAT (°C)","PIP (imputed)",19.39999962,21.6320734985211
+"Robinson Falls",3,"MAT (°C)","Refitted DiLP",19.39999962,20.9813672082471
+"Robinson Falls",3,"MAT (°C)","Site LM (imputed)",19.39999962,23.8178429955184
+"Robinson Falls",3,"MAT (°C)","Species LM (imputed)",19.39999962,22.6921420370126
+"Suganuma, Honshu",3,"MAT (°C)","PIP (imputed)",3.191666603,9.69634036073217
+"Suganuma, Honshu",3,"MAT (°C)","Refitted DiLP",3.191666603,0.974705226798274
+"Suganuma, Honshu",3,"MAT (°C)","Site LM (imputed)",3.191666603,0.517572201638937
+"Suganuma, Honshu",3,"MAT (°C)","Species LM (imputed)",3.191666603,12.0648210255152
+"Alamos",4,"MAT (°C)","PIP (imputed)",23.49166679,19.9355821465878
+"Alamos",4,"MAT (°C)","Refitted DiLP",23.49166679,19.3175126116732
+"Alamos",4,"MAT (°C)","Site LM (imputed)",23.49166679,18.8780392054693
+"Alamos",4,"MAT (°C)","Species LM (imputed)",23.49166679,16.8644380558435
+"Cape Blanco, OR",4,"MAT (°C)","PIP (imputed)",11.48750019,10.8487559694502
+"Cape Blanco, OR",4,"MAT (°C)","Refitted DiLP",11.48750019,11.1055875700801
+"Cape Blanco, OR",4,"MAT (°C)","Site LM (imputed)",11.48750019,11.1443216440714
+"Cape Blanco, OR",4,"MAT (°C)","Species LM (imputed)",11.48750019,14.9295435744925
+"Cockaponset Forest, CT",4,"MAT (°C)","PIP (imputed)",9.9375,12.4062972970393
+"Cockaponset Forest, CT",4,"MAT (°C)","Refitted DiLP",9.9375,13.4566354566251
+"Cockaponset Forest, CT",4,"MAT (°C)","Site LM (imputed)",9.9375,14.702785012258
+"Cockaponset Forest, CT",4,"MAT (°C)","Species LM (imputed)",9.9375,17.2179501981578
+"Homer",4,"MAT (°C)","PIP (imputed)",3.283333302,8.00236135743754
+"Homer",4,"MAT (°C)","Refitted DiLP",3.283333302,10.1491641715597
+"Homer",4,"MAT (°C)","Site LM (imputed)",3.283333302,10.4336590987135
+"Homer",4,"MAT (°C)","Species LM (imputed)",3.283333302,12.6389822656002
+"Kaimanawa Mountains",4,"MAT (°C)","PIP (imputed)",7.729166508,12.0892772854845
+"Kaimanawa Mountains",4,"MAT (°C)","Refitted DiLP",7.729166508,17.8607676385166
+"Kaimanawa Mountains",4,"MAT (°C)","Site LM (imputed)",7.729166508,14.4596834033185
+"Kaimanawa Mountains",4,"MAT (°C)","Species LM (imputed)",7.729166508,13.8409708942025
+"Monte Guilarte",4,"MAT (°C)","PIP (imputed)",20.09166718,20.9877149088008
+"Monte Guilarte",4,"MAT (°C)","Refitted DiLP",20.09166718,21.663749760707
+"Monte Guilarte",4,"MAT (°C)","Site LM (imputed)",20.09166718,22.5278099087134
+"Monte Guilarte",4,"MAT (°C)","Species LM (imputed)",20.09166718,20.5140441505528
+"Pasoh",4,"MAT (°C)","PIP (imputed)",25.29166603,23.1787018571569
+"Pasoh",4,"MAT (°C)","Refitted DiLP",25.29166603,22.4881773236104
+"Pasoh",4,"MAT (°C)","Site LM (imputed)",25.29166603,24.9124127375443
+"Pasoh",4,"MAT (°C)","Species LM (imputed)",25.29166603,22.4364041498174
+"Pee Dee, SC",4,"MAT (°C)","PIP (imputed)",17.19583321,15.5135160492625
+"Pee Dee, SC",4,"MAT (°C)","Refitted DiLP",17.19583321,15.3512473237702
+"Pee Dee, SC",4,"MAT (°C)","Site LM (imputed)",17.19583321,14.9599791502394
+"Pee Dee, SC",4,"MAT (°C)","Species LM (imputed)",17.19583321,18.2530804032035
+"SERC, MD",4,"MAT (°C)","PIP (imputed)",13.20833302,14.2965615051245
+"SERC, MD",4,"MAT (°C)","Refitted DiLP",13.20833302,13.0941513337588
+"SERC, MD",4,"MAT (°C)","Site LM (imputed)",13.20833302,12.1457386474664
+"SERC, MD",4,"MAT (°C)","Species LM (imputed)",13.20833302,17.3300904430599
+"CT-Swamp",5,"MAT (°C)","PIP (imputed)",9.9375,11.6423089343772
+"CT-Swamp",5,"MAT (°C)","Refitted DiLP",9.9375,12.6799306948625
+"CT-Swamp",5,"MAT (°C)","Site LM (imputed)",9.9375,12.5809403205018
+"CT-Swamp",5,"MAT (°C)","Species LM (imputed)",9.9375,14.5573224212087
+"Dilcher's Woods lowland, FL",5,"MAT (°C)","PIP (imputed)",20.36249924,15.6909254318578
+"Dilcher's Woods lowland, FL",5,"MAT (°C)","Refitted DiLP",20.36249924,11.9770883346144
+"Dilcher's Woods lowland, FL",5,"MAT (°C)","Site LM (imputed)",20.36249924,12.7334311593281
+"Dilcher's Woods lowland, FL",5,"MAT (°C)","Species LM (imputed)",20.36249924,17.7353627469709
+"Frodsham, Tasmania",5,"MAT (°C)","PIP (imputed)",8.095833778,12.4932120121213
+"Frodsham, Tasmania",5,"MAT (°C)","Refitted DiLP",8.095833778,17.6375994332882
+"Frodsham, Tasmania",5,"MAT (°C)","Site LM (imputed)",8.095833778,10.9814101676829
+"Frodsham, Tasmania",5,"MAT (°C)","Species LM (imputed)",8.095833778,14.249647416163
+"Gorgona",5,"MAT (°C)","PIP (imputed)",25.29999924,22.820654710638
+"Gorgona",5,"MAT (°C)","Refitted DiLP",25.29999924,26.2255394020838
+"Gorgona",5,"MAT (°C)","Site LM (imputed)",25.29999924,26.6859979832435
+"Gorgona",5,"MAT (°C)","Species LM (imputed)",25.29999924,21.2776727909414
+"Government Camp, OR",5,"MAT (°C)","PIP (imputed)",4.995833397,9.97034735116872
+"Government Camp, OR",5,"MAT (°C)","Refitted DiLP",4.995833397,9.27733117297809
+"Government Camp, OR",5,"MAT (°C)","Site LM (imputed)",4.995833397,12.0685430727525
+"Government Camp, OR",5,"MAT (°C)","Species LM (imputed)",4.995833397,14.1210464652119
+"Noah Creek",5,"MAT (°C)","PIP (imputed)",23.6875,21.5012249958438
+"Noah Creek",5,"MAT (°C)","Refitted DiLP",23.6875,21.9181832960958
+"Noah Creek",5,"MAT (°C)","Site LM (imputed)",23.6875,25.1270986634346
+"Noah Creek",5,"MAT (°C)","Species LM (imputed)",23.6875,22.285387703572
+"Round Hill mallee",5,"MAT (°C)","PIP (imputed)",17.35833359,18.0203479297046
+"Round Hill mallee",5,"MAT (°C)","Refitted DiLP",17.35833359,16.7245379001483
+"Round Hill mallee",5,"MAT (°C)","Site LM (imputed)",17.35833359,11.2590655870872
+"Round Hill mallee",5,"MAT (°C)","Species LM (imputed)",17.35833359,16.4311307148237
+"Yakusugi (1080m)",5,"MAT (°C)","PIP (imputed)",13.67083359,13.5927856110149
+"Yakusugi (1080m)",5,"MAT (°C)","Refitted DiLP",13.67083359,6.72907130862042
+"Yakusugi (1080m)",5,"MAT (°C)","Site LM (imputed)",13.67083359,10.2715741123722
+"Yakusugi (1080m)",5,"MAT (°C)","Species LM (imputed)",13.67083359,15.1081734230421
+"York, PA",5,"MAT (°C)","PIP (imputed)",11.59166718,12.2732414731252
+"York, PA",5,"MAT (°C)","Refitted DiLP",11.59166718,9.31530806583989
+"York, PA",5,"MAT (°C)","Site LM (imputed)",11.59166718,9.39735729549818
+"York, PA",5,"MAT (°C)","Species LM (imputed)",11.59166718,15.6655625400655
+"CT-River",6,"MAT (°C)","PIP (imputed)",10.14999962,15.2224201329885
+"CT-River",6,"MAT (°C)","Refitted DiLP",10.14999962,11.9328154599659
+"CT-River",6,"MAT (°C)","Site LM (imputed)",10.14999962,13.7393881534208
+"CT-River",6,"MAT (°C)","Species LM (imputed)",10.14999962,17.7748879560756
+"Dilcher's Woods upland, FL",6,"MAT (°C)","PIP (imputed)",20.36249924,16.3447572869179
+"Dilcher's Woods upland, FL",6,"MAT (°C)","Refitted DiLP",20.36249924,16.0133531304319
+"Dilcher's Woods upland, FL",6,"MAT (°C)","Site LM (imputed)",20.36249924,16.7536906118743
+"Dilcher's Woods upland, FL",6,"MAT (°C)","Species LM (imputed)",20.36249924,18.1623833061364
+"Empalme",6,"MAT (°C)","PIP (imputed)",23.82916641,17.7469772244998
+"Empalme",6,"MAT (°C)","Refitted DiLP",23.82916641,16.9201192421194
+"Empalme",6,"MAT (°C)","Site LM (imputed)",23.82916641,16.740279312322
+"Empalme",6,"MAT (°C)","Species LM (imputed)",23.82916641,15.1241478105148
+"Hubbard Brook, NH",6,"MAT (°C)","PIP (imputed)",5.379166603,11.8938571244643
+"Hubbard Brook, NH",6,"MAT (°C)","Refitted DiLP",5.379166603,9.19111103189611
+"Hubbard Brook, NH",6,"MAT (°C)","Site LM (imputed)",5.379166603,9.45396694413975
+"Hubbard Brook, NH",6,"MAT (°C)","Species LM (imputed)",5.379166603,15.4452181281293
+"Los Queles",6,"MAT (°C)","PIP (imputed)",11.6208334,14.6098971854334
+"Los Queles",6,"MAT (°C)","Refitted DiLP",11.6208334,15.9520915373644
+"Los Queles",6,"MAT (°C)","Site LM (imputed)",11.6208334,14.657310181086
+"Los Queles",6,"MAT (°C)","Species LM (imputed)",11.6208334,16.8540003379656
+"Mt. Read, Tasmania",6,"MAT (°C)","PIP (imputed)",8.220832825,11.9755757075635
+"Mt. Read, Tasmania",6,"MAT (°C)","Refitted DiLP",8.220832825,13.2674789200181
+"Mt. Read, Tasmania",6,"MAT (°C)","Site LM (imputed)",8.220832825,9.90297364748714
+"Mt. Read, Tasmania",6,"MAT (°C)","Species LM (imputed)",8.220832825,14.2565928180051
+"Round Hill woodland",6,"MAT (°C)","PIP (imputed)",17.41666603,18.2377042330158
+"Round Hill woodland",6,"MAT (°C)","Refitted DiLP",17.41666603,14.1572108792274
+"Round Hill woodland",6,"MAT (°C)","Site LM (imputed)",17.41666603,12.8595417580878
+"Round Hill woodland",6,"MAT (°C)","Species LM (imputed)",17.41666603,17.5226801256775
+"Santa Cruz, CA",6,"MAT (°C)","PIP (imputed)",14.19999981,12.146602992919
+"Santa Cruz, CA",6,"MAT (°C)","Refitted DiLP",14.19999981,12.9085397057129
+"Santa Cruz, CA",6,"MAT (°C)","Site LM (imputed)",14.19999981,11.3350682430001
+"Santa Cruz, CA",6,"MAT (°C)","Species LM (imputed)",14.19999981,15.8734618522043
+"Seqaqa",6,"MAT (°C)","PIP (imputed)",25.32083321,23.2601942151399
+"Seqaqa",6,"MAT (°C)","Refitted DiLP",25.32083321,22.4748475140661
+"Seqaqa",6,"MAT (°C)","Site LM (imputed)",25.32083321,25.3083158565868
+"Seqaqa",6,"MAT (°C)","Species LM (imputed)",25.32083321,22.6945749828252
+"CT-Upland",7,"MAT (°C)","PIP (imputed)",10.14999962,12.4071678954451
+"CT-Upland",7,"MAT (°C)","Refitted DiLP",10.14999962,11.213223779725
+"CT-Upland",7,"MAT (°C)","Site LM (imputed)",10.14999962,13.6161298922377
+"CT-Upland",7,"MAT (°C)","Species LM (imputed)",10.14999962,15.6380520085524
+"Guajataca",7,"MAT (°C)","PIP (imputed)",23.96249962,22.1448969853277
+"Guajataca",7,"MAT (°C)","Refitted DiLP",23.96249962,20.2893390307899
+"Guajataca",7,"MAT (°C)","Site LM (imputed)",23.96249962,21.2123460204501
+"Guajataca",7,"MAT (°C)","Species LM (imputed)",23.96249962,20.5194426005712
+"Guanica",7,"MAT (°C)","PIP (imputed)",25.97916603,22.2410046869551
+"Guanica",7,"MAT (°C)","Refitted DiLP",25.97916603,22.4063968071121
+"Guanica",7,"MAT (°C)","Site LM (imputed)",25.97916603,22.5937916208115
+"Guanica",7,"MAT (°C)","Species LM (imputed)",25.97916603,18.4779735986817
+"North Bend, OR",7,"MAT (°C)","PIP (imputed)",11.6208334,12.0564060066323
+"North Bend, OR",7,"MAT (°C)","Refitted DiLP",11.6208334,10.3956672850748
+"North Bend, OR",7,"MAT (°C)","Site LM (imputed)",11.6208334,7.64663009352705
+"North Bend, OR",7,"MAT (°C)","Species LM (imputed)",11.6208334,15.1293656437669
+"Parkdale, OR",7,"MAT (°C)","PIP (imputed)",8.912500381,10.9557145295401
+"Parkdale, OR",7,"MAT (°C)","Refitted DiLP",8.912500381,10.3480242443511
+"Parkdale, OR",7,"MAT (°C)","Site LM (imputed)",8.912500381,6.55946413675411
+"Parkdale, OR",7,"MAT (°C)","Species LM (imputed)",8.912500381,13.38655142034
+"Placerville, CA",7,"MAT (°C)","PIP (imputed)",14.34999943,13.1315961700803
+"Placerville, CA",7,"MAT (°C)","Refitted DiLP",14.34999943,12.8300678783634
+"Placerville, CA",7,"MAT (°C)","Site LM (imputed)",14.34999943,10.3722422934293
+"Placerville, CA",7,"MAT (°C)","Species LM (imputed)",14.34999943,15.5306676181468
+"Republic, WA",7,"MAT (°C)","PIP (imputed)",6.479166508,10.6874748849059
+"Republic, WA",7,"MAT (°C)","Refitted DiLP",6.479166508,9.26565718935801
+"Republic, WA",7,"MAT (°C)","Site LM (imputed)",6.479166508,8.44085387802362
+"Republic, WA",7,"MAT (°C)","Species LM (imputed)",6.479166508,13.9691368672644
+"Wiliwili Nui Ridge trail",7,"MAT (°C)","PIP (imputed)",20.72083282,18.4758689395011
+"Wiliwili Nui Ridge trail",7,"MAT (°C)","Refitted DiLP",20.72083282,24.2215251892153
+"Wiliwili Nui Ridge trail",7,"MAT (°C)","Site LM (imputed)",20.72083282,20.0473398546145
+"Wiliwili Nui Ridge trail",7,"MAT (°C)","Species LM (imputed)",20.72083282,19.5459768995438
+"Yakusugi (260m)",7,"MAT (°C)","PIP (imputed)",17.95416641,18.7017385169057
+"Yakusugi (260m)",7,"MAT (°C)","Refitted DiLP",17.95416641,11.4370158729293
+"Yakusugi (260m)",7,"MAT (°C)","Site LM (imputed)",17.95416641,14.1577543397569
+"Yakusugi (260m)",7,"MAT (°C)","Species LM (imputed)",17.95416641,18.6663239550852
+"Allegheny National Forest, PA",8,"MAT (°C)","PIP (imputed)",6.575000286,12.2786467411069
+"Allegheny National Forest, PA",8,"MAT (°C)","Refitted DiLP",6.575000286,7.74770198648061
+"Allegheny National Forest, PA",8,"MAT (°C)","Site LM (imputed)",6.575000286,10.1177044254375
+"Allegheny National Forest, PA",8,"MAT (°C)","Species LM (imputed)",6.575000286,15.5864921832232
+"Cabo Rojo",8,"MAT (°C)","PIP (imputed)",26.21666718,21.8787043674115
+"Cabo Rojo",8,"MAT (°C)","Refitted DiLP",26.21666718,20.9869595465279
+"Cabo Rojo",8,"MAT (°C)","Site LM (imputed)",26.21666718,23.0779536071768
+"Cabo Rojo",8,"MAT (°C)","Species LM (imputed)",26.21666718,18.7571151364316
+"Childs, AZ",8,"MAT (°C)","PIP (imputed)",17.96666718,14.1876675161694
+"Childs, AZ",8,"MAT (°C)","Refitted DiLP",17.96666718,15.2789639815618
+"Childs, AZ",8,"MAT (°C)","Site LM (imputed)",17.96666718,2.90795970989902
+"Childs, AZ",8,"MAT (°C)","Species LM (imputed)",17.96666718,14.4123354677202
+"Cordillera Pelada",8,"MAT (°C)","PIP (imputed)",8.958333015,13.6527312517742
+"Cordillera Pelada",8,"MAT (°C)","Refitted DiLP",8.958333015,13.2629379648983
+"Cordillera Pelada",8,"MAT (°C)","Site LM (imputed)",8.958333015,13.7905701009991
+"Cordillera Pelada",8,"MAT (°C)","Species LM (imputed)",8.958333015,15.8065064531807
+"Hawk Mountain, PA",8,"MAT (°C)","PIP (imputed)",10.23750019,13.0317591512748
+"Hawk Mountain, PA",8,"MAT (°C)","Refitted DiLP",10.23750019,11.8095250316049
+"Hawk Mountain, PA",8,"MAT (°C)","Site LM (imputed)",10.23750019,12.1552758621125
+"Hawk Mountain, PA",8,"MAT (°C)","Species LM (imputed)",10.23750019,17.3583863494845
+"Keka",8,"MAT (°C)","PIP (imputed)",24.46666718,22.9121529983593
+"Keka",8,"MAT (°C)","Refitted DiLP",24.46666718,25.3470994016923
+"Keka",8,"MAT (°C)","Site LM (imputed)",24.46666718,25.3437796864298
+"Keka",8,"MAT (°C)","Species LM (imputed)",24.46666718,21.9215842823507
+"Powers, OR",8,"MAT (°C)","PIP (imputed)",11.98750019,12.6296650369117
+"Powers, OR",8,"MAT (°C)","Refitted DiLP",11.98750019,12.6921763574456
+"Powers, OR",8,"MAT (°C)","Site LM (imputed)",11.98750019,12.4059201413344
+"Powers, OR",8,"MAT (°C)","Species LM (imputed)",11.98750019,15.933777967911
+"San Bartolo",8,"MAT (°C)","PIP (imputed)",20.80416679,18.3679880670628
+"San Bartolo",8,"MAT (°C)","Refitted DiLP",20.80416679,22.1001496870699
+"San Bartolo",8,"MAT (°C)","Site LM (imputed)",20.80416679,18.5593839810714
+"San Bartolo",8,"MAT (°C)","Species LM (imputed)",20.80416679,15.0352684246323
+"Yakusugi (800m)",8,"MAT (°C)","PIP (imputed)",14.71249962,15.0787946923294
+"Yakusugi (800m)",8,"MAT (°C)","Refitted DiLP",14.71249962,8.62233019136447
+"Yakusugi (800m)",8,"MAT (°C)","Site LM (imputed)",14.71249962,11.6207848985666
+"Yakusugi (800m)",8,"MAT (°C)","Species LM (imputed)",14.71249962,16.2819876411684
+"Barro Colorado Island",9,"MAT (°C)","PIP (imputed)",26.39583397,23.301944223372
+"Barro Colorado Island",9,"MAT (°C)","Refitted DiLP",26.39583397,22.4981887721569
+"Barro Colorado Island",9,"MAT (°C)","Site LM (imputed)",26.39583397,24.6627744860256
+"Barro Colorado Island",9,"MAT (°C)","Species LM (imputed)",26.39583397,22.0495374987618
+"Chuzenji-ko",9,"MAT (°C)","PIP (imputed)",6.700000286,12.9121316087397
+"Chuzenji-ko",9,"MAT (°C)","Refitted DiLP",6.700000286,4.9630837984532
+"Chuzenji-ko",9,"MAT (°C)","Site LM (imputed)",6.700000286,3.4823635885124
+"Chuzenji-ko",9,"MAT (°C)","Species LM (imputed)",6.700000286,13.3646469814713
+"Danum Valley Field Center, Borneo",9,"MAT (°C)","PIP (imputed)",24.77499962,24.4192224050986
+"Danum Valley Field Center, Borneo",9,"MAT (°C)","Refitted DiLP",24.77499962,25.935853335559
+"Danum Valley Field Center, Borneo",9,"MAT (°C)","Site LM (imputed)",24.77499962,28.5872771541102
+"Danum Valley Field Center, Borneo",9,"MAT (°C)","Species LM (imputed)",24.77499962,23.8582781189534
+"Duke Forest, NC",9,"MAT (°C)","PIP (imputed)",15.47916698,15.7907068516169
+"Duke Forest, NC",9,"MAT (°C)","Refitted DiLP",15.47916698,15.6561694223437
+"Duke Forest, NC",9,"MAT (°C)","Site LM (imputed)",15.47916698,15.7950704986871
+"Duke Forest, NC",9,"MAT (°C)","Species LM (imputed)",15.47916698,18.3421345466963
+"IES, NY",9,"MAT (°C)","PIP (imputed)",9.191666603,12.6764719076048
+"IES, NY",9,"MAT (°C)","Refitted DiLP",9.191666603,9.76306869099699
+"IES, NY",9,"MAT (°C)","Site LM (imputed)",9.191666603,10.0034970200283
+"IES, NY",9,"MAT (°C)","Species LM (imputed)",9.191666603,15.8656116100296
+"Nahuelbuta",9,"MAT (°C)","PIP (imputed)",10.28333378,13.3735229762955
+"Nahuelbuta",9,"MAT (°C)","Refitted DiLP",10.28333378,11.6965944520854
+"Nahuelbuta",9,"MAT (°C)","Site LM (imputed)",10.28333378,11.6999296619496
+"Nahuelbuta",9,"MAT (°C)","Species LM (imputed)",10.28333378,15.7072922848174
+"Nuri, Sonora",9,"MAT (°C)","PIP (imputed)",22.13333321,20.060532797343
+"Nuri, Sonora",9,"MAT (°C)","Refitted DiLP",22.13333321,18.6966447474677
+"Nuri, Sonora",9,"MAT (°C)","Site LM (imputed)",22.13333321,18.3187201664161
+"Nuri, Sonora",9,"MAT (°C)","Species LM (imputed)",22.13333321,16.5294106723571
+"Toro Negro",9,"MAT (°C)","PIP (imputed)",18.68333435,19.7493030558881
+"Toro Negro",9,"MAT (°C)","Refitted DiLP",18.68333435,17.9809349107301
+"Toro Negro",9,"MAT (°C)","Site LM (imputed)",18.68333435,20.6159233163273
+"Toro Negro",9,"MAT (°C)","Species LM (imputed)",18.68333435,19.4123277715066
+"Yakasugi (1350m)",9,"MAT (°C)","PIP (imputed)",12.07083321,13.2633164671021
+"Yakasugi (1350m)",9,"MAT (°C)","Refitted DiLP",12.07083321,7.43214763958692
+"Yakasugi (1350m)",9,"MAT (°C)","Site LM (imputed)",12.07083321,10.253975823497
+"Yakasugi (1350m)",9,"MAT (°C)","Species LM (imputed)",12.07083321,15.031239454856
+"Alcornocales Natural Park",10,"MAT (°C)","PIP (imputed)",16.12916756,17.5835977272746
+"Alcornocales Natural Park",10,"MAT (°C)","Refitted DiLP",16.12916756,16.6791946478145
+"Alcornocales Natural Park",10,"MAT (°C)","Site LM (imputed)",16.12916756,17.3743888133812
+"Alcornocales Natural Park",10,"MAT (°C)","Species LM (imputed)",16.12916756,18.765723087687
+"Archbold, FL",10,"MAT (°C)","PIP (imputed)",22.4375,17.5195140224573
+"Archbold, FL",10,"MAT (°C)","Refitted DiLP",22.4375,19.2633797106522
+"Archbold, FL",10,"MAT (°C)","Site LM (imputed)",22.4375,19.6561416202308
+"Archbold, FL",10,"MAT (°C)","Species LM (imputed)",22.4375,19.1776749953223
+"Big Hammock, GA",10,"MAT (°C)","PIP (imputed)",19.07916641,15.0566546782919
+"Big Hammock, GA",10,"MAT (°C)","Refitted DiLP",19.07916641,10.9002038078993
+"Big Hammock, GA",10,"MAT (°C)","Site LM (imputed)",19.07916641,11.5415087496257
+"Big Hammock, GA",10,"MAT (°C)","Species LM (imputed)",19.07916641,16.4567800542111
+"Gouland Downs",10,"MAT (°C)","PIP (imputed)",9.470833778,11.2914920403395
+"Gouland Downs",10,"MAT (°C)","Refitted DiLP",9.470833778,19.2413310389722
+"Gouland Downs",10,"MAT (°C)","Site LM (imputed)",9.470833778,18.6219884132745
+"Gouland Downs",10,"MAT (°C)","Species LM (imputed)",9.470833778,14.6822062323731
+"Harvard Forest, MA",10,"MAT (°C)","PIP (imputed)",7.199999809,11.9689466648301
+"Harvard Forest, MA",10,"MAT (°C)","Refitted DiLP",7.199999809,8.98797869966836
+"Harvard Forest, MA",10,"MAT (°C)","Site LM (imputed)",7.199999809,8.85015095468578
+"Harvard Forest, MA",10,"MAT (°C)","Species LM (imputed)",7.199999809,15.9931757938925
+"Los Ruiles",10,"MAT (°C)","PIP (imputed)",12.13333321,14.3858711197282
+"Los Ruiles",10,"MAT (°C)","Refitted DiLP",12.13333321,16.1403165162313
+"Los Ruiles",10,"MAT (°C)","Site LM (imputed)",12.13333321,15.4737287340284
+"Los Ruiles",10,"MAT (°C)","Species LM (imputed)",12.13333321,16.8546315367674
+"Nestucca River, OR",10,"MAT (°C)","PIP (imputed)",10.32499981,10.8119389893476
+"Nestucca River, OR",10,"MAT (°C)","Refitted DiLP",10.32499981,10.199344107371
+"Nestucca River, OR",10,"MAT (°C)","Site LM (imputed)",10.32499981,8.579395321433
+"Nestucca River, OR",10,"MAT (°C)","Species LM (imputed)",10.32499981,15.3343220451916
+"Tanjung Tuan",10,"MAT (°C)","PIP (imputed)",26.72083282,23.2686820355707
+"Tanjung Tuan",10,"MAT (°C)","Refitted DiLP",26.72083282,28.237048869081
+"Tanjung Tuan",10,"MAT (°C)","Site LM (imputed)",26.72083282,27.6425178935704
+"Tanjung Tuan",10,"MAT (°C)","Species LM (imputed)",26.72083282,23.0700354601989
+"Yasuni-valley bottom",10,"MAT (°C)","PIP (imputed)",25.08749962,24.3670501878624
+"Yasuni-valley bottom",10,"MAT (°C)","Refitted DiLP",25.08749962,23.7669161387245
+"Yasuni-valley bottom",10,"MAT (°C)","Site LM (imputed)",25.08749962,26.2965691642469
+"Yasuni-valley bottom",10,"MAT (°C)","Species LM (imputed)",25.08749962,23.4602874149267
+"Buena Vista",1,"ln(MAP in cm)","PIP (imputed)",5.38173897468711,5.12450868460484
+"Buena Vista",1,"ln(MAP in cm)","Refitted DiLP",5.38173897468711,4.98566973891041
+"Buena Vista",1,"ln(MAP in cm)","Site LM (imputed)",5.38173897468711,4.96450775850856
+"Buena Vista",1,"ln(MAP in cm)","Species LM (imputed)",5.38173897468711,5.09268726274942
+"Ducke",1,"ln(MAP in cm)","PIP (imputed)",5.41030586849608,5.36680262025152
+"Ducke",1,"ln(MAP in cm)","Refitted DiLP",5.41030586849608,5.07281537798775
+"Ducke",1,"ln(MAP in cm)","Site LM (imputed)",5.41030586849608,5.46998096305332
+"Ducke",1,"ln(MAP in cm)","Species LM (imputed)",5.41030586849608,5.33846506992503
+"Hood River, OR",1,"ln(MAP in cm)","PIP (imputed)",4.38077585277223,4.91119757630426
+"Hood River, OR",1,"ln(MAP in cm)","Refitted DiLP",4.38077585277223,4.85020454914193
+"Hood River, OR",1,"ln(MAP in cm)","Site LM (imputed)",4.38077585277223,4.79874403041429
+"Hood River, OR",1,"ln(MAP in cm)","Species LM (imputed)",4.38077585277223,5.02758267750201
+"Ketchikan",1,"ln(MAP in cm)","PIP (imputed)",5.86929691313377,5.00049440118355
+"Ketchikan",1,"ln(MAP in cm)","Refitted DiLP",5.86929691313377,4.71994956713861
+"Ketchikan",1,"ln(MAP in cm)","Site LM (imputed)",5.86929691313377,4.90445835707287
+"Ketchikan",1,"ln(MAP in cm)","Species LM (imputed)",5.86929691313377,4.97701890202035
+"Margaret River",1,"ln(MAP in cm)","PIP (imputed)",4.74232002413533,5.0061934065696
+"Margaret River",1,"ln(MAP in cm)","Refitted DiLP",4.74232002413533,4.26743915724581
+"Margaret River",1,"ln(MAP in cm)","Site LM (imputed)",4.74232002413533,4.69509059596656
+"Margaret River",1,"ln(MAP in cm)","Species LM (imputed)",4.74232002413533,5.01493917929711
+"Nagakubo",1,"ln(MAP in cm)","PIP (imputed)",5.7261960694931,5.30628055626211
+"Nagakubo",1,"ln(MAP in cm)","Refitted DiLP",5.7261960694931,5.12790720723228
+"Nagakubo",1,"ln(MAP in cm)","Site LM (imputed)",5.7261960694931,5.15788671235719
+"Nagakubo",1,"ln(MAP in cm)","Species LM (imputed)",5.7261960694931,5.15503927946727
+"Portal, AZ",1,"ln(MAP in cm)","PIP (imputed)",3.8877303128591,4.78995745853832
+"Portal, AZ",1,"ln(MAP in cm)","Refitted DiLP",3.8877303128591,4.57816671632187
+"Portal, AZ",1,"ln(MAP in cm)","Site LM (imputed)",3.8877303128591,4.66784102310372
+"Portal, AZ",1,"ln(MAP in cm)","Species LM (imputed)",3.8877303128591,4.98564425708368
+"Three Lynx, OR",1,"ln(MAP in cm)","PIP (imputed)",5.25436547901885,4.92687144456563
+"Three Lynx, OR",1,"ln(MAP in cm)","Refitted DiLP",5.25436547901885,4.84287798177191
+"Three Lynx, OR",1,"ln(MAP in cm)","Site LM (imputed)",5.25436547901885,4.92931005739587
+"Three Lynx, OR",1,"ln(MAP in cm)","Species LM (imputed)",5.25436547901885,5.02735406626843
+"Wolf Creek, CO",1,"ln(MAP in cm)","PIP (imputed)",4.41279829334063,4.79720926085599
+"Wolf Creek, CO",1,"ln(MAP in cm)","Refitted DiLP",4.41279829334063,4.81928658952352
+"Wolf Creek, CO",1,"ln(MAP in cm)","Site LM (imputed)",4.41279829334063,5.19178121198412
+"Wolf Creek, CO",1,"ln(MAP in cm)","Species LM (imputed)",4.41279829334063,4.94173781081762
+"Yasuni-ridgetop and upper slope",1,"ln(MAP in cm)","PIP (imputed)",5.80934297031669,5.40737682282917
+"Yasuni-ridgetop and upper slope",1,"ln(MAP in cm)","Refitted DiLP",5.80934297031669,5.48709119465625
+"Yasuni-ridgetop and upper slope",1,"ln(MAP in cm)","Site LM (imputed)",5.80934297031669,5.51105485343789
+"Yasuni-ridgetop and upper slope",1,"ln(MAP in cm)","Species LM (imputed)",5.80934297031669,5.37523101619441
+"Borinquen",2,"ln(MAP in cm)","PIP (imputed)",4.75100063419963,5.01077935051915
+"Borinquen",2,"ln(MAP in cm)","Refitted DiLP",4.75100063419963,4.86081971020626
+"Borinquen",2,"ln(MAP in cm)","Site LM (imputed)",4.75100063419963,5.04836423457754
+"Borinquen",2,"ln(MAP in cm)","Species LM (imputed)",4.75100063419963,5.13058750536851
+"Cabo San Lucas, Baja Mexico",2,"ln(MAP in cm)","PIP (imputed)",3.19458313229916,4.617848938504
+"Cabo San Lucas, Baja Mexico",2,"ln(MAP in cm)","Refitted DiLP",3.19458313229916,4.38070350393505
+"Cabo San Lucas, Baja Mexico",2,"ln(MAP in cm)","Site LM (imputed)",3.19458313229916,4.0365417197344
+"Cabo San Lucas, Baja Mexico",2,"ln(MAP in cm)","Species LM (imputed)",3.19458313229916,4.90137574669871
+"Clearwater, WA",2,"ln(MAP in cm)","PIP (imputed)",5.73172184334544,5.08115031628228
+"Clearwater, WA",2,"ln(MAP in cm)","Refitted DiLP",5.73172184334544,5.01392545770111
+"Clearwater, WA",2,"ln(MAP in cm)","Site LM (imputed)",5.73172184334544,5.04067835671275
+"Clearwater, WA",2,"ln(MAP in cm)","Species LM (imputed)",5.73172184334544,5.14514322317139
+"Foxton Estuary",2,"ln(MAP in cm)","PIP (imputed)",4.55282370561588,4.92161130951147
+"Foxton Estuary",2,"ln(MAP in cm)","Refitted DiLP",4.55282370561588,3.93749984519729
+"Foxton Estuary",2,"ln(MAP in cm)","Site LM (imputed)",4.55282370561588,4.3411791581971
+"Foxton Estuary",2,"ln(MAP in cm)","Species LM (imputed)",4.55282370561588,4.91516059714877
+"Hobart Wet Sclerophyll, Tasmania",2,"ln(MAP in cm)","PIP (imputed)",4.37197629882038,5.01927317805146
+"Hobart Wet Sclerophyll, Tasmania",2,"ln(MAP in cm)","Refitted DiLP",4.37197629882038,4.88578133162317
+"Hobart Wet Sclerophyll, Tasmania",2,"ln(MAP in cm)","Site LM (imputed)",4.37197629882038,4.71940027406586
+"Hobart Wet Sclerophyll, Tasmania",2,"ln(MAP in cm)","Species LM (imputed)",4.37197629882038,5.08044871995884
+"Huyck Preserve, NY",2,"ln(MAP in cm)","PIP (imputed)",4.61808641125464,4.94751212667759
+"Huyck Preserve, NY",2,"ln(MAP in cm)","Refitted DiLP",4.61808641125464,5.08857222371363
+"Huyck Preserve, NY",2,"ln(MAP in cm)","Site LM (imputed)",4.61808641125464,4.81009832243576
+"Huyck Preserve, NY",2,"ln(MAP in cm)","Species LM (imputed)",4.61808641125464,5.11164984417249
+"Parque El Rey",2,"ln(MAP in cm)","PIP (imputed)",4.1415461637064,5.00916983637318
+"Parque El Rey",2,"ln(MAP in cm)","Refitted DiLP",4.1415461637064,4.82186896162917
+"Parque El Rey",2,"ln(MAP in cm)","Site LM (imputed)",4.1415461637064,4.62045925871766
+"Parque El Rey",2,"ln(MAP in cm)","Species LM (imputed)",4.1415461637064,5.08463219228864
+"Talkeetna",2,"ln(MAP in cm)","PIP (imputed)",4.27249074760558,5.03472146970866
+"Talkeetna",2,"ln(MAP in cm)","Refitted DiLP",4.27249074760558,4.83175681531642
+"Talkeetna",2,"ln(MAP in cm)","Site LM (imputed)",4.27249074760558,4.88759160836332
+"Talkeetna",2,"ln(MAP in cm)","Species LM (imputed)",4.27249074760558,5.05031300041841
+"West Head",2,"ln(MAP in cm)","PIP (imputed)",4.85046654194343,5.20061220953808
+"West Head",2,"ln(MAP in cm)","Refitted DiLP",4.85046654194343,4.48778405117493
+"West Head",2,"ln(MAP in cm)","Site LM (imputed)",4.85046654194343,5.19235112446839
+"West Head",2,"ln(MAP in cm)","Species LM (imputed)",4.85046654194343,5.2749842835246
+"Bandon, OR",3,"ln(MAP in cm)","PIP (imputed)",5.05751887999511,5.08013607975635
+"Bandon, OR",3,"ln(MAP in cm)","Refitted DiLP",5.05751887999511,5.01739370182027
+"Bandon, OR",3,"ln(MAP in cm)","Site LM (imputed)",5.05751887999511,4.96665934709009
+"Bandon, OR",3,"ln(MAP in cm)","Species LM (imputed)",5.05751887999511,5.1485263917311
+"Chamela",3,"ln(MAP in cm)","PIP (imputed)",4.54542018158232,5.03750927705694
+"Chamela",3,"ln(MAP in cm)","Refitted DiLP",4.54542018158232,4.74841239825116
+"Chamela",3,"ln(MAP in cm)","Site LM (imputed)",4.54542018158232,4.61659521702727
+"Chamela",3,"ln(MAP in cm)","Species LM (imputed)",4.54542018158232,5.08261080722704
+"Half Moon Bay, CA",3,"ln(MAP in cm)","PIP (imputed)",4.24563400976833,4.96223939277726
+"Half Moon Bay, CA",3,"ln(MAP in cm)","Refitted DiLP",4.24563400976833,4.95393985071929
+"Half Moon Bay, CA",3,"ln(MAP in cm)","Site LM (imputed)",4.24563400976833,5.02115103805731
+"Half Moon Bay, CA",3,"ln(MAP in cm)","Species LM (imputed)",4.24563400976833,5.10007881052782
+"Murrua Track",3,"ln(MAP in cm)","PIP (imputed)",4.88507207112091,5.11327627811533
+"Murrua Track",3,"ln(MAP in cm)","Refitted DiLP",4.88507207112091,4.69857183532422
+"Murrua Track",3,"ln(MAP in cm)","Site LM (imputed)",4.88507207112091,4.97372661008354
+"Murrua Track",3,"ln(MAP in cm)","Species LM (imputed)",4.88507207112091,5.15060608173263
+"Okataina",3,"ln(MAP in cm)","PIP (imputed)",5.07267068501571,5.26413331706791
+"Okataina",3,"ln(MAP in cm)","Refitted DiLP",5.07267068501571,5.09986610706132
+"Okataina",3,"ln(MAP in cm)","Site LM (imputed)",5.07267068501571,4.81766796893932
+"Okataina",3,"ln(MAP in cm)","Species LM (imputed)",5.07267068501571,5.14758935344876
+"Panther Wildlife Refuge, FL",3,"ln(MAP in cm)","PIP (imputed)",4.87443367291585,5.16625505863293
+"Panther Wildlife Refuge, FL",3,"ln(MAP in cm)","Refitted DiLP",4.87443367291585,5.09759881336419
+"Panther Wildlife Refuge, FL",3,"ln(MAP in cm)","Site LM (imputed)",4.87443367291585,5.09620187221371
+"Panther Wildlife Refuge, FL",3,"ln(MAP in cm)","Species LM (imputed)",4.87443367291585,5.23871515408518
+"Red Fleet, UT",3,"ln(MAP in cm)","PIP (imputed)",3.24259235148552,4.80124749107049
+"Red Fleet, UT",3,"ln(MAP in cm)","Refitted DiLP",3.24259235148552,4.60928912859643
+"Red Fleet, UT",3,"ln(MAP in cm)","Site LM (imputed)",3.24259235148552,4.4856738159063
+"Red Fleet, UT",3,"ln(MAP in cm)","Species LM (imputed)",3.24259235148552,4.97591528492387
+"Robinson Falls",3,"ln(MAP in cm)","PIP (imputed)",5.6753830001345,5.55770754348778
+"Robinson Falls",3,"ln(MAP in cm)","Refitted DiLP",5.6753830001345,5.40903624764412
+"Robinson Falls",3,"ln(MAP in cm)","Site LM (imputed)",5.6753830001345,5.65505922082109
+"Robinson Falls",3,"ln(MAP in cm)","Species LM (imputed)",5.6753830001345,5.4158364260133
+"Suganuma, Honshu",3,"ln(MAP in cm)","PIP (imputed)",5.31222027171703,5.05299019372145
+"Suganuma, Honshu",3,"ln(MAP in cm)","Refitted DiLP",5.31222027171703,4.96813150999852
+"Suganuma, Honshu",3,"ln(MAP in cm)","Site LM (imputed)",5.31222027171703,5.68251886907631
+"Suganuma, Honshu",3,"ln(MAP in cm)","Species LM (imputed)",5.31222027171703,5.13729531391373
+"Alamos",4,"ln(MAP in cm)","PIP (imputed)",4.1026433650368,4.69219225805352
+"Alamos",4,"ln(MAP in cm)","Refitted DiLP",4.1026433650368,4.61212019347231
+"Alamos",4,"ln(MAP in cm)","Site LM (imputed)",4.1026433650368,4.53717270015346
+"Alamos",4,"ln(MAP in cm)","Species LM (imputed)",4.1026433650368,5.00825133415374
+"Cape Blanco, OR",4,"ln(MAP in cm)","PIP (imputed)",5.26476058301919,5.06320910335702
+"Cape Blanco, OR",4,"ln(MAP in cm)","Refitted DiLP",5.26476058301919,4.95455117323906
+"Cape Blanco, OR",4,"ln(MAP in cm)","Site LM (imputed)",5.26476058301919,5.2639900527805
+"Cape Blanco, OR",4,"ln(MAP in cm)","Species LM (imputed)",5.26476058301919,5.13637915213331
+"Cockaponset Forest, CT",4,"ln(MAP in cm)","PIP (imputed)",4.8354879410503,4.99563241918151
+"Cockaponset Forest, CT",4,"ln(MAP in cm)","Refitted DiLP",4.8354879410503,5.0827350456116
+"Cockaponset Forest, CT",4,"ln(MAP in cm)","Site LM (imputed)",4.8354879410503,4.75768214920053
+"Cockaponset Forest, CT",4,"ln(MAP in cm)","Species LM (imputed)",4.8354879410503,5.14471323934634
+"Homer",4,"ln(MAP in cm)","PIP (imputed)",4.23265617801961,4.90908285127785
+"Homer",4,"ln(MAP in cm)","Refitted DiLP",4.23265617801961,4.69760601243169
+"Homer",4,"ln(MAP in cm)","Site LM (imputed)",4.23265617801961,4.53199579924735
+"Homer",4,"ln(MAP in cm)","Species LM (imputed)",4.23265617801961,4.92255894418177
+"Kaimanawa Mountains",4,"ln(MAP in cm)","PIP (imputed)",5.12455904041457,4.98822621908295
+"Kaimanawa Mountains",4,"ln(MAP in cm)","Refitted DiLP",5.12455904041457,3.95485082235592
+"Kaimanawa Mountains",4,"ln(MAP in cm)","Site LM (imputed)",5.12455904041457,3.73634547711969
+"Kaimanawa Mountains",4,"ln(MAP in cm)","Species LM (imputed)",5.12455904041457,4.76544154607443
+"Monte Guilarte",4,"ln(MAP in cm)","PIP (imputed)",5.33897934826693,5.28071326784706
+"Monte Guilarte",4,"ln(MAP in cm)","Refitted DiLP",5.33897934826693,5.22049439172859
+"Monte Guilarte",4,"ln(MAP in cm)","Site LM (imputed)",5.33897934826693,5.33977228032581
+"Monte Guilarte",4,"ln(MAP in cm)","Species LM (imputed)",5.33897934826693,5.24558352566404
+"Pasoh",4,"ln(MAP in cm)","PIP (imputed)",5.31566600488265,5.3652885414234
+"Pasoh",4,"ln(MAP in cm)","Refitted DiLP",5.31566600488265,5.4782050650079
+"Pasoh",4,"ln(MAP in cm)","Site LM (imputed)",5.31566600488265,5.42293075581392
+"Pasoh",4,"ln(MAP in cm)","Species LM (imputed)",5.31566600488265,5.37614788141485
+"Pee Dee, SC",4,"ln(MAP in cm)","PIP (imputed)",4.81380905109942,5.03511781253737
+"Pee Dee, SC",4,"ln(MAP in cm)","Refitted DiLP",4.81380905109942,4.9328052271971
+"Pee Dee, SC",4,"ln(MAP in cm)","Site LM (imputed)",4.81380905109942,5.0995540826827
+"Pee Dee, SC",4,"ln(MAP in cm)","Species LM (imputed)",4.81380905109942,5.11651856126135
+"SERC, MD",4,"ln(MAP in cm)","PIP (imputed)",4.70682383971459,4.97034723294431
+"SERC, MD",4,"ln(MAP in cm)","Refitted DiLP",4.70682383971459,5.19996989413089
+"SERC, MD",4,"ln(MAP in cm)","Site LM (imputed)",4.70682383971459,5.24123940819281
+"SERC, MD",4,"ln(MAP in cm)","Species LM (imputed)",4.70682383971459,5.18982737515572
+"CT-Swamp",5,"ln(MAP in cm)","PIP (imputed)",4.8194747886351,4.97638313975885
+"CT-Swamp",5,"ln(MAP in cm)","Refitted DiLP",4.8194747886351,4.82480218518322
+"CT-Swamp",5,"ln(MAP in cm)","Site LM (imputed)",4.8194747886351,4.93770899276259
+"CT-Swamp",5,"ln(MAP in cm)","Species LM (imputed)",4.8194747886351,5.07480087255334
+"Dilcher's Woods lowland, FL",5,"ln(MAP in cm)","PIP (imputed)",4.87137322676275,4.98814468826068
+"Dilcher's Woods lowland, FL",5,"ln(MAP in cm)","Refitted DiLP",4.87137322676275,5.01522791347369
+"Dilcher's Woods lowland, FL",5,"ln(MAP in cm)","Site LM (imputed)",4.87137322676275,4.73541259839623
+"Dilcher's Woods lowland, FL",5,"ln(MAP in cm)","Species LM (imputed)",4.87137322676275,5.10569371297876
+"Frodsham, Tasmania",5,"ln(MAP in cm)","PIP (imputed)",5.24174701505964,5.00828563176179
+"Frodsham, Tasmania",5,"ln(MAP in cm)","Refitted DiLP",5.24174701505964,4.29560180915057
+"Frodsham, Tasmania",5,"ln(MAP in cm)","Site LM (imputed)",5.24174701505964,4.84872127133609
+"Frodsham, Tasmania",5,"ln(MAP in cm)","Species LM (imputed)",5.24174701505964,4.973831210583
+"Gorgona",5,"ln(MAP in cm)","PIP (imputed)",6.16120732169508,5.28950482814247
+"Gorgona",5,"ln(MAP in cm)","Refitted DiLP",6.16120732169508,5.17784944651669
+"Gorgona",5,"ln(MAP in cm)","Site LM (imputed)",6.16120732169508,5.29189887430216
+"Gorgona",5,"ln(MAP in cm)","Species LM (imputed)",6.16120732169508,5.2410401007701
+"Government Camp, OR",5,"ln(MAP in cm)","PIP (imputed)",5.3831179682405,4.97552854983908
+"Government Camp, OR",5,"ln(MAP in cm)","Refitted DiLP",5.3831179682405,4.70195946586209
+"Government Camp, OR",5,"ln(MAP in cm)","Site LM (imputed)",5.3831179682405,4.58434537413162
+"Government Camp, OR",5,"ln(MAP in cm)","Species LM (imputed)",5.3831179682405,4.9653122936271
+"Noah Creek",5,"ln(MAP in cm)","PIP (imputed)",5.72162239278453,5.3717657941857
+"Noah Creek",5,"ln(MAP in cm)","Refitted DiLP",5.72162239278453,5.22339744647231
+"Noah Creek",5,"ln(MAP in cm)","Site LM (imputed)",5.72162239278453,5.55656571441946
+"Noah Creek",5,"ln(MAP in cm)","Species LM (imputed)",5.72162239278453,5.35851814462181
+"Round Hill mallee",5,"ln(MAP in cm)","PIP (imputed)",3.72569342723665,4.83569967469195
+"Round Hill mallee",5,"ln(MAP in cm)","Refitted DiLP",3.72569342723665,4.55079373528851
+"Round Hill mallee",5,"ln(MAP in cm)","Site LM (imputed)",3.72569342723665,4.9478955127965
+"Round Hill mallee",5,"ln(MAP in cm)","Species LM (imputed)",3.72569342723665,5.06611792334328
+"Yakusugi (1080m)",5,"ln(MAP in cm)","PIP (imputed)",5.8188952817567,5.26982379423484
+"Yakusugi (1080m)",5,"ln(MAP in cm)","Refitted DiLP",5.8188952817567,4.83477364117411
+"Yakusugi (1080m)",5,"ln(MAP in cm)","Site LM (imputed)",5.8188952817567,5.06299093192587
+"Yakusugi (1080m)",5,"ln(MAP in cm)","Species LM (imputed)",5.8188952817567,5.08541383963727
+"York, PA",5,"ln(MAP in cm)","PIP (imputed)",4.67749084756772,4.94662786307409
+"York, PA",5,"ln(MAP in cm)","Refitted DiLP",4.67749084756772,5.0242226158867
+"York, PA",5,"ln(MAP in cm)","Site LM (imputed)",4.67749084756772,4.73703372210954
+"York, PA",5,"ln(MAP in cm)","Species LM (imputed)",4.67749084756772,5.08478180069174
+"CT-River",6,"ln(MAP in cm)","PIP (imputed)",4.79579054559674,5.04981107201734
+"CT-River",6,"ln(MAP in cm)","Refitted DiLP",4.79579054559674,4.93513148999111
+"CT-River",6,"ln(MAP in cm)","Site LM (imputed)",4.79579054559674,5.1505516382591
+"CT-River",6,"ln(MAP in cm)","Species LM (imputed)",4.79579054559674,5.17306151253061
+"Dilcher's Woods upland, FL",6,"ln(MAP in cm)","PIP (imputed)",4.87137322676275,4.97169802584267
+"Dilcher's Woods upland, FL",6,"ln(MAP in cm)","Refitted DiLP",4.87137322676275,4.90248130946777
+"Dilcher's Woods upland, FL",6,"ln(MAP in cm)","Site LM (imputed)",4.87137322676275,4.91786244171188
+"Dilcher's Woods upland, FL",6,"ln(MAP in cm)","Species LM (imputed)",4.87137322676275,5.13117495866792
+"Empalme",6,"ln(MAP in cm)","PIP (imputed)",3.88156379794344,4.66004996164636
+"Empalme",6,"ln(MAP in cm)","Refitted DiLP",3.88156379794344,4.19189745920819
+"Empalme",6,"ln(MAP in cm)","Site LM (imputed)",3.88156379794344,4.007032662283
+"Empalme",6,"ln(MAP in cm)","Species LM (imputed)",3.88156379794344,4.84863437340093
+"Hubbard Brook, NH",6,"ln(MAP in cm)","PIP (imputed)",4.69043002993891,5.00369381781031
+"Hubbard Brook, NH",6,"ln(MAP in cm)","Refitted DiLP",4.69043002993891,5.15760413917181
+"Hubbard Brook, NH",6,"ln(MAP in cm)","Site LM (imputed)",4.69043002993891,4.93358773102886
+"Hubbard Brook, NH",6,"ln(MAP in cm)","Species LM (imputed)",4.69043002993891,5.12040965801912
+"Los Queles",6,"ln(MAP in cm)","PIP (imputed)",4.49980967033027,4.99743810880196
+"Los Queles",6,"ln(MAP in cm)","Refitted DiLP",4.49980967033027,4.7981342470273
+"Los Queles",6,"ln(MAP in cm)","Site LM (imputed)",4.49980967033027,4.65654386119769
+"Los Queles",6,"ln(MAP in cm)","Species LM (imputed)",4.49980967033027,5.0462175803739
+"Mt. Read, Tasmania",6,"ln(MAP in cm)","PIP (imputed)",5.57367378930918,5.01730800933784
+"Mt. Read, Tasmania",6,"ln(MAP in cm)","Refitted DiLP",5.57367378930918,4.48378747779819
+"Mt. Read, Tasmania",6,"ln(MAP in cm)","Site LM (imputed)",5.57367378930918,4.59250173599574
+"Mt. Read, Tasmania",6,"ln(MAP in cm)","Species LM (imputed)",5.57367378930918,4.99870418419136
+"Round Hill woodland",6,"ln(MAP in cm)","PIP (imputed)",3.70376806660769,4.89149311514934
+"Round Hill woodland",6,"ln(MAP in cm)","Refitted DiLP",3.70376806660769,4.58822654467092
+"Round Hill woodland",6,"ln(MAP in cm)","Site LM (imputed)",3.70376806660769,4.95306607658362
+"Round Hill woodland",6,"ln(MAP in cm)","Species LM (imputed)",3.70376806660769,5.12619577744563
+"Santa Cruz, CA",6,"ln(MAP in cm)","PIP (imputed)",4.25844557290253,4.97791301262734
+"Santa Cruz, CA",6,"ln(MAP in cm)","Refitted DiLP",4.25844557290253,4.93337859414982
+"Santa Cruz, CA",6,"ln(MAP in cm)","Site LM (imputed)",4.25844557290253,4.97143919998858
+"Santa Cruz, CA",6,"ln(MAP in cm)","Species LM (imputed)",4.25844557290253,5.1043579605211
+"Seqaqa",6,"ln(MAP in cm)","PIP (imputed)",5.50125821054473,5.4795132556591
+"Seqaqa",6,"ln(MAP in cm)","Refitted DiLP",5.50125821054473,5.42874871855066
+"Seqaqa",6,"ln(MAP in cm)","Site LM (imputed)",5.50125821054473,5.53929623596886
+"Seqaqa",6,"ln(MAP in cm)","Species LM (imputed)",5.50125821054473,5.40530040008175
+"CT-Upland",7,"ln(MAP in cm)","PIP (imputed)",4.79579054559674,4.98153825720972
+"CT-Upland",7,"ln(MAP in cm)","Refitted DiLP",4.79579054559674,4.88492102137191
+"CT-Upland",7,"ln(MAP in cm)","Site LM (imputed)",4.79579054559674,5.05817914913261
+"CT-Upland",7,"ln(MAP in cm)","Species LM (imputed)",4.79579054559674,5.10739754463725
+"Guajataca",7,"ln(MAP in cm)","PIP (imputed)",5.29681624042177,5.26527582550654
+"Guajataca",7,"ln(MAP in cm)","Refitted DiLP",5.29681624042177,5.2263065097736
+"Guajataca",7,"ln(MAP in cm)","Site LM (imputed)",5.29681624042177,5.27175486751638
+"Guajataca",7,"ln(MAP in cm)","Species LM (imputed)",5.29681624042177,5.26583790844998
+"Guanica",7,"ln(MAP in cm)","PIP (imputed)",4.42723897749543,5.00268233931013
+"Guanica",7,"ln(MAP in cm)","Refitted DiLP",4.42723897749543,4.83809766424145
+"Guanica",7,"ln(MAP in cm)","Site LM (imputed)",4.42723897749543,5.00522411010141
+"Guanica",7,"ln(MAP in cm)","Species LM (imputed)",4.42723897749543,5.09825737060237
+"North Bend, OR",7,"ln(MAP in cm)","PIP (imputed)",5.0962011824259,5.1060962165607
+"North Bend, OR",7,"ln(MAP in cm)","Refitted DiLP",5.0962011824259,4.98264069374213
+"North Bend, OR",7,"ln(MAP in cm)","Site LM (imputed)",5.0962011824259,4.42886988173222
+"North Bend, OR",7,"ln(MAP in cm)","Species LM (imputed)",5.0962011824259,5.08241401862507
+"Parkdale, OR",7,"ln(MAP in cm)","PIP (imputed)",4.70772677431318,4.97818226948327
+"Parkdale, OR",7,"ln(MAP in cm)","Refitted DiLP",4.70772677431318,4.98906711596615
+"Parkdale, OR",7,"ln(MAP in cm)","Site LM (imputed)",4.70772677431318,4.47814371318083
+"Parkdale, OR",7,"ln(MAP in cm)","Species LM (imputed)",4.70772677431318,5.02556737679556
+"Placerville, CA",7,"ln(MAP in cm)","PIP (imputed)",4.68859179412716,4.86722965244461
+"Placerville, CA",7,"ln(MAP in cm)","Refitted DiLP",4.68859179412716,4.9074902143771
+"Placerville, CA",7,"ln(MAP in cm)","Site LM (imputed)",4.68859179412716,4.56844516523282
+"Placerville, CA",7,"ln(MAP in cm)","Species LM (imputed)",4.68859179412716,5.04533560434188
+"Republic, WA",7,"ln(MAP in cm)","PIP (imputed)",3.68887945411394,4.9435828093135
+"Republic, WA",7,"ln(MAP in cm)","Refitted DiLP",3.68887945411394,4.99050681180617
+"Republic, WA",7,"ln(MAP in cm)","Site LM (imputed)",3.68887945411394,4.69555113227603
+"Republic, WA",7,"ln(MAP in cm)","Species LM (imputed)",3.68887945411394,5.05893296232733
+"Wiliwili Nui Ridge trail",7,"ln(MAP in cm)","PIP (imputed)",6.14568665295577,5.30875296319707
+"Wiliwili Nui Ridge trail",7,"ln(MAP in cm)","Refitted DiLP",6.14568665295577,5.06794002450037
+"Wiliwili Nui Ridge trail",7,"ln(MAP in cm)","Site LM (imputed)",6.14568665295577,5.41766857302761
+"Wiliwili Nui Ridge trail",7,"ln(MAP in cm)","Species LM (imputed)",6.14568665295577,5.26429259628958
+"Yakusugi (260m)",7,"ln(MAP in cm)","PIP (imputed)",5.72489143786644,5.34855419864616
+"Yakusugi (260m)",7,"ln(MAP in cm)","Refitted DiLP",5.72489143786644,5.1363811449564
+"Yakusugi (260m)",7,"ln(MAP in cm)","Site LM (imputed)",5.72489143786644,5.00442618301267
+"Yakusugi (260m)",7,"ln(MAP in cm)","Species LM (imputed)",5.72489143786644,5.18149877182002
+"Allegheny National Forest, PA",8,"ln(MAP in cm)","PIP (imputed)",4.75013595623828,4.97658712599002
+"Allegheny National Forest, PA",8,"ln(MAP in cm)","Refitted DiLP",4.75013595623828,5.0054971707632
+"Allegheny National Forest, PA",8,"ln(MAP in cm)","Site LM (imputed)",4.75013595623828,4.60145981960824
+"Allegheny National Forest, PA",8,"ln(MAP in cm)","Species LM (imputed)",4.75013595623828,5.05951035431583
+"Cabo Rojo",8,"ln(MAP in cm)","PIP (imputed)",4.6615505194242,4.99920911234579
+"Cabo Rojo",8,"ln(MAP in cm)","Refitted DiLP",4.6615505194242,4.84214154996785
+"Cabo Rojo",8,"ln(MAP in cm)","Site LM (imputed)",4.6615505194242,5.16189595319598
+"Cabo Rojo",8,"ln(MAP in cm)","Species LM (imputed)",4.6615505194242,5.1055253117538
+"Childs, AZ",8,"ln(MAP in cm)","PIP (imputed)",3.83514196109219,4.95181295894873
+"Childs, AZ",8,"ln(MAP in cm)","Refitted DiLP",3.83514196109219,4.25387072928558
+"Childs, AZ",8,"ln(MAP in cm)","Site LM (imputed)",3.83514196109219,7.67104689939255
+"Childs, AZ",8,"ln(MAP in cm)","Species LM (imputed)",3.83514196109219,5.31945664234131
+"Cordillera Pelada",8,"ln(MAP in cm)","PIP (imputed)",5.18906038061109,4.94620539836625
+"Cordillera Pelada",8,"ln(MAP in cm)","Refitted DiLP",5.18906038061109,4.73574563139617
+"Cordillera Pelada",8,"ln(MAP in cm)","Site LM (imputed)",5.18906038061109,4.40686921149295
+"Cordillera Pelada",8,"ln(MAP in cm)","Species LM (imputed)",5.18906038061109,4.98587349777891
+"Hawk Mountain, PA",8,"ln(MAP in cm)","PIP (imputed)",4.73882657080077,5.02086759963631
+"Hawk Mountain, PA",8,"ln(MAP in cm)","Refitted DiLP",4.73882657080077,5.08150742472882
+"Hawk Mountain, PA",8,"ln(MAP in cm)","Site LM (imputed)",4.73882657080077,5.09982017659148
+"Hawk Mountain, PA",8,"ln(MAP in cm)","Species LM (imputed)",4.73882657080077,5.16519618967021
+"Keka",8,"ln(MAP in cm)","PIP (imputed)",5.69776440233064,5.36935936733359
+"Keka",8,"ln(MAP in cm)","Refitted DiLP",5.69776440233064,5.17280733660628
+"Keka",8,"ln(MAP in cm)","Site LM (imputed)",5.69776440233064,5.35854860824013
+"Keka",8,"ln(MAP in cm)","Species LM (imputed)",5.69776440233064,5.31576675085515
+"Powers, OR",8,"ln(MAP in cm)","PIP (imputed)",5.06132840841177,4.92647669137427
+"Powers, OR",8,"ln(MAP in cm)","Refitted DiLP",5.06132840841177,4.98413138242178
+"Powers, OR",8,"ln(MAP in cm)","Site LM (imputed)",5.06132840841177,4.00689306150629
+"Powers, OR",8,"ln(MAP in cm)","Species LM (imputed)",5.06132840841177,5.00608397077782
+"San Bartolo",8,"ln(MAP in cm)","PIP (imputed)",3.79997350161952,4.71402346322278
+"San Bartolo",8,"ln(MAP in cm)","Refitted DiLP",3.79997350161952,4.22208689133703
+"San Bartolo",8,"ln(MAP in cm)","Site LM (imputed)",3.79997350161952,4.4597090378124
+"San Bartolo",8,"ln(MAP in cm)","Species LM (imputed)",3.79997350161952,4.91398216744541
+"Yakusugi (800m)",8,"ln(MAP in cm)","PIP (imputed)",5.79087718150713,5.32211427501471
+"Yakusugi (800m)",8,"ln(MAP in cm)","Refitted DiLP",5.79087718150713,4.91615053340412
+"Yakusugi (800m)",8,"ln(MAP in cm)","Site LM (imputed)",5.79087718150713,5.48027802331792
+"Yakusugi (800m)",8,"ln(MAP in cm)","Species LM (imputed)",5.79087718150713,5.15199426351035
+"Barro Colorado Island",9,"ln(MAP in cm)","PIP (imputed)",5.51985963649527,5.34569178444386
+"Barro Colorado Island",9,"ln(MAP in cm)","Refitted DiLP",5.51985963649527,5.39738588597926
+"Barro Colorado Island",9,"ln(MAP in cm)","Site LM (imputed)",5.51985963649527,5.46519616709302
+"Barro Colorado Island",9,"ln(MAP in cm)","Species LM (imputed)",5.51985963649527,5.36356430613872
+"Chuzenji-ko",9,"ln(MAP in cm)","PIP (imputed)",5.27811465923052,5.0745419242872
+"Chuzenji-ko",9,"ln(MAP in cm)","Refitted DiLP",5.27811465923052,4.9634395655718
+"Chuzenji-ko",9,"ln(MAP in cm)","Site LM (imputed)",5.27811465923052,4.92943912280484
+"Chuzenji-ko",9,"ln(MAP in cm)","Species LM (imputed)",5.27811465923052,5.07814461470271
+"Danum Valley Field Center, Borneo",9,"ln(MAP in cm)","PIP (imputed)",5.4049271016063,5.52442485427125
+"Danum Valley Field Center, Borneo",9,"ln(MAP in cm)","Refitted DiLP",5.4049271016063,5.62175876903958
+"Danum Valley Field Center, Borneo",9,"ln(MAP in cm)","Site LM (imputed)",5.4049271016063,5.87028932348054
+"Danum Valley Field Center, Borneo",9,"ln(MAP in cm)","Species LM (imputed)",5.4049271016063,5.53462574539419
+"Duke Forest, NC",9,"ln(MAP in cm)","PIP (imputed)",4.73532087045314,4.9609255684001
+"Duke Forest, NC",9,"ln(MAP in cm)","Refitted DiLP",4.73532087045314,5.13463591877687
+"Duke Forest, NC",9,"ln(MAP in cm)","Site LM (imputed)",4.73532087045314,4.82620231313143
+"Duke Forest, NC",9,"ln(MAP in cm)","Species LM (imputed)",4.73532087045314,5.11931815386269
+"IES, NY",9,"ln(MAP in cm)","PIP (imputed)",4.716711560721,4.8798513194872
+"IES, NY",9,"ln(MAP in cm)","Refitted DiLP",4.716711560721,5.10869632695255
+"IES, NY",9,"ln(MAP in cm)","Site LM (imputed)",4.716711560721,4.97861454868538
+"IES, NY",9,"ln(MAP in cm)","Species LM (imputed)",4.716711560721,5.08997554216531
+"Nahuelbuta",9,"ln(MAP in cm)","PIP (imputed)",4.95300618125962,4.91113167409519
+"Nahuelbuta",9,"ln(MAP in cm)","Refitted DiLP",4.95300618125962,4.79969855061584
+"Nahuelbuta",9,"ln(MAP in cm)","Site LM (imputed)",4.95300618125962,4.45820944528662
+"Nahuelbuta",9,"ln(MAP in cm)","Species LM (imputed)",4.95300618125962,4.96918183220453
+"Nuri, Sonora",9,"ln(MAP in cm)","PIP (imputed)",4.21950770517611,4.62529730211503
+"Nuri, Sonora",9,"ln(MAP in cm)","Refitted DiLP",4.21950770517611,4.58727400254736
+"Nuri, Sonora",9,"ln(MAP in cm)","Site LM (imputed)",4.21950770517611,4.52749504603087
+"Nuri, Sonora",9,"ln(MAP in cm)","Species LM (imputed)",4.21950770517611,5.00047267477336
+"Toro Negro",9,"ln(MAP in cm)","PIP (imputed)",5.2786247332023,5.25172980513025
+"Toro Negro",9,"ln(MAP in cm)","Refitted DiLP",5.2786247332023,5.1565639131019
+"Toro Negro",9,"ln(MAP in cm)","Site LM (imputed)",5.2786247332023,5.24029363597478
+"Toro Negro",9,"ln(MAP in cm)","Species LM (imputed)",5.2786247332023,5.19862960124079
+"Yakasugi (1350m)",9,"ln(MAP in cm)","PIP (imputed)",5.83276185591266,5.29953107995023
+"Yakasugi (1350m)",9,"ln(MAP in cm)","Refitted DiLP",5.83276185591266,4.85928542250363
+"Yakasugi (1350m)",9,"ln(MAP in cm)","Site LM (imputed)",5.83276185591266,5.43166518126894
+"Yakasugi (1350m)",9,"ln(MAP in cm)","Species LM (imputed)",5.83276185591266,5.13747254198623
+"Alcornocales Natural Park",10,"ln(MAP in cm)","PIP (imputed)",4.36182392735636,5.04438468127521
+"Alcornocales Natural Park",10,"ln(MAP in cm)","Refitted DiLP",4.36182392735636,5.06634437721786
+"Alcornocales Natural Park",10,"ln(MAP in cm)","Site LM (imputed)",4.36182392735636,4.2453306176938
+"Alcornocales Natural Park",10,"ln(MAP in cm)","Species LM (imputed)",4.36182392735636,5.08998278384733
+"Archbold, FL",10,"ln(MAP in cm)","PIP (imputed)",4.82269799851667,5.03119194636847
+"Archbold, FL",10,"ln(MAP in cm)","Refitted DiLP",4.82269799851667,4.93061364247557
+"Archbold, FL",10,"ln(MAP in cm)","Site LM (imputed)",4.82269799851667,4.93949566682954
+"Archbold, FL",10,"ln(MAP in cm)","Species LM (imputed)",4.82269799851667,5.12858914203805
+"Big Hammock, GA",10,"ln(MAP in cm)","PIP (imputed)",4.78582368568135,4.89489116755963
+"Big Hammock, GA",10,"ln(MAP in cm)","Refitted DiLP",4.78582368568135,4.95995169322184
+"Big Hammock, GA",10,"ln(MAP in cm)","Site LM (imputed)",4.78582368568135,4.33086413083757
+"Big Hammock, GA",10,"ln(MAP in cm)","Species LM (imputed)",4.78582368568135,5.04455781003521
+"Gouland Downs",10,"ln(MAP in cm)","PIP (imputed)",5.64721212316781,4.8434596485089
+"Gouland Downs",10,"ln(MAP in cm)","Refitted DiLP",5.64721212316781,4.06089276387657
+"Gouland Downs",10,"ln(MAP in cm)","Site LM (imputed)",5.64721212316781,3.54614600404248
+"Gouland Downs",10,"ln(MAP in cm)","Species LM (imputed)",5.64721212316781,4.74866555916334
+"Harvard Forest, MA",10,"ln(MAP in cm)","PIP (imputed)",4.70501552095781,5.03149827801695
+"Harvard Forest, MA",10,"ln(MAP in cm)","Refitted DiLP",4.70501552095781,5.13121815276013
+"Harvard Forest, MA",10,"ln(MAP in cm)","Site LM (imputed)",4.70501552095781,5.01300264823403
+"Harvard Forest, MA",10,"ln(MAP in cm)","Species LM (imputed)",4.70501552095781,5.15991793222768
+"Los Ruiles",10,"ln(MAP in cm)","PIP (imputed)",4.45782959808938,5.01031629708951
+"Los Ruiles",10,"ln(MAP in cm)","Refitted DiLP",4.45782959808938,4.82312456953412
+"Los Ruiles",10,"ln(MAP in cm)","Site LM (imputed)",4.45782959808938,4.60245426229
+"Los Ruiles",10,"ln(MAP in cm)","Species LM (imputed)",4.45782959808938,5.05199567714357
+"Nestucca River, OR",10,"ln(MAP in cm)","PIP (imputed)",5.51181454081044,5.10431092778608
+"Nestucca River, OR",10,"ln(MAP in cm)","Refitted DiLP",5.51181454081044,5.02973158142895
+"Nestucca River, OR",10,"ln(MAP in cm)","Site LM (imputed)",5.51181454081044,5.09980347969539
+"Nestucca River, OR",10,"ln(MAP in cm)","Species LM (imputed)",5.51181454081044,5.15362740590017
+"Yasuni-valley bottom",10,"ln(MAP in cm)","PIP (imputed)",5.81054201122774,5.45836749357493
+"Yasuni-valley bottom",10,"ln(MAP in cm)","Refitted DiLP",5.81054201122774,5.60195966615343
+"Yasuni-valley bottom",10,"ln(MAP in cm)","Site LM (imputed)",5.81054201122774,5.70198555358647
+"Yasuni-valley bottom",10,"ln(MAP in cm)","Species LM (imputed)",5.81054201122774,5.45167021145778

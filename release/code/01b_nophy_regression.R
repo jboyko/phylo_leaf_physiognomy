@@ -1,12 +1,17 @@
-source("code/_setup.R")
+source(if (file.exists("code/setup.R")) "code/setup.R" else "setup.R")
 
 library(caret)
+set.seed(42L)
 
+# ==============================================================================
 # 1. LOAD DATA
+# ==============================================================================
 
 dat <- read.csv("data/lma_species.csv")
 
+# ==============================================================================
 # 2. UNIVARIATE MODEL: log10(LMA) ~ log10(pw2.a.ratio)
+# ==============================================================================
 
 # Dana Royer (pers. comm.): LMA scales linearly with PW^2/A in log-log space.
 complete_rows_uni <- complete.cases(dat[, c("log10_lma", "log10_pw2a_ratio")])
@@ -27,7 +32,9 @@ lm_uni <- train(
 cat("Univariate 10-fold CV RMSE:", lm_uni$results$RMSE, "\n")
 cat("Univariate 10-fold CV R²:  ", lm_uni$results$Rsquared, "\n")
 
+# ==============================================================================
 # 3. MULTIVARIATE MODEL: log10(LMA) ~ all 12 fossil-measurable traits
+# ==============================================================================
 
 lma_fossil_traits <- c(
   "pw2.a.ratio", "ln.leaf.area.mm2", "feret.diam.ratio", "margin.score",
@@ -88,7 +95,9 @@ for (cfg_name in names(multi_configs)) {
   multi_results[[cfg_name]] <- lm_fit
 }
 
+# ==============================================================================
 # 4. SAVE
+# ==============================================================================
 
 lma_nophy <- list(
   univariate   = list(

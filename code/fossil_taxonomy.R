@@ -1,12 +1,12 @@
 # Shared fossil taxonomy rules.
 #
-# Dana Royer (email, April 2026) specified that order, family, or genus names
-# inside quotation marks are informal and must not be used for phylogenetic
-# placement. The primary `formal_only` scenario censors each quoted rank. The
-# `include_informal` sensitivity scenario removes the quote marks and treats the
-# reported name provisionally as a placement hypothesis.
+# Dana Royer (email, April 2026) specified that quoted order, family, or genus
+# names are informal. A trailing question mark also marks a rank as uncertain.
+# The primary `formal_only` scenario skips marked ranks. The `include_informal`
+# sensitivity scenario removes the marks and tries the names provisionally.
 
 taxonomy_ranks <- c("genus", "family", "order")
+taxon_question_suffix <- "[[:space:]]*[?]+$"
 
 is_informal_taxon <- function(x) {
   x <- as.character(x)
@@ -14,7 +14,8 @@ is_informal_taxon <- function(x) {
     grepl("\u201c", x, fixed = TRUE) |
     grepl("\u201d", x, fixed = TRUE) |
     grepl("\u2018", x, fixed = TRUE) |
-    grepl("\u2019", x, fixed = TRUE)
+    grepl("\u2019", x, fixed = TRUE) |
+    has_trailing_taxon_question(x)
 }
 
 strip_taxon_quotes <- function(x) {
@@ -23,6 +24,14 @@ strip_taxon_quotes <- function(x) {
     x <- gsub(mark, "", x, fixed = TRUE)
   }
   trimws(gsub("[[:space:]]+", " ", x))
+}
+
+has_trailing_taxon_question <- function(x) {
+  grepl(taxon_question_suffix, strip_taxon_quotes(x))
+}
+
+strip_taxon_markers <- function(x) {
+  sub(taxon_question_suffix, "", strip_taxon_quotes(x))
 }
 
 normalise_missing_taxon <- function(x) {
@@ -53,14 +62,12 @@ taxonomy_for_scenario <- function(data,
     }
     reported <- normalise_missing_taxon(reported)
 
-    informal <- if (informal_col %in% names(out)) {
-      as.logical(out[[informal_col]])
-    } else {
-      is_informal_taxon(reported)
+    informal <- is_informal_taxon(reported)
+    if (informal_col %in% names(out)) {
+      informal <- informal | (as.logical(out[[informal_col]]) %in% TRUE)
     }
-    informal[is.na(informal)] <- FALSE
 
-    cleaned <- normalise_missing_taxon(strip_taxon_quotes(reported))
+    cleaned <- normalise_missing_taxon(strip_taxon_markers(reported))
     if (scenario == "formal_only") {
       cleaned[informal] <- "unknown"
     }
