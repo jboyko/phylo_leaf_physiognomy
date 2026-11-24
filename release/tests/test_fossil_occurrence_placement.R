@@ -1,9 +1,4 @@
-# Integration regression test for occurrence-specific fossil placement.
-#
-# This test intentionally exercises the real script because placement was
-# historically nested inside 04_fossil_predictions.R. It runs in an isolated
-# temporary project root so generated tables never overwrite working outputs.
-
+# Run the fossil script in a temporary project to check site-local predictions.
 project_root <- normalizePath(".", mustWork = TRUE)
 required <- c(
   "README.md",

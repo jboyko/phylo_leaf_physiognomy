@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # DiLP leaf processing by Matthew J. Butrim and DiLP contributors.
-# Source, changes and license are documented in licenses/DiLP.md.
-#
-# The paper uses the processed traits. The package's diagnostics and climate
-# regression are not part of this preprocessing entry point.
+# See licenses/DiLP.md.
 pip_preprocess_dilp <- local({
   `%>%` <- magrittr::`%>%`
 

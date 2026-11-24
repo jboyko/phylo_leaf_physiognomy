@@ -12,8 +12,7 @@ prediction.
 
 ## Rebuild the paper
 
-Use the release source and the submission's `Data_S1.zip`. From the repository
-root, for example:
+From the repository root:
 
 ```bash
 Rscript --vanilla release/setup.R
@@ -21,26 +20,18 @@ Rscript --vanilla release/reproduce.R submission/submission_1/Data_S1.zip /tmp/p
 Rscript --vanilla release/verify_reproduction.R /tmp/phylodilp-rebuild submission/submission_1
 ```
 
-Choose an output directory that does not yet exist. The runner copies the
-release scripts there and extracts the frozen data and site ages. Every model
-and validation fold is rebuilt in that directory. Generated analysis outputs
-are in `data/`, `models/`, and `tables/`. Paper figures, figure source data,
-and tables are under `submission/submission_1/` within the output directory.
-The runner records the R session in `R-session.txt`.
+Use a new output directory. The runner extracts Data S1 and refits the models
+and all ten validation folds there. Paper figures, source CSVs, and tables go
+in `submission/submission_1/`. The R session is saved in `R-session.txt`.
 
-The comparison command checks identifiers, counts, ages, folds and missing
-values exactly. It checks the numerical values in the nine submitted tables
-and both figure source CSVs to within `1e-7 * max(1, abs(reference))`, including
-the reported fossil climate interval endpoints. It also checks that all four
-figure files were generated.
+The verifier matches IDs, counts, ages, folds, and missing values exactly.
+Numeric tolerance is `1e-7 * max(1, abs(reference))` across nine tables and two
+figure source CSVs. It also checks for all four figure files.
 
-Allow several minutes or longer depending on the machine. The climate and LMA
-validation runs refit models in each of ten site-grouped folds. Allow about
-2 GB for generated files.
+Runtime depends on the R math library. Allow about 2 GB for generated files.
 
-For individual analyses, run scripts from the release or rebuild root in
-dependency order. `Rscript --vanilla run_all.R` includes the additional diagnostic
-scripts. The paper runner invokes `run_all.R --paper`.
+Run individual scripts from the release or rebuild root in dependency order.
+`Rscript --vanilla run_all.R` also runs the additional diagnostics.
 
 ## Dependencies and preprocessing
 
@@ -49,12 +40,9 @@ Use R 4.1 or later with Cairo support for the paper figures. `setup.R` installs
 `gridExtra`, `mvtnorm`, `MASS`, `ipred`, `e1071`, and `patchwork` from CRAN
 and reports the versions.
 
-The standalone analysis uses the DiLP column normalization, leaf trait
-calculations, and morphotype and site averaging in
-[`code/dilp_preprocessing.R`](code/dilp_preprocessing.R). These functions are
-included as source, with [provenance](licenses/DiLP.md) and the
-[GPL license](licenses/DiLP-GPL-3.md). The fossil age table and published
-comparator estimates come from Data S1.
+[`code/dilp_preprocessing.R`](code/dilp_preprocessing.R) contains the bundled
+DiLP trait calculations and averaging rules. See the
+[source note](licenses/DiLP.md) and [GPL license](licenses/DiLP-GPL-3.md).
 
 ## Pipeline
 
@@ -321,12 +309,8 @@ Rscript --vanilla tests/test_lma_fossil_occurrence_placement.R
 Rscript --vanilla tests/test_uncertainty_outputs.R
 ```
 
-The climate integration fixture runs the fossil prediction script in a
-temporary project with the generated scaffold, fossil traits, fitted models,
-and held-out site uncertainty. It checks dated occurrence placement and
-site-local prediction. The LMA fixture checks occurrence placement and
-geometric site means. The interval test recomputes shared-site discrepancies
-and verifies climate aggregation against the joint error covariance.
+These checks cover dated placement, site-local prediction, geometric LMA
+means, and climate intervals from the joint error covariance.
 
 ## Conditional PIP intervals
 

@@ -1,4 +1,3 @@
-# Rebuild the paper from Data S1 in a new directory.
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 2L) {
   stop("Usage: Rscript reproduce.R /path/to/Data_S1.zip /path/to/new-output",

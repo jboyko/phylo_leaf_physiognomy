@@ -1,4 +1,3 @@
-# Install the ordinary R dependencies used by the release scripts.
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 cran_packages <- c(
@@ -18,4 +17,3 @@ versions <- vapply(cran_packages, function(package) {
   as.character(utils::packageVersion(package))
 }, character(1))
 print(versions)
-print(sessionInfo())

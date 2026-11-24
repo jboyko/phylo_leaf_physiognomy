@@ -1,6 +1,3 @@
-# Runs the full pipeline in order from the release root: Rscript run_all.R
-# Scripts are also runnable individually, e.g. Rscript code/02_phy_regression.R
-
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) && !identical(args, "--paper")) stop("Expected --paper or no arguments.")
 
@@ -42,12 +39,12 @@ if (identical(args, "--paper")) {
                "paper/fossil_calibration_figure.R")
 }
 
-for (s in scripts) {
-  cat("\n", strrep("=", 70), "\n", s, "\n", strrep("=", 70), "\n", sep = "")
+for (script in scripts) {
+  cat("\nRunning ", script, "\n", sep = "")
   started <- proc.time()["elapsed"]
-  status <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", s))
-  if (status != 0) stop("Failed: ", s)
-  cat(sprintf("-- %s finished in %.1f s\n", s, proc.time()["elapsed"] - started))
+  status <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script))
+  if (status != 0) stop("Failed: ", script)
+  cat(sprintf("-- %s finished in %.1f s\n", script, proc.time()["elapsed"] - started))
 }
 
-cat("\nPipeline complete. Outputs in models/, tables/ and plots/.\n")
+cat("\nPipeline complete.\n")

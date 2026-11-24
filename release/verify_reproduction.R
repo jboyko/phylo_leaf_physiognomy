@@ -1,4 +1,3 @@
-# Compare a completed standalone run with the submitted numerical source data.
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 2L) {
   stop("Usage: Rscript verify_reproduction.R /path/to/rebuild /path/to/submission_1",
@@ -8,7 +7,7 @@ rebuild <- normalizePath(args[1], mustWork = TRUE)
 reference <- normalizePath(args[2], mustWork = TRUE)
 produced <- file.path(rebuild, "submission/submission_1")
 
-# Fit-lines in Figure 2 share the same identifiers and retain plotting order.
+# Keep plotting order where Figure 2 fit lines share a key.
 row_keys <- function(data, columns) {
   keys <- do.call(paste, c(data[columns], sep = "\r"))
   order_within_key <- ave(seq_along(keys), keys, FUN = seq_along)
